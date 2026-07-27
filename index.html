@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DESCENSO — Roguelike</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- CHARACTER SELECT -->
+  <div id="screen-menu" class="screen">
+    <div class="eyebrow">Descenso · Ritual sin Final</div>
+    <div class="title-main">DESCENSO</div>
+    <div class="subtitle">No hay fondo. Cada puerta guarda un altar, y cada altar despierta a algo
+      que no debería despertar. Sobrevive tanto como puedas y desbloquea nuevos héroes por el camino.</div>
+    <div class="roster" id="roster"></div>
+    <div class="eyebrow" style="margin-top:30px;">Habilidades Prohibidas · tecla R · caída rara de jefes</div>
+    <div class="ultimates-row" id="ultimates-row"></div>
+
+    <div class="eyebrow" style="margin-top:30px;">Altar del Hogar · Esencia: <span id="essence-count">0</span> · Récord: Etapa <span id="best-stage-count">0</span></div>
+    <div class="ultimates-row" id="home-altar-row"></div>
+
+    <div class="eyebrow" style="margin-top:30px;">Pactos de Riesgo (opcional)</div>
+    <div class="route-row" id="pacts-row"></div>
+
+    <div class="start-row">
+      <button class="btn" id="btn-start" disabled>Descender</button>
+    </div>
+    <div class="controls-hint">
+      <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> moverse &nbsp; · &nbsp; <kbd>Click</kbd> ataque básico (apunta con el mouse)</div>
+      <div><kbd>Q</kbd> habilidad 1 &nbsp; · &nbsp; <kbd>E</kbd> habilidad 2 &nbsp; · &nbsp; <kbd>R</kbd> habilidad prohibida (si la desbloqueaste) &nbsp; · &nbsp; <kbd>1</kbd>-<kbd>4</kbd> pociones &nbsp; · &nbsp; <kbd>Espacio</kbd> interactuar &nbsp; · &nbsp; <kbd>TAB</kbd> inventario &nbsp; · &nbsp; <kbd>Esc</kbd> pausa</div>
+    </div>
+  </div>
+
+  <!-- STAGE INTRO -->
+  <div id="screen-stage" class="screen hidden">
+    <div class="eyebrow" id="stage-eyebrow">Etapa 1</div>
+    <div class="title-main" id="stage-title">La Cripta Olvidada</div>
+    <div class="subtitle" id="stage-desc"></div>
+    <div class="route-row" id="route-row"></div>
+    <div class="start-row"><button class="btn" id="btn-enter-stage">Entrar</button></div>
+  </div>
+
+  <!-- STAGE CLEAR -->
+  <div id="screen-clear" class="screen hidden">
+    <div class="eyebrow">Jefe derrotado</div>
+    <div class="title-main" id="clear-title">Etapa superada</div>
+    <div class="subtitle">El altar se apaga. La siguiente puerta ya se abre bajo tus pies.</div>
+    <div class="start-row"><button class="btn" id="btn-next-stage">Continuar</button></div>
+  </div>
+
+  <!-- VICTORY -->
+  <div id="screen-victory" class="screen hidden">
+    <div class="eyebrow">El Abismo calla</div>
+    <div class="title-main">HAS DESCENDIDO Y VUELTO</div>
+    <div class="panel-box" id="victory-summary"></div>
+    <div class="start-row"><button class="btn" id="btn-victory-restart">Jugar de nuevo</button></div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="screen-gameover" class="screen hidden">
+    <div class="eyebrow" style="color:var(--blood)">Has caído</div>
+    <div class="title-main">EL ABISMO TE RECLAMA</div>
+    <div class="panel-box" id="gameover-summary"></div>
+    <div class="start-row"><button class="btn" id="btn-retry">Reintentar</button><button class="btn ghost" id="btn-menu">Menú</button></div>
+  </div>
+
+  <!-- PAUSE -->
+  <div id="screen-pause" class="screen hidden">
+    <div class="title-main" style="font-size:44px;">PAUSA</div>
+    <div class="start-row">
+      <button class="btn" id="btn-resume">Continuar</button>
+      <button class="btn ghost" id="btn-pause-menu">Salir al menú</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div class="hp-wrap">
+        <div class="hero-tag"><b id="hud-hero-name">—</b> &nbsp;·&nbsp; <span id="hud-hero-class"></span></div>
+        <div class="bar-shell"><div class="bar-fill" id="hp-fill" style="width:100%"></div><div class="bar-label" id="hp-label">100/100</div></div>
+        <div class="gold-wrap">◆ <span id="gold-count">0</span></div>
+        <div class="combo-wrap" id="combo-wrap" style="display:none;">🔥 Racha x<span id="combo-count">0</span></div>
+      </div>
+      <div class="stage-tag">
+        <div class="eyebrow" id="hud-stage-eyebrow">Etapa 1</div>
+        <div class="name" id="hud-stage-name">La Cripta Olvidada</div>
+        <div class="phase-note" id="hud-phase-note"></div>
+      </div>
+    </div>
+
+    <div class="boss-hp" id="boss-hp-wrap">
+      <div class="name" id="boss-name">Jefe</div>
+      <div class="attack-name" id="boss-attack-name"></div>
+      <div class="boss-bar-shell"><div class="boss-bar-fill" id="boss-hp-fill" style="width:100%"></div></div>
+    </div>
+
+    <div class="prompt-toast" id="prompt-toast"></div>
+
+    <div class="hud-bottom">
+      <div class="ability-slot"><span class="key">Q</span><span class="ic" id="q-icon">✦</span><div class="cd" id="q-cd" style="display:none"></div></div>
+      <div class="ability-slot"><span class="key">E</span><span class="ic" id="e-icon">✦</span><div class="cd" id="e-cd" style="display:none"></div></div>
+      <div class="ability-slot ult" id="r-slot" style="display:none;"><span class="key">R</span><span class="ic" id="r-icon">✦</span><div class="cd" id="r-cd" style="display:none"></div></div>
+      <div class="potion-row" id="potion-row"></div>
+    </div>
+  </div>
+
+  <div id="toast-layer"></div>
+
+  <!-- INVENTORY (TAB) -->
+  <div id="inventory-panel" class="inv-panel hidden">
+    <div class="inv-header">
+      <div class="inv-title">Inventario</div>
+      <div class="inv-sub">TAB para cerrar</div>
+    </div>
+    <div class="inv-stats" id="inv-stats"></div>
+    <div class="inv-list" id="inv-list"></div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
