@@ -174,6 +174,23 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 .stage-tag .eyebrow{ text-align:right; margin-bottom:2px;}
 .stage-tag .name{ font-size:18px; color:var(--bone); letter-spacing:.03em; }
 .phase-note{ font-family:var(--font-mono); font-size:11px; color:var(--shade); margin-top:4px; letter-spacing:.05em; text-align:right; min-height:14px;}
+.level-tag{
+  font-family:var(--font-mono); font-size:13px; color:var(--gold); letter-spacing:.08em;
+  text-transform:uppercase; margin-bottom:6px; text-shadow:0 0 10px rgba(255,203,71,0.5);
+}
+.level-tag b{ font-size:16px; }
+
+/* ---------- active effects panel ---------- */
+.effects-panel{ display:flex; flex-direction:column; gap:4px; margin-top:8px; max-width:280px; }
+.effect-chip{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  font-family:var(--font-mono); font-size:10.5px; padding:4px 9px; border-radius:2px;
+  background:rgba(10,7,16,0.7); border-left:3px solid var(--bone-dim);
+}
+.effect-chip.buff{ border-left-color:var(--toxic); color:var(--bone); }
+.effect-chip.debuff{ border-left-color:var(--blood); color:var(--bone); }
+.effect-chip .nm i{ color:var(--bone-dim); font-style:normal; }
+.effect-chip .t{ color:var(--bone-dim); flex-shrink:0; }
 
 .hud-bottom{ position:absolute; bottom:24px; left:50%; transform:translateX(-50%); display:flex; gap:16px; align-items:flex-end; }
 .ability-slot.ult{ border-color:#ffd54a; box-shadow:0 0 16px -4px rgba(255,213,74,0.55); }
@@ -266,3 +283,16 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 .inv-item .nm{ font-family:var(--font-title); font-size:13px; color:var(--bone); }
 .inv-item .ds{ font-family:var(--font-mono); font-size:10.5px; color:var(--bone-dim); margin-top:2px;}
 .inv-empty{ font-family:var(--font-mono); font-size:12px; color:var(--bone-dim); text-align:center; padding:20px 0;}
+
+/* ---------- merchant panel ---------- */
+.merchant-list{ display:flex; flex-direction:column; gap:10px; }
+.merchant-item{
+  display:flex; align-items:center; gap:14px; background:rgba(0,0,0,0.25);
+  border:1px solid var(--tc, var(--line)); border-radius:4px; padding:12px 14px;
+}
+.merchant-item.bought{ opacity:0.45; }
+.merchant-item .ic{ font-size:24px; width:32px; text-align:center; flex-shrink:0; color:var(--tc,var(--bone)); }
+.merchant-item .body{ flex:1; }
+.merchant-item .nm{ font-family:var(--font-title); font-size:13.5px; color:var(--bone); margin-bottom:3px; }
+.merchant-item .ds{ font-family:var(--font-mono); font-size:10.5px; color:var(--bone-dim); line-height:1.4; }
+.merchant-buy{ padding:8px 16px; font-size:12px; flex-shrink:0; }

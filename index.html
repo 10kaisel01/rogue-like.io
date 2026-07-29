@@ -87,8 +87,10 @@
         <div class="bar-shell"><div class="bar-fill" id="hp-fill" style="width:100%"></div><div class="bar-label" id="hp-label">100/100</div></div>
         <div class="gold-wrap">◆ <span id="gold-count">0</span></div>
         <div class="combo-wrap" id="combo-wrap" style="display:none;">🔥 Racha x<span id="combo-count">0</span></div>
+        <div class="effects-panel" id="effects-panel"></div>
       </div>
       <div class="stage-tag">
+        <div class="level-tag">Nv. <b id="hud-char-level">1</b></div>
         <div class="eyebrow" id="hud-stage-eyebrow">Etapa 1</div>
         <div class="name" id="hud-stage-name">La Cripta Olvidada</div>
         <div class="phase-note" id="hud-phase-note"></div>
@@ -121,6 +123,16 @@
     </div>
     <div class="inv-stats" id="inv-stats"></div>
     <div class="inv-list" id="inv-list"></div>
+  </div>
+
+  <!-- MERCHANT -->
+  <div id="merchant-panel" class="inv-panel hidden">
+    <div class="inv-header">
+      <div class="inv-title">Mercader Errante</div>
+      <div class="inv-sub" id="merchant-close" style="cursor:pointer;">ESC para cerrar</div>
+    </div>
+    <div class="inv-stats"><div>Oro: <b id="merchant-gold">0</b></div></div>
+    <div class="merchant-list" id="merchant-list"></div>
   </div>
 </div>
 

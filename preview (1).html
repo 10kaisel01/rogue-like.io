@@ -1,3 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DESCENSO — Roguelike</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void: #0a0710;
+  --void-2: #120b1c;
+  --panel: #191024;
+  --panel-2: #20142e;
+  --line: #382a4a;
+  --bone: #ece2cf;
+  --bone-dim: #a89a8c;
+  --ember: #ff6a3d;
+  --ember-dim: #a8451f;
+  --arcane: #6a8dff;
+  --arcane-dim: #3d4f96;
+  --shade: #d24aff;
+  --shade-dim: #7a2b96;
+  --gold: #ffcb47;
+  --blood: #e8434f;
+  --blood-dim: #6b1e26;
+  --toxic: #8bff6b;
+  --font-display: 'Cinzel Decorative', serif;
+  --font-title: 'Cinzel', serif;
+  --font-body: 'Spectral', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{
+  width:100%; height:100%; overflow:hidden;
+  background:var(--void);
+  font-family:var(--font-body);
+  color:var(--bone);
+  user-select:none;
+}
+#app{position:relative; width:100vw; height:100vh; overflow:hidden;}
+canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
+
+/* ---------- shared overlay screen ---------- */
+.screen{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column;
+  background:radial-gradient(ellipse at 50% 30%, rgba(40,20,55,0.55), rgba(6,3,10,0.94) 70%);
+  z-index:40;
+  animation:fadeIn .5s ease;
+}
+.hidden{display:none !important;}
+@keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+
+.eyebrow{
+  font-family:var(--font-mono);
+  letter-spacing:.35em;
+  font-size:11px;
+  color:var(--shade);
+  text-transform:uppercase;
+  margin-bottom:10px;
+}
+.title-main{
+  font-family:var(--font-display);
+  font-size:clamp(38px,7vw,74px);
+  color:var(--bone);
+  text-align:center;
+  text-shadow:0 0 40px rgba(210,74,255,0.35), 0 0 4px rgba(255,255,255,0.2);
+  letter-spacing:.04em;
+  line-height:1;
+}
+.subtitle{
+  font-family:var(--font-body);
+  font-style:italic;
+  color:var(--bone-dim);
+  margin-top:14px;
+  font-size:15px;
+  max-width:560px;
+  text-align:center;
+  line-height:1.6;
+}
+
+/* ---------- character select ---------- */
+#screen-menu{
+  gap:8px;
+  overflow-y:auto;
+  justify-content:flex-start;
+  padding:36px 20px 50px;
+}
+.roster{
+  display:flex; gap:26px; margin-top:46px; flex-wrap:wrap; justify-content:center; max-width:1100px;
+}
+.hero-card{
+  position:relative;
+  width:230px;
+  padding:22px 18px 20px;
+  background:linear-gradient(180deg, var(--panel-2), var(--panel));
+  border:1px solid var(--line);
+  border-radius:4px;
+  cursor:pointer;
+  transition:transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  text-align:center;
+}
+.hero-card:hover{ transform:translateY(-6px); border-color:var(--accent-c, var(--shade)); box-shadow:0 18px 50px -12px rgba(0,0,0,0.7), 0 0 30px -6px var(--glow-c, rgba(210,74,255,0.5)); }
+.hero-card.selected{ border-color:var(--accent-c); box-shadow:0 0 0 1px var(--accent-c), 0 0 40px -4px var(--glow-c); }
+.rune-circle{
+  width:96px; height:96px; margin:0 auto 14px;
+  border-radius:50%;
+  border:2px solid var(--accent-c);
+  display:flex; align-items:center; justify-content:center;
+  font-size:42px;
+  position:relative;
+  background:radial-gradient(circle, var(--glow-c) 0%, transparent 70%);
+}
+.rune-circle::before{
+  content:'';
+  position:absolute; inset:-8px;
+  border-radius:50%;
+  border:1px dashed var(--accent-c);
+  opacity:.45;
+  animation:spin 18s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.hero-name{
+  font-family:var(--font-title); font-weight:700; font-size:19px; letter-spacing:.03em;
+  color:var(--bone); margin-bottom:2px;
+}
+.hero-class{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--accent-c); margin-bottom:12px;
+}
+.hero-stats{ display:flex; justify-content:center; gap:14px; margin-bottom:12px; }
+.hero-stat{ font-family:var(--font-mono); font-size:11px; color:var(--bone-dim); }
+.hero-stat b{ display:block; color:var(--bone); font-size:14px; }
+.hero-abilities{ text-align:left; font-size:12.5px; line-height:1.5; color:var(--bone-dim); border-top:1px solid var(--line); padding-top:10px; }
+.hero-abilities .k{ color:var(--accent-c); font-family:var(--font-mono); font-weight:700; margin-right:4px;}
+
+.btn{
+  font-family:var(--font-title); font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+  font-size:14px; color:var(--void); background:var(--gold);
+  border:none; padding:14px 38px; border-radius:2px; cursor:pointer;
+  box-shadow:0 8px 24px -6px rgba(255,203,71,0.45);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.btn:hover{ transform:translateY(-2px); box-shadow:0 12px 30px -6px rgba(255,203,71,0.6); }
+.btn:active{ transform:translateY(0); }
+.btn.ghost{
+  background:transparent; color:var(--bone); border:1px solid var(--line);
+  box-shadow:none;
+}
+.btn.ghost:hover{ border-color:var(--bone-dim); }
+.btn:disabled{ opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
+
+.start-row{ margin-top:38px; display:flex; gap:14px; align-items:center; }
+.controls-hint{
+  margin-top:26px; font-family:var(--font-mono); font-size:11px; color:var(--bone-dim);
+  letter-spacing:.05em; text-align:center; line-height:2;
+}
+.controls-hint kbd{
+  background:var(--panel-2); border:1px solid var(--line); border-radius:3px;
+  padding:1px 7px; color:var(--bone); font-family:var(--font-mono);
+}
+
+/* ---------- HUD ---------- */
+#hud{ position:absolute; inset:0; pointer-events:none; z-index:20; }
+.hud-top{
+  position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-start; padding:18px 22px;
+}
+.hp-wrap{ display:flex; flex-direction:column; gap:6px; min-width:260px; }
+.hero-tag{ display:flex; align-items:center; gap:8px; font-family:var(--font-title); font-size:13px; letter-spacing:.06em; color:var(--bone-dim); }
+.hero-tag b{ color:var(--bone); }
+.bar-shell{
+  width:280px; height:16px; background:rgba(10,7,16,0.7); border:1px solid var(--line); border-radius:2px; overflow:hidden; position:relative;
+}
+.bar-fill{ height:100%; background:linear-gradient(90deg, var(--blood-dim), var(--blood)); transition:width .18s ease; }
+.bar-fill.gold{ background:linear-gradient(90deg,#8a6a12,var(--gold)); }
+.bar-label{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:10px; color:var(--bone); text-shadow:0 1px 2px #000; letter-spacing:.05em;}
+.gold-wrap{ display:flex; align-items:center; gap:8px; font-family:var(--font-mono); color:var(--gold); font-size:20px; font-weight:700; }
+.combo-wrap{ font-family:var(--font-mono); color:var(--ember); font-size:12px; font-weight:600; letter-spacing:.03em; }
+
+.stage-tag{ text-align:right; font-family:var(--font-title); }
+.stage-tag .eyebrow{ text-align:right; margin-bottom:2px;}
+.stage-tag .name{ font-size:18px; color:var(--bone); letter-spacing:.03em; }
+.phase-note{ font-family:var(--font-mono); font-size:11px; color:var(--shade); margin-top:4px; letter-spacing:.05em; text-align:right; min-height:14px;}
+.level-tag{
+  font-family:var(--font-mono); font-size:13px; color:var(--gold); letter-spacing:.08em;
+  text-transform:uppercase; margin-bottom:6px; text-shadow:0 0 10px rgba(255,203,71,0.5);
+}
+.level-tag b{ font-size:16px; }
+
+/* ---------- active effects panel ---------- */
+.effects-panel{ display:flex; flex-direction:column; gap:4px; margin-top:8px; max-width:280px; }
+.effect-chip{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  font-family:var(--font-mono); font-size:10.5px; padding:4px 9px; border-radius:2px;
+  background:rgba(10,7,16,0.7); border-left:3px solid var(--bone-dim);
+}
+.effect-chip.buff{ border-left-color:var(--toxic); color:var(--bone); }
+.effect-chip.debuff{ border-left-color:var(--blood); color:var(--bone); }
+.effect-chip .nm i{ color:var(--bone-dim); font-style:normal; }
+.effect-chip .t{ color:var(--bone-dim); flex-shrink:0; }
+
+.hud-bottom{ position:absolute; bottom:24px; left:50%; transform:translateX(-50%); display:flex; gap:16px; align-items:flex-end; }
+.ability-slot.ult{ border-color:#ffd54a; box-shadow:0 0 16px -4px rgba(255,213,74,0.55); }
+.potion-row{ display:flex; gap:6px; align-items:flex-end; margin-left:10px; }
+.potion-slot{ width:44px; height:44px; border-radius:6px; background:var(--panel); border:1.5px solid var(--line);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; opacity:0.35; }
+.potion-slot.has{ opacity:1; }
+.potion-slot .key{ position:absolute; top:2px; left:4px; font-family:var(--font-mono); font-size:8px; color:var(--bone-dim); }
+.potion-slot .ic{ font-size:16px; }
+.potion-slot .n{ position:absolute; bottom:1px; right:3px; font-family:var(--font-mono); font-size:9px; color:var(--gold); font-weight:700; }
+.ultimates-row{ display:flex; gap:14px; margin-top:12px; flex-wrap:wrap; justify-content:center; max-width:700px; }
+.ult-card{ width:150px; padding:14px 12px; background:linear-gradient(180deg, var(--panel-2), var(--panel)); border:1px solid var(--line); border-radius:4px; text-align:center; }
+.ult-card .ic{ font-size:24px; margin-bottom:6px; }
+.ult-card .nm{ font-family:var(--font-title); font-size:12.5px; color:var(--bone); margin-bottom:3px; }
+.ult-card .ds{ font-family:var(--font-mono); font-size:10px; color:var(--bone-dim); line-height:1.4; }
+.ult-card.locked{ opacity:0.5; }
+
+.route-row{ display:flex; gap:14px; margin-top:30px; flex-wrap:wrap; justify-content:center; max-width:720px; }
+.route-card{ width:190px; padding:16px 14px; background:linear-gradient(180deg, var(--panel-2), var(--panel));
+  border:1px solid var(--line); border-radius:4px; text-align:center; cursor:pointer; transition:border-color .2s ease, transform .2s ease; }
+.route-card:hover{ transform:translateY(-3px); }
+.route-card.selected{ border-color:var(--shade); box-shadow:0 0 24px -6px rgba(210,74,255,0.5); }
+.route-card .ic{ font-size:22px; margin-bottom:6px; }
+.route-card .nm{ font-family:var(--font-title); font-size:13px; color:var(--bone); margin-bottom:4px; }
+.route-card .ds{ font-family:var(--font-mono); font-size:10.5px; color:var(--bone-dim); line-height:1.4; }
+.ability-slot{
+  width:64px; height:64px; border-radius:6px; background:var(--panel); border:1.5px solid var(--line);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; overflow:hidden;
+}
+.ability-slot .key{ position:absolute; top:3px; left:5px; font-family:var(--font-mono); font-size:10px; color:var(--bone-dim); }
+.ability-slot .ic{ font-size:24px; }
+.ability-slot .cd{
+  position:absolute; inset:0; background:rgba(6,4,10,0.78); display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-mono); font-size:15px; color:var(--bone); transform-origin:bottom;
+}
+.boss-hp{
+  position:absolute; top:70px; left:50%; transform:translateX(-50%); width:min(560px,70vw);
+  display:none; flex-direction:column; align-items:center; gap:6px;
+}
+.boss-hp.show{ display:flex; }
+.boss-hp .name{ font-family:var(--font-display); color:var(--ember); font-size:18px; letter-spacing:.05em; text-shadow:0 0 12px rgba(255,106,61,0.6); }
+.attack-name{ font-family:var(--font-mono); font-size:13px; letter-spacing:.1em; color:#fff; text-transform:uppercase; opacity:0; margin-top:2px; text-shadow:0 0 10px currentColor; }
+.attack-name.show{ animation: attackPop 0.9s ease; }
+@keyframes attackPop{ 0%{opacity:0; transform:scale(0.75) translateY(4px);} 18%{opacity:1; transform:scale(1.1) translateY(0);} 65%{opacity:1; transform:scale(1);} 100%{opacity:0;} }
+.boss-bar-shell{ width:100%; height:14px; background:rgba(10,7,16,0.8); border:1px solid var(--ember-dim); position:relative; }
+.boss-bar-fill{ height:100%; background:linear-gradient(90deg,var(--ember-dim),var(--ember)); transition:width .2s ease;}
+
+.prompt-toast{
+  position:absolute; bottom:120px; left:50%; transform:translateX(-50%);
+  font-family:var(--font-mono); font-size:12px; color:var(--bone); background:rgba(15,10,22,0.85);
+  border:1px solid var(--shade-dim); padding:8px 16px; border-radius:3px; letter-spacing:.04em;
+  opacity:0; transition:opacity .2s ease;
+}
+.prompt-toast.show{ opacity:1; }
+
+/* ---------- item / event toasts ---------- */
+#toast-layer{ position:absolute; top:110px; right:24px; display:flex; flex-direction:column; gap:8px; z-index:25; align-items:flex-end;}
+.item-toast{
+  font-family:var(--font-mono); font-size:12px; color:var(--bone); background:var(--panel);
+  border:1px solid var(--gold); border-left:4px solid var(--gold); padding:8px 14px; border-radius:2px;
+  animation:toastIn .3s ease, toastOut .4s ease 2.6s forwards; min-width:200px;
+}
+@keyframes toastIn{from{opacity:0; transform:translateX(30px);} to{opacity:1; transform:translateX(0);}}
+@keyframes toastOut{to{opacity:0; transform:translateX(30px);}}
+
+/* ---------- pause / gameover / victory ---------- */
+.panel-box{
+  background:linear-gradient(180deg, var(--panel-2), var(--panel));
+  border:1px solid var(--line); padding:44px 50px; border-radius:4px; text-align:center; min-width:340px;
+}
+#run-summary{ margin-top:18px; font-family:var(--font-mono); font-size:13px; color:var(--bone-dim); line-height:2; text-align:left; display:inline-block;}
+#run-summary b{ color:var(--gold); }
+
+/* ---------- inventory panel (TAB) ---------- */
+.inv-panel{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:min(560px,86vw); max-height:78vh; overflow-y:auto;
+  background:linear-gradient(180deg, var(--panel-2), var(--panel));
+  border:1px solid var(--line); border-radius:6px; padding:26px 28px;
+  z-index:50; box-shadow:0 30px 80px -20px rgba(0,0,0,0.8);
+}
+.inv-header{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; border-bottom:1px solid var(--line); padding-bottom:10px;}
+.inv-title{ font-family:var(--font-display); font-size:22px; color:var(--bone); }
+.inv-sub{ font-family:var(--font-mono); font-size:11px; color:var(--bone-dim); }
+.inv-stats{ display:grid; grid-template-columns:1fr 1fr; gap:8px 20px; margin-bottom:18px; font-family:var(--font-mono); font-size:12px; color:var(--bone-dim);}
+.inv-stats b{ color:var(--gold); }
+.inv-list{ display:flex; flex-direction:column; gap:8px; }
+.inv-item{ display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.25); border:1px solid var(--line); border-radius:3px; padding:8px 12px; }
+.inv-item .ic{ font-size:20px; width:28px; text-align:center; flex-shrink:0; }
+.inv-item .nm{ font-family:var(--font-title); font-size:13px; color:var(--bone); }
+.inv-item .ds{ font-family:var(--font-mono); font-size:10.5px; color:var(--bone-dim); margin-top:2px;}
+.inv-empty{ font-family:var(--font-mono); font-size:12px; color:var(--bone-dim); text-align:center; padding:20px 0;}
+
+/* ---------- merchant panel ---------- */
+.merchant-list{ display:flex; flex-direction:column; gap:10px; }
+.merchant-item{
+  display:flex; align-items:center; gap:14px; background:rgba(0,0,0,0.25);
+  border:1px solid var(--tc, var(--line)); border-radius:4px; padding:12px 14px;
+}
+.merchant-item.bought{ opacity:0.45; }
+.merchant-item .ic{ font-size:24px; width:32px; text-align:center; flex-shrink:0; color:var(--tc,var(--bone)); }
+.merchant-item .body{ flex:1; }
+.merchant-item .nm{ font-family:var(--font-title); font-size:13.5px; color:var(--bone); margin-bottom:3px; }
+.merchant-item .ds{ font-family:var(--font-mono); font-size:10.5px; color:var(--bone-dim); line-height:1.4; }
+.merchant-buy{ padding:8px 16px; font-size:12px; flex-shrink:0; }
+
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- CHARACTER SELECT -->
+  <div id="screen-menu" class="screen">
+    <div class="eyebrow">Descenso · Ritual sin Final</div>
+    <div class="title-main">DESCENSO</div>
+    <div class="subtitle">No hay fondo. Cada puerta guarda un altar, y cada altar despierta a algo
+      que no debería despertar. Sobrevive tanto como puedas y desbloquea nuevos héroes por el camino.</div>
+    <div class="roster" id="roster"></div>
+    <div class="eyebrow" style="margin-top:30px;">Habilidades Prohibidas · tecla R · caída rara de jefes</div>
+    <div class="ultimates-row" id="ultimates-row"></div>
+
+    <div class="eyebrow" style="margin-top:30px;">Altar del Hogar · Esencia: <span id="essence-count">0</span> · Récord: Etapa <span id="best-stage-count">0</span></div>
+    <div class="ultimates-row" id="home-altar-row"></div>
+
+    <div class="eyebrow" style="margin-top:30px;">Pactos de Riesgo (opcional)</div>
+    <div class="route-row" id="pacts-row"></div>
+
+    <div class="start-row">
+      <button class="btn" id="btn-start" disabled>Descender</button>
+    </div>
+    <div class="controls-hint">
+      <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> moverse &nbsp; · &nbsp; <kbd>Click</kbd> ataque básico (apunta con el mouse)</div>
+      <div><kbd>Q</kbd> habilidad 1 &nbsp; · &nbsp; <kbd>E</kbd> habilidad 2 &nbsp; · &nbsp; <kbd>R</kbd> habilidad prohibida (si la desbloqueaste) &nbsp; · &nbsp; <kbd>1</kbd>-<kbd>4</kbd> pociones &nbsp; · &nbsp; <kbd>Espacio</kbd> interactuar &nbsp; · &nbsp; <kbd>TAB</kbd> inventario &nbsp; · &nbsp; <kbd>Esc</kbd> pausa</div>
+    </div>
+  </div>
+
+  <!-- STAGE INTRO -->
+  <div id="screen-stage" class="screen hidden">
+    <div class="eyebrow" id="stage-eyebrow">Etapa 1</div>
+    <div class="title-main" id="stage-title">La Cripta Olvidada</div>
+    <div class="subtitle" id="stage-desc"></div>
+    <div class="route-row" id="route-row"></div>
+    <div class="start-row"><button class="btn" id="btn-enter-stage">Entrar</button></div>
+  </div>
+
+  <!-- STAGE CLEAR -->
+  <div id="screen-clear" class="screen hidden">
+    <div class="eyebrow">Jefe derrotado</div>
+    <div class="title-main" id="clear-title">Etapa superada</div>
+    <div class="subtitle">El altar se apaga. La siguiente puerta ya se abre bajo tus pies.</div>
+    <div class="start-row"><button class="btn" id="btn-next-stage">Continuar</button></div>
+  </div>
+
+  <!-- VICTORY -->
+  <div id="screen-victory" class="screen hidden">
+    <div class="eyebrow">El Abismo calla</div>
+    <div class="title-main">HAS DESCENDIDO Y VUELTO</div>
+    <div class="panel-box" id="victory-summary"></div>
+    <div class="start-row"><button class="btn" id="btn-victory-restart">Jugar de nuevo</button></div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="screen-gameover" class="screen hidden">
+    <div class="eyebrow" style="color:var(--blood)">Has caído</div>
+    <div class="title-main">EL ABISMO TE RECLAMA</div>
+    <div class="panel-box" id="gameover-summary"></div>
+    <div class="start-row"><button class="btn" id="btn-retry">Reintentar</button><button class="btn ghost" id="btn-menu">Menú</button></div>
+  </div>
+
+  <!-- PAUSE -->
+  <div id="screen-pause" class="screen hidden">
+    <div class="title-main" style="font-size:44px;">PAUSA</div>
+    <div class="start-row">
+      <button class="btn" id="btn-resume">Continuar</button>
+      <button class="btn ghost" id="btn-pause-menu">Salir al menú</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div class="hp-wrap">
+        <div class="hero-tag"><b id="hud-hero-name">—</b> &nbsp;·&nbsp; <span id="hud-hero-class"></span></div>
+        <div class="bar-shell"><div class="bar-fill" id="hp-fill" style="width:100%"></div><div class="bar-label" id="hp-label">100/100</div></div>
+        <div class="gold-wrap">◆ <span id="gold-count">0</span></div>
+        <div class="combo-wrap" id="combo-wrap" style="display:none;">🔥 Racha x<span id="combo-count">0</span></div>
+        <div class="effects-panel" id="effects-panel"></div>
+      </div>
+      <div class="stage-tag">
+        <div class="level-tag">Nv. <b id="hud-char-level">1</b></div>
+        <div class="eyebrow" id="hud-stage-eyebrow">Etapa 1</div>
+        <div class="name" id="hud-stage-name">La Cripta Olvidada</div>
+        <div class="phase-note" id="hud-phase-note"></div>
+      </div>
+    </div>
+
+    <div class="boss-hp" id="boss-hp-wrap">
+      <div class="name" id="boss-name">Jefe</div>
+      <div class="attack-name" id="boss-attack-name"></div>
+      <div class="boss-bar-shell"><div class="boss-bar-fill" id="boss-hp-fill" style="width:100%"></div></div>
+    </div>
+
+    <div class="prompt-toast" id="prompt-toast"></div>
+
+    <div class="hud-bottom">
+      <div class="ability-slot"><span class="key">Q</span><span class="ic" id="q-icon">✦</span><div class="cd" id="q-cd" style="display:none"></div></div>
+      <div class="ability-slot"><span class="key">E</span><span class="ic" id="e-icon">✦</span><div class="cd" id="e-cd" style="display:none"></div></div>
+      <div class="ability-slot ult" id="r-slot" style="display:none;"><span class="key">R</span><span class="ic" id="r-icon">✦</span><div class="cd" id="r-cd" style="display:none"></div></div>
+      <div class="potion-row" id="potion-row"></div>
+    </div>
+  </div>
+
+  <div id="toast-layer"></div>
+
+  <!-- INVENTORY (TAB) -->
+  <div id="inventory-panel" class="inv-panel hidden">
+    <div class="inv-header">
+      <div class="inv-title">Inventario</div>
+      <div class="inv-sub">TAB para cerrar</div>
+    </div>
+    <div class="inv-stats" id="inv-stats"></div>
+    <div class="inv-list" id="inv-list"></div>
+  </div>
+
+  <!-- MERCHANT -->
+  <div id="merchant-panel" class="inv-panel hidden">
+    <div class="inv-header">
+      <div class="inv-title">Mercader Errante</div>
+      <div class="inv-sub" id="merchant-close" style="cursor:pointer;">ESC para cerrar</div>
+    </div>
+    <div class="inv-stats"><div>Oro: <b id="merchant-gold">0</b></div></div>
+    <div class="merchant-list" id="merchant-list"></div>
+  </div>
+</div>
+
+<script>
 (function(){
 "use strict";
 
@@ -6293,3 +6732,7 @@ function idleRender(){
 idleRender();
 
 })();
+
+</script>
+</body>
+</html>
