@@ -112,6 +112,86 @@ const HEROES = {
     locked:true, unlockAch:'killStreak',
     scaling:[{stat:'hp', perLevel:0.02},{stat:'dmg', perLevel:0.02}],
   },
+  monje: {
+    id:'monje', name:'Kaelo', className:'Monje', icon:'☯', accent:'#ffb347', glow:'rgba(255,179,71,0.35)',
+    hp:130, speed:265, atk:{cd:0.32, dmg:9, range:80, arc:72, kind:'melee'},
+    q:{name:'Ráfaga de Golpes', icon:'☯', cd:6, desc:'4 golpes rápidos avanzando, cada uno en cono'},
+    e:{name:'Postura de Calma', icon:'☮', cd:13, desc:'Invulnerabilidad breve, te cura y limpia todos los debuffs'},
+    locked:true, unlockAch:'comboMaster',
+    scaling:{stat:'dmg', perLevel:0.03},
+  },
+  arquera: {
+    id:'arquera', name:'Yarah', className:'Arquera', icon:'➶', accent:'#8bffb0', glow:'rgba(139,255,176,0.35)',
+    hp:70, speed:220, atk:{cd:0.55, dmg:17, range:620, projSpeed:680, radius:5, kind:'ranged'},
+    q:{name:'Flecha Perforante', icon:'➹', cd:6.5, desc:'Flecha veloz que atraviesa a todos los enemigos en línea'},
+    e:{name:'Lluvia de Flechas', icon:'☂', cd:12, desc:'Flechas caen sobre un área frente tuyo'},
+    locked:true, unlockAch:'deepDescent15',
+    scaling:{stat:'dmg', perLevel:0.04},
+  },
+  elementalista: {
+    id:'elementalista', name:'Zephira', className:'Elementalista', icon:'♒', accent:'#6ad8ff', glow:'rgba(106,216,255,0.35)',
+    hp:85, speed:215, atk:{cd:0.42, dmg:11, range:420, projSpeed:440, radius:7, kind:'ranged'},
+    q:{name:'Cadena de Rayos', icon:'⚡', cd:6, desc:'Un rayo salta entre hasta 4 enemigos cercanos'},
+    e:{name:'Escudo Elemental', icon:'✵', cd:14, desc:'Nova de daño alrededor tuyo y un escudo'},
+    locked:true, unlockAch:'relicCollector',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  berserker: {
+    id:'berserker', name:'Grum', className:'Berserker', icon:'🪓', accent:'#ff3d3d', glow:'rgba(255,61,61,0.35)',
+    hp:220, speed:240, atk:{cd:0.4, dmg:18, range:96, arc:78, kind:'melee'},
+    q:{name:'Giro Salvaje', icon:'🌀', cd:7, desc:'Gira golpeando todo alrededor; más daño cuanta menos vida te queda'},
+    e:{name:'Furia de Sangre', icon:'🩸', cd:14, desc:'Sacrificás vida a cambio de +daño temporal'},
+    locked:true, unlockAch:'killStreak300',
+    scaling:{stat:'hp', perLevel:0.04},
+  },
+  ilusionista: {
+    id:'ilusionista', name:'Mirelle', className:'Ilusionista', icon:'🎭', accent:'#c9a8ff', glow:'rgba(201,168,255,0.35)',
+    hp:75, speed:235, atk:{cd:0.45, dmg:9, range:460, projSpeed:500, radius:6, kind:'ranged'},
+    q:{name:'Espejismo', icon:'👁', cd:8, desc:'Invoca un señuelo que ataca solo por un tiempo'},
+    e:{name:'Intercambio', icon:'🔀', cd:12, desc:'Te teletransportás al señuelo y explota'},
+    locked:true, unlockAch:'richRun',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  alquimista: {
+    id:'alquimista', name:'Doc Brann', className:'Alquimista', icon:'⚗', accent:'#c9e85a', glow:'rgba(201,232,90,0.35)',
+    hp:90, speed:230, atk:{cd:0.6, dmg:13, range:380, projSpeed:360, radius:8, kind:'ranged'},
+    q:{name:'Frasco Corrosivo', icon:'🧪', cd:6, desc:'Frasco lanzado que explota en área'},
+    e:{name:'Mezcla Volátil', icon:'💥', cd:11, desc:'Explosión que empuja enemigos y te cura'},
+    locked:true, unlockAch:'veteranLevel',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  druida: {
+    id:'druida', name:'Wren', className:'Druida', icon:'🐾', accent:'#9c7a4a', glow:'rgba(156,122,74,0.35)',
+    hp:160, speed:245, atk:{cd:0.45, dmg:15, range:90, arc:74, kind:'melee'},
+    q:{name:'Garras Salvajes', icon:'🐾', cd:5, desc:'Dash corto con zarpazo a su paso'},
+    e:{name:'Forma Salvaje', icon:'🐺', cd:15, desc:'Transformación: +velocidad, +daño y algo de curación'},
+    locked:true, unlockAch:'fiveBosses',
+    scaling:{stat:'hp', perLevel:0.03},
+  },
+  sangre: {
+    id:'sangre', name:'Ossian', className:'Mago de Sangre', icon:'🩸', accent:'#b91d3a', glow:'rgba(185,29,58,0.35)',
+    hp:110, speed:220, atk:{cd:0.4, dmg:12, range:440, projSpeed:460, radius:6, kind:'ranged'},
+    q:{name:'Golpe de Sangre', icon:'🩸', cd:5, desc:'Proyectil que hace más daño cuanta menos vida te queda; cuesta algo de vida'},
+    e:{name:'Pacto de Sangre', icon:'⛧', cd:13, desc:'Convertís vida actual en un escudo mayor'},
+    locked:true, unlockAch:'bloodCombo',
+    scaling:{stat:'dmg', perLevel:0.04},
+  },
+  centinela: {
+    id:'centinela', name:'Bram', className:'Centinela', icon:'🛡', accent:'#7a8a9c', glow:'rgba(122,138,156,0.35)',
+    hp:280, speed:200, atk:{cd:0.58, dmg:19, range:98, arc:82, kind:'melee'},
+    q:{name:'Golpe Sísmico', icon:'💢', cd:9, desc:'Onda que aturde y daña a los enemigos cercanos'},
+    e:{name:'Fortificar', icon:'🛡', cd:15, desc:'Escudo grande y reducción de daño temporal'},
+    locked:true, unlockAch:'fortressHp',
+    scaling:{stat:'hp', perLevel:0.04},
+  },
+  cazador: {
+    id:'cazador', name:'Nyx', className:'Cazador de Sombras', icon:'🗡', accent:'#8a6fd8', glow:'rgba(138,111,216,0.4)',
+    hp:95, speed:258, atk:{cd:0.35, dmg:14, range:84, arc:66, kind:'melee'},
+    q:{name:'Marca de Caza', icon:'☠', cd:6, desc:'Golpe certero: más daño cuanta menos vida le queda al objetivo'},
+    e:{name:'Salto de Sombra', icon:'🌑', cd:11, desc:'Te teletransportás detrás del enemigo más cercano y lo apuñalás'},
+    locked:true, unlockAch:'critMaster',
+    scaling:{stat:'dmg', perLevel:0.04},
+  },
 };
 
 const ACHIEVEMENTS = [
@@ -127,8 +207,29 @@ const ACHIEVEMENTS = [
     check: g=> g.player.items.length>=6 },
   { id:'killStreak', name:'Cazador Incansable', desc:'Elimina 150 enemigos en una misma run', unlocks:'dual',
     check: g=> g.kills>=150 },
+  { id:'comboMaster', name:'Racha Perfecta', desc:'Alcanza una racha de combo de 25 en una misma run', unlocks:'monje',
+    check: g=> g.player.combo>=25 },
+  { id:'deepDescent15', name:'Exploradora Profunda', desc:'Alcanza la etapa 15', unlocks:'arquera',
+    check: g=> g.stats.stageReached>=15 },
+  { id:'relicCollector', name:'Coleccionista de Reliquias', desc:'Consigue 3 reliquias en una misma run', unlocks:'elementalista',
+    check: g=> Object.keys(g.player.relics||{}).length>=3 },
+  { id:'killStreak300', name:'Furia Incansable', desc:'Elimina 300 enemigos en una misma run', unlocks:'berserker',
+    check: g=> g.kills>=300 },
+  { id:'richRun', name:'Fortuna del Descenso', desc:'Junta 500 de oro en una misma run', unlocks:'ilusionista',
+    check: g=> g.gold>=500 },
+  { id:'veteranLevel', name:'Veterano', desc:'Alcanza el nivel 10 de personaje en una misma run', unlocks:'alquimista',
+    check: g=> g.player.charLevel>=10 },
+  { id:'fiveBosses', name:'Cazadora de Cinco', desc:'Derrota 5 jefes en una misma run', unlocks:'druida',
+    check: g=> g.stats.bossesThisRun>=5 },
+  { id:'bloodCombo', name:'Sed de Sangre', desc:'Alcanza una racha de combo de 40 en una misma run', unlocks:'sangre',
+    check: g=> g.player.combo>=40 },
+  { id:'fortressHp', name:'Fortaleza Andante', desc:'Alcanza 450 de HP máxima en una run', unlocks:'centinela',
+    check: g=> g.player.maxHp>=450 },
+  { id:'critMaster', name:'Filo Certero', desc:'Alcanza 30% de probabilidad de golpe crítico en una run', unlocks:'cazador',
+    check: g=> g.player.critChance>=0.30 },
 ];
-const progress = { unlocked:{ guerrero:true, maga:true, picaro:true, paladin:false, nigromante:false, vidrio:false, coloso:false, silvano:false, dual:false },
+const progress = { unlocked:{ guerrero:true, maga:true, picaro:true, paladin:false, nigromante:false, vidrio:false, coloso:false, silvano:false, dual:false,
+    monje:false, arquera:false, elementalista:false, berserker:false, ilusionista:false, alquimista:false, druida:false, sangre:false, centinela:false, cazador:false },
   unlockedAbilities:[], essence:0, homeUpgrades:{}, bestStage:0 };
 
 const PROGRESS_SAVE_KEY = 'descenso_progress_v1';
@@ -196,22 +297,22 @@ const ZONES = [
   { key:'glaciar', name:'El Glaciar Eterno', desc:'El frío no muerde: espera. Cada aliento se ve, cada paso se oye.',
     enemyKinds:['frostSprite','charger','brute'], guardianBoss:'glacierMonarch',
     baseHp:370, baseSpeed:95, baseDmg:16, baseRadius:30, baseContactCd:0.95, minion:'frostSprite', baseColor:'#9fd8ff',
-    movePool:['iceLance','crystalPrison','avalanche','frostBreath','numbingChill'], dashMove:'echoDash',
+    movePool:['iceLance','crystalPrison','avalanche','frostBreath','numbingChill','frostShards','glacialVolley','iceShrapnel','crystalBarrage','polarWind','snowSquall','glacialSpike','frostRing','iceFissure','frozenTrail','hailfall','permafrost','crystalRain','blizzardGust','frostSlam','frostWisp','iceStalker','frostbite','brittleChill','glacialGrip','glacialWard','summon'], dashMove:'echoDash',
     regularNames:['Centinela de Escarcha','Guardián de Hielo','Custodio Glacial','Espíritu del Frío','Vigía Congelado','Sombra de Escarcha','Portador de Nieve','Centinela Blanco','Custodia del Hielo'] },
   { key:'tormenta', name:'El Yermo Tormentoso', desc:'El cielo nunca se queda quieto. Tampoco lo que vive en él.',
     enemyKinds:['sniper','charger','swarmling'], guardianBoss:'stormLord',
     baseHp:390, baseSpeed:115, baseDmg:17, baseRadius:29, baseContactCd:0.9, minion:'sniper', baseColor:'#ffe45a',
-    movePool:['thunderStrike','stormVortex','staticField','skySiege','boltRunner'], dashMove:'prismDash',
+    movePool:['thunderStrike','stormVortex','staticField','skySiege','boltRunner','boltSpray','thunderClap','chargedBurst','windSlash','stormShards','arcVolley','thunderPatch','stormCell','lightningField','galeZone','thunderColumn','stormPocket','chainStrike','squallLine','thunderSlam','stormChaser','thunderEye','staticShock','galeForce','overcharge','stormShield','summon'], dashMove:'prismDash',
     regularNames:['Heraldo de la Tormenta','Portador del Trueno','Custodio del Rayo','Vigía Tormentoso','Espíritu del Viento','Sombra Eléctrica','Centinela del Cielo','Heraldo del Relámpago','Guardián de la Tempestad'] },
   { key:'abismo', name:'El Abismo Sin Fondo', desc:'Acá abajo, hasta el eco tarda en volver. Si es que vuelve.',
     enemyKinds:['erratic','shaman','brute'], guardianBoss:'starDevourer',
     baseHp:430, baseSpeed:100, baseDmg:18, baseRadius:30, baseContactCd:0.9, minion:'erratic', baseColor:'#8a5ad9',
-    movePool:['voidTendrils','darkPulse','starlightDrain','umbraStep','collapsingStar'], dashMove:'charge',
+    movePool:['voidTendrils','darkPulse','starlightDrain','umbraStep','collapsingStar','shadowShards','voidBurst','darkVolley','eclipseSpray','starfallShards','umbralArc','voidPool','shadowPatch','darkRift','eclipseZone','starfallField','umbralCage','voidColumn','nullGround','shadowSlam','voidWisp','shadowStalker','voidGrasp','starDrain','nullTouch','voidShroud','summon'], dashMove:'charge',
     regularNames:['Susurro del Vacío','Sombra Insondable','Eco de la Nada','Custodio Oscuro','Presencia del Abismo','Vigía sin Luz','Espíritu Vacío','Sombra Profunda','Heraldo de la Nada'] },
   { key:'trono', name:'El Trono del Descenso', desc:'Lo que sea que gobierna esta torre te espera arriba de todo.',
     enemyKinds:['demon','sniper','brute'], guardianBoss:'trueFinal',
     baseHp:470, baseSpeed:110, baseDmg:19, baseRadius:31, baseContactCd:0.9, minion:'demon', baseColor:'#e0c9a0',
-    movePool:['royalDecree','throneSlam','crownfire','finalJudgment','soulBarrage'], dashMove:'blinkStrike',
+    movePool:['royalDecree','throneSlam','crownfire','finalJudgment','soulBarrage','crownShards','royalVolley','soulBurst','radiantBlast','scepterShards','dominionSpray','thronePatch','judgmentZone','soulField','dominionCircle','regalSpikes','sovereignGround','crownfireField','royalGround','royalSlam','soulChaser','wraithMark','royalCurse','soulDrain','crownBind','royalAegis','summon'], dashMove:'blinkStrike',
     regularNames:['Guardián del Trono','Custodio Final','Centinela del Descenso','Sombra del Trono','Vigía Postrero','Heraldo del Final','Guardián Postrero','Custodio del Umbral','Sombra Final'] },
 ];
 
@@ -312,6 +413,7 @@ const MOVE_CATEGORY = {
   cauldronBubble:'self', spectralHex:'self',
   venomLash:'burst',
   summon:'summon',
+  frostShards:'burst', glacialVolley:'burst', iceShrapnel:'burst', crystalBarrage:'burst', polarWind:'burst', snowSquall:'burst', glacialSpike:'ground', frostRing:'ground', iceFissure:'ground', frozenTrail:'ground', hailfall:'ground', permafrost:'ground', crystalRain:'ground', blizzardGust:'ground', frostSlam:'self', frostWisp:'homing', iceStalker:'homing', frostbite:'debuff', brittleChill:'debuff', glacialGrip:'debuff', glacialWard:'buff', boltSpray:'burst', thunderClap:'burst', chargedBurst:'burst', windSlash:'burst', stormShards:'burst', arcVolley:'burst', thunderPatch:'ground', stormCell:'ground', lightningField:'ground', galeZone:'ground', thunderColumn:'ground', stormPocket:'ground', chainStrike:'ground', squallLine:'ground', thunderSlam:'self', stormChaser:'homing', thunderEye:'homing', staticShock:'debuff', galeForce:'debuff', overcharge:'debuff', stormShield:'buff', shadowShards:'burst', voidBurst:'burst', darkVolley:'burst', eclipseSpray:'burst', starfallShards:'burst', umbralArc:'burst', voidPool:'ground', shadowPatch:'ground', darkRift:'ground', eclipseZone:'ground', starfallField:'ground', umbralCage:'ground', voidColumn:'ground', nullGround:'ground', shadowSlam:'self', voidWisp:'homing', shadowStalker:'homing', voidGrasp:'debuff', starDrain:'debuff', nullTouch:'debuff', voidShroud:'buff', crownShards:'burst', royalVolley:'burst', soulBurst:'burst', radiantBlast:'burst', scepterShards:'burst', dominionSpray:'burst', thronePatch:'ground', judgmentZone:'ground', soulField:'ground', dominionCircle:'ground', regalSpikes:'ground', sovereignGround:'ground', crownfireField:'ground', royalGround:'ground', royalSlam:'self', soulChaser:'homing', wraithMark:'homing', royalCurse:'debuff', soulDrain:'debuff', crownBind:'debuff', royalAegis:'buff',
 };
 
 // Picks `count` moves from `pool`, preferring one move per distinct mechanical category (so a boss's
@@ -477,16 +579,16 @@ const BOSS_ATTACKS = {
   boneGuardian: ['boneShards','boneCage','boneWall','boneGrab'],
   motherWitch: ['poisonPool','curseMark','witchCauldron','wither','acidDeluge','venomousWeb'],
   abyssLord: ['slam','magmaCross','blazingFissure','growingMagma','plasmaBeam'],
-  empressOfLight: ['butterflyBurst','gracefulVeil','radiantNova','rainbowLine','spiralBloom','petalRing'],
+  empressOfLight: ['gracefulVeil','radiantNova','rainbowLine','spiralBloom','petalRing','solarSporeSpiral','dandelionWave','lightDeluge','prismaticCascade','radiantMandala'],
   mirrorLord: ['mirrorSplit','phantomBarrage','glassRain','infiniteReflections','boundlessBeam','crystalCage'],
-  twinBoss: ['eyeLaser','cursedFlameBreath','twinCharge','sisterCall','megaLaser'],
+  twinBoss: ['eyeLaser','cursedFlameBreath','twinCharge','sisterCall','megaLaser','pincerScan','orbitalCross','desperateRush','energyBond'],
   trueFinal: ['boneWall','boneGrab','curseMark','wither','fireWave','mirrorSplit','phantomBarrage','twinPulse','twinSwap','echoDash','slam','meteor','poisonPool','boneCage','abyssalCollapse'],
 
   // zone guardians — every move below is exclusive to its own Guardian; none of the 9 non-final
   // Guardians share a single attack with any other Guardian
   glacierMonarch: ['frostNova','iceCage','blizzardWall','frozenGround','iceSlide','growingSpikes','absoluteZero','movingIceWalls','iceAvalanche'],
-  stormLord: ['chainLightning','stormField','thunderdome'],
-  starDevourer: ['voidLance','voidRift','gravityWell','starCollapse'],
+  stormLord: ['chainLightning','stormField','thunderdome','circuitPanels','polarityPull','closingBarrier','predictiveLightning'],
+  starDevourer: ['voidLance','voidRift','gravityWell','starCollapse','massSingularity','gravityFlip','voidCrackCollapse','eventHorizonPulse'],
 };
 generateFloorBosses(); // now that BOSS_DEFS/BOSS_ATTACKS exist, fill in the 90 regular-floor bosses
 
@@ -1027,6 +1129,17 @@ buildUltimates();
 buildHomeAltar();
 buildPacts();
 
+// menu tab switching — one section visible at a time (Personajes / Habilidades / Altar / Pactos)
+document.querySelectorAll('.menu-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.menu-tab').forEach(b=> b.classList.toggle('active', b===btn));
+    document.querySelectorAll('.menu-tab-panel').forEach(panel=>{
+      panel.classList.toggle('hidden', panel.dataset.tab!==tab);
+    });
+  });
+});
+
 $('btn-start').addEventListener('click', ()=>{
   game = newGame();
   hideScreen('screen-menu');
@@ -1120,6 +1233,7 @@ function startStage(i){
   const s = stageAt(i);
   game.currentStage = s;
   const b = arenaBounds();
+  game.arenaDecor = generateArenaDecor(s, b);
   game.player.x = b.x + b.w/2;
   game.player.y = b.y + b.h/2;
   game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[];
@@ -2041,6 +2155,114 @@ function doAbilityQ(){
   } else if(id==='dual'){
     p.stance = p.stance==='melee' ? 'ranged' : 'melee';
     addParticles(p.x,p.y,'#5ac8d8',14,150,0.3);
+  } else if(id==='monje'){
+    const steps=4;
+    const b = arenaBounds();
+    const hitSet = new Set();
+    for(let i=0;i<steps;i++){
+      p.x = clamp(p.x+p.facingX*14, b.x+p.radius, b.x+b.w-p.radius);
+      p.y = clamp(p.y+p.facingY*14, b.y+p.radius, b.y+b.h-p.radius);
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        const d = dist(p.x,p.y,t.x,t.y);
+        if(d<=76+t.radius){
+          const ang = Math.atan2(t.y-p.y,t.x-p.x);
+          let diff = Math.abs(ang-p.facing); if(diff>Math.PI) diff=Math.PI*2-diff;
+          if(diff <= (65*Math.PI/180)) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.9), 'q');
+        }
+      });
+      addParticles(p.x,p.y,p.def.accent,6,120,0.15);
+    }
+    shake(3);
+  } else if(id==='arquera'){
+    spawnProjectile({ x:p.x,y:p.y, vx:p.facingX*820, vy:p.facingY*820, dmg:computeDamage(p.def.atk.dmg*1.3),
+      radius:7, owner:'player', color:'#8bffb0', life:1.4, pierce:true, pierceCount:99, shape:'shard' });
+    addParticles(p.x,p.y,'#8bffb0',10,140,0.2);
+  } else if(id==='elementalista'){
+    const targets = [...game.enemies, ...bossTargets()];
+    let cur = {x:p.x,y:p.y};
+    const hit = new Set();
+    let chainsLeft = 4;
+    while(chainsLeft>0){
+      let nearest=null, nearestD=260;
+      targets.forEach(t=>{
+        if(hit.has(t)) return;
+        const d = dist(cur.x,cur.y,t.x,t.y);
+        if(d<nearestD){ nearest=t; nearestD=d; }
+      });
+      if(!nearest) break;
+      dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*1.3), 'q');
+      addParticles(nearest.x,nearest.y,'#6ad8ff',10,140,0.25);
+      hit.add(nearest);
+      cur = nearest;
+      chainsLeft--;
+    }
+    addParticles(p.x,p.y,'#6ad8ff',10,140,0.2);
+  } else if(id==='berserker'){
+    const hpFrac = clamp(p.hp/p.maxHp,0,1);
+    const mult = 1.2 + (1-hpFrac)*1.3; // up to +130% more damage the lower your own HP is
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y) < 115) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult), 'q');
+    });
+    addParticles(p.x,p.y,'#ff3d3d',22,200,0.4);
+    spawnShockwave(p.x,p.y,'#ff3d3d',115,0.3);
+    shake(6);
+  } else if(id==='ilusionista'){
+    game.pet = { x:p.x-30, y:p.y, hp:1, maxHp:1, radius:13, speed:230, dmg:Math.round(p.def.atk.dmg*1.1),
+      atkTimer:0, atkCd:0.7, color:'#c9a8ff', hitFlash:0, life:10 };
+    addParticles(p.x,p.y,'#c9a8ff',16,150,0.35);
+  } else if(id==='alquimista'){
+    const b = arenaBounds();
+    const tx = clamp(p.x+p.facingX*260, b.x+20,b.x+b.w-20);
+    const ty = clamp(p.y+p.facingY*260, b.y+20,b.y+b.h-20);
+    const ang = Math.atan2(ty-p.y,tx-p.x);
+    const travelDist = Math.max(60,Math.hypot(tx-p.x,ty-p.y));
+    spawnProjectile({ x:p.x,y:p.y, vx:Math.cos(ang)*300, vy:Math.sin(ang)*300, dmg:computeDamage(p.def.atk.dmg*1.4),
+      radius:10, owner:'player', color:'#c9e85a', life:travelDist/300+0.15, explode:true, explodeRadius:85, shape:'orb' });
+  } else if(id==='druida'){
+    const dashDist=150, steps=5;
+    const b = arenaBounds();
+    const hitSet = new Set();
+    for(let i=1;i<=steps;i++){
+      p.x = clamp(p.x+p.facingX*(dashDist/steps), b.x+p.radius, b.x+b.w-p.radius);
+      p.y = clamp(p.y+p.facingY*(dashDist/steps), b.y+p.radius, b.y+b.h-p.radius);
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(!hitSet.has(t) && dist(p.x,p.y,t.x,t.y) < 66+t.radius){
+          hitSet.add(t);
+          dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.6), 'q');
+        }
+      });
+    }
+    p.invuln = Math.max(p.invuln, 0.2);
+    addParticles(p.x,p.y,'#9c7a4a',14,180,0.3);
+  } else if(id==='sangre'){
+    const cost = Math.min(p.hp-1, 8);
+    p.hp -= Math.max(0,cost);
+    const missingFrac = 1-clamp(p.hp/p.maxHp,0,1);
+    const mult = 1.1 + missingFrac*1.4;
+    spawnProjectile({ x:p.x,y:p.y, vx:p.facingX*400, vy:p.facingY*400, dmg:computeDamage(p.def.atk.dmg*mult),
+      radius:8, owner:'player', color:'#b91d3a', life:1.6, shape:'orb' });
+    addParticles(p.x,p.y,'#b91d3a',10,140,0.25);
+  } else if(id==='centinela'){
+    game.enemies.forEach(t=>{
+      const d = dist(p.x,p.y,t.x,t.y);
+      if(d<190){
+        t.stunTimer = Math.max(t.stunTimer||0, 1.4);
+        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.1), 'q');
+      }
+    });
+    addParticles(p.x,p.y,'#7a8a9c',24,190,0.45);
+    spawnShockwave(p.x,p.y,'#7a8a9c',190,0.4);
+    shake(7);
+  } else if(id==='cazador'){
+    const targets = [...game.enemies, ...bossTargets()];
+    let nearest=null, nearestD=320;
+    targets.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearest=t; nearestD=d; } });
+    if(nearest){
+      const missingFrac = nearest.hp!==undefined && nearest.maxHp ? 1-clamp(nearest.hp/nearest.maxHp,0,1) : 0;
+      const mult = 1.4 + missingFrac*1.6; // execute-style: hits much harder on a wounded target
+      dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*mult), 'q');
+      addParticles(nearest.x,nearest.y,'#8a6fd8',16,180,0.3);
+    }
   }
   addParticles(p.x,p.y,'#fff',6,90,0.2);
 }
@@ -2119,6 +2341,98 @@ function doAbilityE(){
     p.invuln = Math.max(p.invuln, 0.2);
     addParticles(p.x,p.y,'#5ac8d8',16,190,0.35);
     shake(3);
+  } else if(id==='monje'){
+    p.invuln = Math.max(p.invuln, 1.1);
+    p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.22);
+    p.slowTimer=0; p.chillTimer=0; p.witherTimer=0; p.weakenTimer=0; p.qLockTimer=0; p.eLockTimer=0;
+    addParticles(p.x,p.y,'#ffb347',24,150,0.5);
+  } else if(id==='arquera'){
+    const b = arenaBounds();
+    const cx = clamp(p.x+p.facingX*180, b.x+40,b.x+b.w-40);
+    const cy = clamp(p.y+p.facingY*180, b.y+40,b.y+b.h-40);
+    for(let i=0;i<9;i++){
+      const ox = cx + rand(-90,90), oy = cy + rand(-70,70);
+      spawnProjectile({ x:ox, y:oy-260, vx:0, vy:640, dmg:computeDamage(p.def.atk.dmg*0.85),
+        radius:6, owner:'player', color:'#8bffb0', life:0.6, shape:'shard' });
+    }
+    addParticles(cx,cy,'#8bffb0',12,120,0.3);
+  } else if(id==='elementalista'){
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y) < 150) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.1), 'e');
+    });
+    p.shield = Math.max(p.shield, 60);
+    addParticles(p.x,p.y,'#6ad8ff',22,190,0.45);
+    spawnShockwave(p.x,p.y,'#6ad8ff',150,0.35);
+  } else if(id==='berserker'){
+    const cost = Math.min(p.hp-1, p.maxHp*0.15);
+    p.hp -= Math.max(0,cost);
+    p.effects.warcry = Math.max(p.effects.warcry||0, 6);
+    addParticles(p.x,p.y,'#ff3d3d',22,200,0.45);
+    shake(5);
+  } else if(id==='ilusionista'){
+    if(game.pet){
+      const tx=game.pet.x, ty=game.pet.y;
+      addParticles(p.x,p.y,'#c9a8ff',14,150,0.3);
+      p.x = tx; p.y = ty;
+      p.invuln = Math.max(p.invuln, 0.25);
+      explodeAt(tx,ty,110, computeDamage(p.def.atk.dmg*2));
+      game.pet = null;
+      addParticles(tx,ty,'#c9a8ff',24,200,0.45);
+      shake(4);
+    } else {
+      const b = arenaBounds();
+      const nx = clamp(p.x+p.facingX*180, b.x+p.radius, b.x+b.w-p.radius);
+      const ny = clamp(p.y+p.facingY*180, b.y+p.radius, b.y+b.h-p.radius);
+      p.x=nx; p.y=ny; p.invuln=Math.max(p.invuln,0.25);
+      addParticles(p.x,p.y,'#c9a8ff',16,160,0.4);
+    }
+  } else if(id==='alquimista'){
+    game.enemies.forEach(t=>{
+      const d = dist(p.x,p.y,t.x,t.y);
+      if(d<170 && d>1){
+        const ang = Math.atan2(t.y-p.y,t.x-p.x);
+        t.x += Math.cos(ang)*70; t.y += Math.sin(ang)*70;
+      }
+    });
+    p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.18);
+    p.invuln = Math.max(p.invuln, 0.3);
+    addParticles(p.x,p.y,'#c9e85a',24,210,0.45);
+    spawnShockwave(p.x,p.y,'#c9e85a',170,0.35);
+    shake(6);
+  } else if(id==='druida'){
+    p.potionEffects.spd = Math.max(p.potionEffects.spd, 6);
+    p.potionEffects.dmg = Math.max(p.potionEffects.dmg, 6);
+    p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.1);
+    addParticles(p.x,p.y,'#9c7a4a',22,190,0.45);
+    shake(4);
+  } else if(id==='sangre'){
+    const cost = Math.min(p.hp-1, p.maxHp*0.2);
+    p.hp -= Math.max(0,cost);
+    p.shield = Math.max(p.shield, cost*1.8);
+    addParticles(p.x,p.y,'#b91d3a',20,180,0.4);
+  } else if(id==='centinela'){
+    p.shield = Math.max(p.shield, 110);
+    p.potionEffects.def = Math.max(p.potionEffects.def, 5);
+    addParticles(p.x,p.y,'#7a8a9c',26,200,0.45);
+    shake(4);
+  } else if(id==='cazador'){
+    const targets = [...game.enemies, ...bossTargets()];
+    let nearest=null, nearestD=420;
+    targets.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearest=t; nearestD=d; } });
+    if(nearest){
+      const b = arenaBounds();
+      const ang = Math.atan2(nearest.y-p.y, nearest.x-p.x);
+      const behindDist = 55+nearest.radius;
+      p.x = clamp(nearest.x-Math.cos(ang)*behindDist, b.x+p.radius, b.x+b.w-p.radius);
+      p.y = clamp(nearest.y-Math.sin(ang)*behindDist, b.y+p.radius, b.y+b.h-p.radius);
+      p.invuln = Math.max(p.invuln, 0.2);
+      dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*2.1), 'e');
+      addParticles(nearest.x,nearest.y,'#8a6fd8',20,190,0.4);
+      shake(4);
+    } else {
+      p.effects.shadow = Math.max(p.effects.shadow||0, 1);
+      addParticles(p.x,p.y,'#8a6fd8',16,160,0.35);
+    }
   }
 }
 
@@ -2571,6 +2885,178 @@ function updateBoss(dt){
     if(boss.blizzardTimer<=0) boss.blizzardActive = false;
   }
 
+  if(boss.dandelionActive){
+    boss.dandelionTimer -= dt;
+    boss.dandelionX += boss.dandelionVX*dt;
+    boss.dandelionSeedTimer -= dt;
+    if(boss.dandelionSeedTimer<=0){
+      boss.dandelionSeedTimer = 0.55;
+      const seedSpeed = 110, seedLife = 2.0;
+      const travel = seedSpeed*seedLife; // exact distance the seed projectile actually covers before it expires
+      const angs=[Math.PI/4, Math.PI-Math.PI/4];
+      // each seed gets its OWN landing hazard at the end of ITS OWN path — previously both hazards
+      // were placed using only the first angle, so the left-diagonal seed had nothing waiting for it
+      angs.forEach(ang=>{
+        spawnProjectile({ x:boss.dandelionX,y:boss.dandelionY, vx:Math.cos(ang)*seedSpeed, vy:Math.sin(ang)*seedSpeed,
+          dmg:boss.dmg*0.32, radius:7, owner:'enemy', color:'#fff08a', life:seedLife, shape:'wisp' });
+        const landX = clamp(boss.dandelionX + Math.cos(ang)*travel, b.x+30,b.x+b.w-30);
+        const landY = clamp(boss.dandelionY + Math.sin(ang)*travel, b.y+30,b.y+b.h-30);
+        game.hazards.push({ x:landX-16, y:landY, r:18, type:'light', telegraph:1.1, active:0.4, tick:0, dmg:boss.dmg*0.3 });
+        game.hazards.push({ x:landX+16, y:landY, r:18, type:'light', telegraph:1.1, active:0.4, tick:0, dmg:boss.dmg*0.3 });
+      });
+    }
+    if(boss.dandelionTimer<=0 || boss.dandelionX < b.x-60 || boss.dandelionX > b.x+b.w+60) boss.dandelionActive=false;
+  }
+
+  if(boss.canopyActive){
+    boss.canopyTimer -= dt;
+    boss.canopySwitchTimer -= dt;
+    if(boss.canopySwitchTimer<=0){
+      boss.canopySwitchTimer = 1.6;
+      boss.canopyPhase = boss.canopyPhase===0 ? 1 : 0;
+      const lanes=4;
+      for(let i=0;i<lanes;i++){
+        if(i%2 !== boss.canopyPhase) continue;
+        const laneX = b.x + b.w*((i+0.5)/lanes);
+        const rows=5;
+        for(let r=0;r<rows;r++){
+          const ly = b.y+30 + (b.h-60)*(r/(rows-1));
+          game.hazards.push({ x:laneX, y:ly, r:34, type:'light', telegraph:0.4, active:1.3, tick:0, dmg:boss.dmg*0.32 });
+        }
+      }
+    }
+    if(boss.canopyTimer<=0) boss.canopyActive=false;
+  }
+
+  if(boss.circuitActive){
+    boss.circuitTimer -= dt;
+    if(boss.circuitTimer<=0){
+      boss.circuitTimer = 1.3;
+      const panels=5;
+      const laneX = b.x + b.w*((boss.circuitIndex+0.5)/panels);
+      const rows=6;
+      for(let r=0;r<rows;r++){
+        const ly = b.y+30 + (b.h-60)*(r/(rows-1));
+        game.hazards.push({ x:laneX, y:ly, r:(b.w/panels)*0.48, type:'storm', telegraph:0.9, active:0.35, tick:0, dmg:boss.dmg*0.4 });
+      }
+      boss.circuitIndex = (boss.circuitIndex+1)%panels;
+      boss.circuitCycles--;
+      if(boss.circuitCycles<=0) boss.circuitActive=false;
+    }
+  }
+
+  if(boss.polarityActive){
+    boss.polarityTimer -= dt;
+    boss.polarityPhaseTimer -= dt;
+    if(boss.polarityPhaseTimer<=0){
+      boss.polarityPhaseTimer = 2.2;
+      boss.polarityPhase = boss.polarityPhase==='attract' ? 'repel' : 'attract';
+      spawnToast(boss.polarityPhase==='attract' ? 'El campo te atrae hacia el jefe' : 'El campo te repele con fuerza');
+    }
+    const pullSpeed = 70;
+    const angToBoss = Math.atan2(boss.y-p.y, boss.x-p.x);
+    const dirP = boss.polarityPhase==='attract' ? 1 : -1;
+    p.x = clamp(p.x + Math.cos(angToBoss)*pullSpeed*dirP*dt, b.x+p.radius, b.x+b.w-p.radius);
+    p.y = clamp(p.y + Math.sin(angToBoss)*pullSpeed*dirP*dt, b.y+p.radius, b.y+b.h-p.radius);
+    boss.polarityOrbTimer -= dt;
+    if(boss.polarityOrbTimer<=0){
+      boss.polarityOrbTimer = 0.6;
+      const ang = Math.random()*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*95, vy:Math.sin(ang)*95,
+        dmg:boss.dmg*0.4, radius:9, owner:'enemy', color:boss.def.color, life:3, shape:'orb' });
+    }
+    if(boss.polarityTimer<=0) boss.polarityActive=false;
+  }
+
+  if(boss.barrierActive){
+    boss.barrierTimer -= dt;
+    boss.barrierLeftX = Math.min(boss.barrierLeftX + boss.barrierCloseSpeed*dt, b.x+b.w/2-40);
+    boss.barrierRightX = Math.max(boss.barrierRightX - boss.barrierCloseSpeed*dt, b.x+b.w/2+40);
+    const coreAlive = boss.barrierCore && boss.barrierCore.alive;
+    if(coreAlive){
+      boss.barrierCore.x = boss.barrierWeakSide==='left' ? boss.barrierLeftX : boss.barrierRightX;
+      boss.barrierCore.y = p.y;
+    }
+    const leftDisabled = boss.barrierWeakSide==='left' && !coreAlive;
+    const rightDisabled = boss.barrierWeakSide==='right' && !coreAlive;
+    boss.barrierTick = (boss.barrierTick||0)-dt;
+    if(boss.barrierTick<=0){
+      boss.barrierTick=0.3;
+      if(!leftDisabled && Math.abs(p.x-boss.barrierLeftX)<26) hitPlayer(boss.dmg*0.55);
+      if(!rightDisabled && Math.abs(p.x-boss.barrierRightX)<26) hitPlayer(boss.dmg*0.55);
+    }
+    if(boss.barrierTimer<=0 || boss.barrierRightX-boss.barrierLeftX < 90) boss.barrierActive=false;
+  }
+
+  if(boss.singularityActive){
+    boss.singularityTimer -= dt;
+    const cx=boss.singularityCX, cy=boss.singularityCY;
+    const dxPrev = p.x-(boss.singLastPX!==undefined?boss.singLastPX:p.x);
+    const dyPrev = p.y-(boss.singLastPY!==undefined?boss.singLastPY:p.y);
+    boss.singLastPX=p.x; boss.singLastPY=p.y;
+    const towardX = cx-p.x, towardY = cy-p.y;
+    const movedTowards = (dxPrev*towardX + dyPrev*towardY) > 0;
+    const moveLen = Math.hypot(dxPrev,dyPrev);
+    if(moveLen>0.05){
+      const boost = movedTowards ? 1.0 : -0.55;
+      p.x = clamp(p.x + dxPrev*boost, b.x+p.radius, b.x+b.w-p.radius);
+      p.y = clamp(p.y + dyPrev*boost, b.y+p.radius, b.y+b.h-p.radius);
+    }
+    boss.singularityWaveTimer -= dt;
+    if(boss.singularityWaveTimer<=0){
+      boss.singularityWaveTimer=0.9;
+      const n=16;
+      const rr = 70 + (boss.singularityWaveIndex||0)*55;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2;
+        game.hazards.push({ x:clamp(cx+Math.cos(ang)*rr,b.x+16,b.x+b.w-16), y:clamp(cy+Math.sin(ang)*rr,b.y+16,b.y+b.h-16),
+          r:20, type:'void', telegraph:0.5, active:0.4, tick:0, dmg:boss.dmg*0.32 });
+      }
+      boss.singularityWaveIndex = ((boss.singularityWaveIndex||0)+1)%5;
+    }
+    if(boss.singularityTimer<=0) boss.singularityActive=false;
+  }
+
+  if(boss.gravityFlipActive){
+    boss.gravityFlipTimer -= dt;
+    boss.gravityFlipBeamX += boss.gravityFlipBeamVX*dt;
+    if(Math.abs(p.x-boss.gravityFlipBeamX)<20){
+      boss.gravityFlipTick=(boss.gravityFlipTick||0)-dt;
+      if(boss.gravityFlipTick<=0){ boss.gravityFlipTick=0.3; hitPlayer(boss.dmg*0.4); }
+    }
+    if(boss.gravityFlipTimer<=0 || boss.gravityFlipBeamX<b.x-40 || boss.gravityFlipBeamX>b.x+b.w+40) boss.gravityFlipActive=false;
+  }
+
+  if(boss.crackActive){
+    boss.crackTimer -= dt;
+    if(boss.crackTimer<=0){
+      boss.crackTimer=1.6;
+      game.hazards.push({ x:p.x, y:p.y, r:44, type:'void', telegraph:1.5, active:3.2, tick:0, dmg:boss.dmg*0.85 });
+      boss.crackRemaining--;
+      if(boss.crackRemaining<=0) boss.crackActive=false;
+    }
+  }
+
+  if(boss.pulseActive){
+    boss.pulseTimer -= dt;
+    if(boss.pulseTimer<=0){
+      boss.pulseTimer=0.85;
+      const n=14;
+      const rr = 90 + (boss.pulseWave||0)*70;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2;
+        const diff = Math.abs(((ang-boss.pulseGapAngle+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI);
+        if(diff < 0.45) continue;
+        game.hazards.push({ x:clamp(boss.x+Math.cos(ang)*rr,b.x+16,b.x+b.w-16), y:clamp(boss.y+Math.sin(ang)*rr,b.y+16,b.y+b.h-16),
+          r:22, type:'void', telegraph:0.35, active:0.4, tick:0, dmg:boss.dmg*0.36 });
+      }
+      boss.pulseGapAngle += 0.9;
+      boss.pulseWave = (boss.pulseWave||0)+1;
+      boss.pulseRemaining--;
+      if(boss.pulseRemaining<=0) boss.pulseActive=false;
+    }
+  }
+
   if(boss.movers && boss.movers.length){
     // shared system for anything that physically travels across the arena: rolling boulders,
     // drifting ice walls — breakable ones (isCore) can be smashed early via normal attacks
@@ -2729,6 +3215,169 @@ function updateBoss(dt){
           }
         }
       }
+    } else if(boss.telegraph.type==='solarSporeSpiral'){
+      const tgS = boss.telegraph;
+      const elapsedS = tgS.dur - tgS.t;
+      if(elapsedS > tgS.hotAt){
+        tgS.spiralAngle += dt*2.0;
+        tgS.spiralTick -= dt;
+        if(tgS.spiralTick<=0){
+          tgS.spiralTick = 0.14;
+          const arms=4;
+          const speedS=95;
+          for(let i=0;i<arms;i++){
+            const ang = tgS.spiralAngle + (i/arms)*Math.PI*2;
+            // life used to be a flat 3.4s, which fizzled out well short of the wall on most arena
+            // sizes — now it's however long it actually takes to travel to the wall (plus a small
+            // buffer so it visibly crosses it) so the spiral always fills the whole room
+            const travelS = rayToBounds(boss.x,boss.y,ang,b);
+            spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*speedS, vy:Math.sin(ang)*speedS,
+              dmg:boss.dmg*0.3, radius:7, owner:'enemy', color:'#ffe08a', life:travelS/speedS+0.5, shape:'wisp' });
+          }
+        }
+      }
+    } else if(boss.telegraph.type==='lightDeluge'){
+      // a rotating "flower" that blooms outward — a dense, classic bullet-hell radial pattern
+      const tgLD = boss.telegraph;
+      const elapsedLD = tgLD.dur - tgLD.t;
+      if(elapsedLD > tgLD.hotAt){
+        tgLD.delugeAngle += dt*1.1;
+        tgLD.delugeTick -= dt;
+        if(tgLD.delugeTick<=0){
+          tgLD.delugeTick = 0.22;
+          const arms=10, speedLD=130;
+          for(let i=0;i<arms;i++){
+            const ang = tgLD.delugeAngle + (i/arms)*Math.PI*2;
+            const travelLD = rayToBounds(boss.x,boss.y,ang,b);
+            spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*speedLD, vy:Math.sin(ang)*speedLD,
+              dmg:boss.dmg*0.28, radius:6, owner:'enemy', color:'#ffb0d9', life:travelLD/speedLD+0.5, shape:'wisp' });
+          }
+        }
+      }
+    } else if(boss.telegraph.type==='prismaticCascade'){
+      // horizontal rows of light falling from the top, each with one safe gap that shifts wave
+      // to wave — a straightforward "curtain fall" bullet-hell pattern
+      const tgPC = boss.telegraph;
+      const elapsedPC = tgPC.dur - tgPC.t;
+      if(elapsedPC > tgPC.hotAt){
+        tgPC.cascadeTick -= dt;
+        if(tgPC.cascadeTick<=0){
+          tgPC.cascadeTick = 0.7;
+          tgPC.gapX = b.x + 70 + Math.random()*(b.w-140);
+          const speedPC=150, n=13;
+          for(let i=0;i<n;i++){
+            const x = b.x + b.w*((i+0.5)/n);
+            if(Math.abs(x-tgPC.gapX) < 55) continue; // the one column you can stand in this wave
+            spawnProjectile({ x, y:b.y+8, vx:0, vy:speedPC, dmg:boss.dmg*0.3, radius:7, owner:'enemy',
+              color:'#ffe6a0', life:(b.h/speedPC)+0.5, shape:'ember' });
+          }
+        }
+      }
+    } else if(boss.telegraph.type==='radiantMandala'){
+      // two concentric rings turning opposite ways — classic mandala bullet-hell pattern
+      const tgM = boss.telegraph;
+      const elapsedM = tgM.dur - tgM.t;
+      if(elapsedM > tgM.hotAt){
+        tgM.mandalaAngleA += dt*1.4;
+        tgM.mandalaAngleB -= dt*1.0;
+        tgM.mandalaTick -= dt;
+        if(tgM.mandalaTick<=0){
+          tgM.mandalaTick = 0.42;
+          const speedA=115, speedB=85, ringsA=8, ringsB=10;
+          for(let i=0;i<ringsA;i++){
+            const ang = tgM.mandalaAngleA + (i/ringsA)*Math.PI*2;
+            const travelA = rayToBounds(boss.x,boss.y,ang,b);
+            spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*speedA, vy:Math.sin(ang)*speedA,
+              dmg:boss.dmg*0.26, radius:5, owner:'enemy', color:'#ffd6f0', life:travelA/speedA+0.5, shape:'shard' });
+          }
+          for(let i=0;i<ringsB;i++){
+            const ang = tgM.mandalaAngleB + (i/ringsB)*Math.PI*2;
+            const travelB = rayToBounds(boss.x,boss.y,ang,b);
+            spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*speedB, vy:Math.sin(ang)*speedB,
+              dmg:boss.dmg*0.26, radius:5, owner:'enemy', color:'#c9a8ff', life:travelB/speedB+0.5, shape:'shard' });
+          }
+        }
+      }
+    } else if(boss.telegraph.type==='pincerScan'){
+      const tgP = boss.telegraph;
+      boss.x = b.x+60; boss.y = b.y+100;
+      if(boss.twin && boss.twin.alive){ boss.twin.x = b.x+b.w-60; boss.twin.y = b.y+100; }
+      const elapsedP = tgP.dur - tgP.t;
+      if(elapsedP > tgP.hotAt){
+        const prog2 = clamp((elapsedP-tgP.hotAt)/(tgP.dur-tgP.hotAt),0,1);
+        tgP.laserY = b.y+40 + prog2*(b.h-80);
+        if(Math.abs(p.y-tgP.laserY)<24){
+          tgP.tick=(tgP.tick||0)-dt;
+          if(tgP.tick<=0){ tgP.tick=0.15; hitPlayer(boss.dmg*0.4); }
+        }
+        tgP.waveTimer -= dt;
+        if(tgP.waveTimer<=0 && boss.twin && boss.twin.alive){
+          tgP.waveTimer=0.85;
+          spawnProjectile({ x:boss.twin.x,y:boss.twin.y+90, vx:-140, vy:0, dmg:boss.dmg*0.4, radius:9, owner:'enemy', color:boss.def.color, life:3.5, shape:'orb' });
+        }
+      }
+    } else if(boss.telegraph.type==='orbitalCross'){
+      const tgO = boss.telegraph;
+      tgO.orbitAngle += dt*1.6;
+      const orbBX = clamp(tgO.orbitCX + Math.cos(tgO.orbitAngle)*tgO.orbitR, b.x+boss.radius, b.x+b.w-boss.radius);
+      const orbBY = clamp(tgO.orbitCY + Math.sin(tgO.orbitAngle)*tgO.orbitR, b.y+boss.radius, b.y+b.h-boss.radius);
+      const orbTX = clamp(tgO.orbitCX + Math.cos(tgO.orbitAngle+Math.PI)*tgO.orbitR, b.x+(boss.twin?boss.twin.radius:boss.radius), b.x+b.w-(boss.twin?boss.twin.radius:boss.radius));
+      const orbTY = clamp(tgO.orbitCY + Math.sin(tgO.orbitAngle+Math.PI)*tgO.orbitR, b.y+(boss.twin?boss.twin.radius:boss.radius), b.y+b.h-(boss.twin?boss.twin.radius:boss.radius));
+      const elapsedO = tgO.dur - tgO.t;
+      // ease onto the orbit path over hotAt seconds instead of snapping there instantly
+      const easeIn = clamp(elapsedO/tgO.hotAt, 0, 1);
+      boss.x = tgO.orbitStartBX + (orbBX-tgO.orbitStartBX)*easeIn;
+      boss.y = tgO.orbitStartBY + (orbBY-tgO.orbitStartBY)*easeIn;
+      if(boss.twin && boss.twin.alive){
+        boss.twin.x = tgO.orbitStartTX + (orbTX-tgO.orbitStartTX)*easeIn;
+        boss.twin.y = tgO.orbitStartTY + (orbTY-tgO.orbitStartTY)*easeIn;
+      }
+      if(elapsedO > tgO.hotAt){
+        tgO.orbitFireTimer -= dt;
+        if(tgO.orbitFireTimer<=0){
+          tgO.orbitFireTimer=0.85;
+          const mainBottom = Math.sin(tgO.orbitAngle) > 0;
+          if(mainBottom){
+            spawnProjectile({ x:boss.x,y:boss.y, vx:0, vy:220, dmg:boss.dmg*0.42, radius:8, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
+          } else if(boss.twin && boss.twin.alive){
+            [-0.35,0,0.35].forEach(off=>{
+              spawnProjectile({ x:boss.twin.x,y:boss.twin.y, vx:Math.cos(Math.PI/2+off)*180, vy:Math.sin(Math.PI/2+off)*180,
+                dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:'#ff9ad1', life:2, shape:'wisp' });
+            });
+          }
+        }
+      }
+    } else if(boss.telegraph.type==='desperateRush'){
+      const tgD = boss.telegraph;
+      const elapsedD = tgD.dur - tgD.t;
+      if(elapsedD < tgD.hotAt){ tgD.lockX = p.x; tgD.lockY = p.y; }
+    } else if(boss.telegraph.type==='energyBond'){
+      const tgE = boss.telegraph;
+      const elapsedE = tgE.dur - tgE.t;
+      if(elapsedE > tgE.hotAt){
+        const advSpeed = 55;
+        // move as a pair around a shared center so the gap between the two eyes never collapses
+        // at the walls (previously each eye clamped independently, which could squash them together)
+        tgE.bondCenterX = clamp(tgE.bondCenterX + tgE.bondDir*advSpeed*dt, b.x+tgE.bondGap/2+20, b.x+b.w-tgE.bondGap/2-20);
+        boss.x = tgE.bondCenterX - tgE.bondGap/2;
+        if(boss.twin && boss.twin.alive){
+          boss.twin.x = tgE.bondCenterX + tgE.bondGap/2;
+          boss.twin.y = boss.y;
+        }
+        tgE.bondGapY = clamp(tgE.bondGapY + Math.sin(elapsedE*2.1)*90*dt, b.y+70, b.y+b.h-70);
+        const hasTwinE = boss.twin && boss.twin.alive;
+        const withinCable = hasTwinE ? (p.x > boss.x-26 && p.x < boss.twin.x+26) : Math.abs(p.x-boss.x)<26;
+        if(withinCable && Math.abs(p.y-tgE.bondGapY)>75){
+          tgE.tick=(tgE.tick||0)-dt;
+          if(tgE.tick<=0){ tgE.tick=0.2; hitPlayer(boss.dmg*0.45); }
+        }
+      } else if(boss.twin && boss.twin.alive){
+        boss.twin.y = boss.y;
+      }
+    } else if(boss.telegraph.type==='predictiveLightning'){
+      const tgL2 = boss.telegraph;
+      const elapsedL2 = tgL2.dur - tgL2.t;
+      if(elapsedL2 < tgL2.hotAt){ tgL2.lockX += (p.x-tgL2.lockX)*Math.min(1,dt*4); }
     }
     boss.telegraph.t -= dt;
     if(boss.telegraph.t<=0){
@@ -2757,7 +3406,13 @@ function updateBoss(dt){
       // floor bosses — the fight is built around a few hard-hitting, deliberate attacks rather
       // than a continuous stream of smaller ones
       if(boss.isGuardian) attackTimer *= 1.6;
-      boss.attackTimer = attackTimer;
+      // the lower a boss's remaining HP, the less it waits between attacks — a smooth ramp on top
+      // of (not instead of) the existing phase-2 jump at 50% HP, so the fight keeps tightening all
+      // the way to the kill instead of just stepping once at the halfway mark
+      const hpFrac = boss.maxHp>0 ? clamp(boss.hp/boss.maxHp, 0, 1) : 1;
+      const hpSpeedMult = 0.55 + hpFrac*0.45; // 1x at full HP, down to 0.55x (~1.8x faster) near death
+      attackTimer *= hpSpeedMult;
+      boss.attackTimer = Math.max(0.25, attackTimer); // safety floor: never lets attacks chain instantly
     }
   } else if(boss.attackTimer<=0){
     pickBossAttack(boss);
@@ -3011,11 +3666,114 @@ const ATTACK_NAMES = {
   boundCurse: 'Maldición Vinculante',
   sharedBlessing: 'Bendición Compartida',
   twinSpirits: 'Espíritus Gemelos',
+  frostShards: 'Esquirlas Heladas',
+  glacialVolley: 'Descarga Glacial',
+  iceShrapnel: 'Metralla de Hielo',
+  crystalBarrage: 'Cortina de Cristal',
+  polarWind: 'Viento Polar',
+  snowSquall: 'Chubasco de Nieve',
+  glacialSpike: 'Pico Glacial',
+  frostRing: 'Anillo de Escarcha',
+  iceFissure: 'Fisura Helada',
+  frozenTrail: 'Sendero Congelado',
+  hailfall: 'Granizada',
+  permafrost: 'Permahielo',
+  crystalRain: 'Lluvia de Cristal',
+  blizzardGust: 'Ráfaga de Ventisca',
+  frostSlam: 'Golpe de Escarcha',
+  frostWisp: 'Espíritu Helado',
+  iceStalker: 'Acechador de Hielo',
+  frostbite: 'Congelación',
+  brittleChill: 'Frío Quebradizo',
+  glacialGrip: 'Garra Glacial',
+  glacialWard: 'Guardia de Hielo',
+  boltSpray: 'Lluvia de Rayos',
+  thunderClap: 'Estruendo',
+  chargedBurst: 'Descarga Cargada',
+  windSlash: 'Corte de Viento',
+  stormShards: 'Esquirlas de Tormenta',
+  arcVolley: 'Descarga en Arco',
+  thunderPatch: 'Punto de Trueno',
+  stormCell: 'Célula de Tormenta',
+  lightningField: 'Campo de Relámpagos',
+  galeZone: 'Zona de Vendaval',
+  thunderColumn: 'Columna de Truenos',
+  stormPocket: 'Bolsillo de Tormenta',
+  chainStrike: 'Golpe en Cadena',
+  squallLine: 'Línea de Chubasco',
+  thunderSlam: 'Trueno Sísmico',
+  stormChaser: 'Perseguidor Tormentoso',
+  thunderEye: 'Ojo del Trueno',
+  staticShock: 'Descarga Estática',
+  galeForce: 'Fuerza del Vendaval',
+  overcharge: 'Sobrecarga',
+  stormShield: 'Escudo de Tormenta',
+  shadowShards: 'Esquirlas Sombrías',
+  voidBurst: 'Estallido de Vacío',
+  darkVolley: 'Descarga Oscura',
+  eclipseSpray: 'Rociada de Eclipse',
+  starfallShards: 'Fragmentos Estelares',
+  umbralArc: 'Arco Umbrío',
+  voidPool: 'Pozo de Vacío',
+  shadowPatch: 'Mancha de Sombra',
+  darkRift: 'Fisura Oscura',
+  eclipseZone: 'Zona de Eclipse',
+  starfallField: 'Campo de Estrellas Caídas',
+  umbralCage: 'Jaula Umbría',
+  voidColumn: 'Columna de Vacío',
+  nullGround: 'Suelo Nulo',
+  shadowSlam: 'Golpe de Sombra',
+  voidWisp: 'Espíritu del Vacío',
+  shadowStalker: 'Acechador Sombrío',
+  voidGrasp: 'Garra del Vacío',
+  starDrain: 'Drenaje Estelar',
+  nullTouch: 'Toque Nulo',
+  voidShroud: 'Manto de Vacío',
+  crownShards: 'Esquirlas de Corona',
+  royalVolley: 'Descarga Real',
+  soulBurst: 'Estallido de Almas',
+  radiantBlast: 'Ráfaga Radiante',
+  scepterShards: 'Esquirlas de Cetro',
+  dominionSpray: 'Rociada de Dominio',
+  thronePatch: 'Punto del Trono',
+  judgmentZone: 'Zona de Juicio',
+  soulField: 'Campo de Almas',
+  dominionCircle: 'Círculo de Dominio',
+  regalSpikes: 'Picos Reales',
+  sovereignGround: 'Suelo Soberano',
+  crownfireField: 'Campo de Fuego Real',
+  royalGround: 'Suelo Real',
+  royalSlam: 'Golpe Soberano',
+  soulChaser: 'Perseguidor de Almas',
+  wraithMark: 'Marca Espectral',
+  royalCurse: 'Maldición Real',
+  soulDrain: 'Drenaje del Alma',
+  crownBind: 'Cadena Dorada',
+  royalAegis: 'Égida Real',
+  lightDeluge: 'Diluvio de Luz',
+  prismaticCascade: 'Cascada Prismática',
+  radiantMandala: 'Mandala Radiante',
+  solarSporeSpiral: 'Esporas Solares',
+  lightSeeds: 'Semillas de Luz',
+  dandelionWave: 'Diente de León Prismático',
+  canopyBeams: 'Sinfonía del Bosque Sagrado',
+  pincerScan: 'El Escáner de Tenaza',
+  orbitalCross: 'Órbita Cruzada',
+  desperateRush: 'Fase Desesperada',
+  energyBond: 'Vínculo de Energía',
+  circuitPanels: 'El Circuito Secuencial',
+  polarityPull: 'Carga de Polaridad',
+  closingBarrier: 'La Barrera que se Cierra',
+  predictiveLightning: 'Relámpago Telegrafiado',
+  massSingularity: 'Singularidad Terrestre',
+  gravityFlip: 'Giro de Masa',
+  voidCrackCollapse: 'Grieta del Vacío',
+  eventHorizonPulse: 'Onda de Evento de Horizonte',
 };
-const GROUND_SELF_ATTACKS = ['boneSlam','slam','fireWave','mirrorBloom','verdantSurge','mirrorShatter','reflectivePulse','soulPulse','boundSurge'];
-const GROUND_TARGET_ATTACKS = ['fireRain','poisonPool','meteor','boneCage','boneWall','lavaGeyser','growingMagma','iceCage','stormField','voidRift','risingSpikes','boneTrap','swampGrasp','hexTrail','emberField','moltenCore','cinderRain','bloomTrap','radiantPath','glassField','bondPulse','spiritLink','crystalPrison','avalanche','stormVortex','skySiege','voidTendrils','collapsingStar','finalJudgment','thunderStrike','boneCross','boneSpiral','graveSpikes','cryptCollapse','ribcage','deathToll','deathsDoor','deathKnell','rootSnare','quicksand','poisonBrew','swampSurge','vineLine','mireField','plagueCloud','witchesRing','infernoRing','brimstoneRain','moltenTrap','flameSurge','pyreCollapse','scorchedEarth','brimstoneSpiral','moltenWave','dewTrap','crystalBloom','thornCage','sunbeamLine','bloomRing','sunfireCross','radianceField','lightCascade','tangleRoots','mirrorMaze','shatterZone','reflectivePool','glassSpikes','doubleVision','distortionField','echoChamber','hallOfMirrors','soulTether','kinshipRing','dualBloom','sharedPain','weaveTrap','pactCircle','tetherLine','acidDeluge','venomousWeb','boundlessBeam','crystalCage','growingSpikes'];
+const GROUND_SELF_ATTACKS = ['boneSlam','slam','fireWave','mirrorBloom','verdantSurge','mirrorShatter','reflectivePulse','soulPulse','boundSurge','frostSlam','thunderSlam','shadowSlam','royalSlam'];
+const GROUND_TARGET_ATTACKS = ['fireRain','poisonPool','meteor','boneCage','boneWall','lavaGeyser','growingMagma','iceCage','stormField','voidRift','risingSpikes','boneTrap','swampGrasp','hexTrail','emberField','moltenCore','cinderRain','bloomTrap','radiantPath','glassField','bondPulse','spiritLink','crystalPrison','avalanche','stormVortex','skySiege','voidTendrils','collapsingStar','finalJudgment','thunderStrike','boneCross','boneSpiral','graveSpikes','cryptCollapse','ribcage','deathToll','deathsDoor','deathKnell','rootSnare','quicksand','poisonBrew','swampSurge','vineLine','mireField','plagueCloud','witchesRing','infernoRing','brimstoneRain','moltenTrap','flameSurge','pyreCollapse','scorchedEarth','brimstoneSpiral','moltenWave','dewTrap','crystalBloom','thornCage','sunbeamLine','bloomRing','sunfireCross','radianceField','lightCascade','tangleRoots','mirrorMaze','shatterZone','reflectivePool','glassSpikes','doubleVision','distortionField','echoChamber','hallOfMirrors','soulTether','kinshipRing','dualBloom','sharedPain','weaveTrap','pactCircle','tetherLine','acidDeluge','venomousWeb','boundlessBeam','crystalCage','growingSpikes','glacialSpike','frostRing','iceFissure','frozenTrail','hailfall','permafrost','crystalRain','blizzardGust','thunderPatch','stormCell','lightningField','galeZone','thunderColumn','stormPocket','chainStrike','squallLine','voidPool','shadowPatch','darkRift','eclipseZone','starfallField','umbralCage','voidColumn','nullGround','thronePatch','judgmentZone','soulField','dominionCircle','regalSpikes','sovereignGround','crownfireField','royalGround'];
 const DASH_ATTACKS = ['charge','blinkStrike','prismDash','echoDash'];
-const BURST_ATTACKS = ['radialBurst','radiantNova','butterflyBurst','rainbowLine','spiralBloom','petalRing','mirrorSplit','phantomBarrage','twinPulse','crossFire','boneShards','frostNova','stormBolt','boneVolley','toxicSpores','boneArmor','witchesBlessing','summon','mudSlow','cinderBurst','thornVolley','healingBloom','lightTwins','flameWhip','eyeLaser','cursedFlameBreath','mirrorDecoy','fracturedBurst','boundStrike','illusionSwap','twinStrike','mirrorGaze','bondedShield','iceLance','boltRunner','soulBarrage','frostBreath','darkPulse','crownfire','numbingChill','staticField','starlightDrain','royalDecree','umbraStep','throneSlam','skullBarrage','boneShrapnel','skeletalSwarm','skullStorm','boneWhip','deathRattle','hauntingWail','graveyardShift','deathMark','tombstoneSlam','gravebind','boneChain','cryptWhisper','rattlingBones','bogBurst','leechSwarm','witchesCurse','numbTonic','witchsEye','cauldronBubble','willOWisp','venomLash','shadowBrew','batSwarm','curseBind','witchsMark','spectralHex','gooBurst','lavaSpurt','cinderSwarm','demonRoar','ashCloud','infernalBond','sulfurBreath','demonEye','infernalChains','flameWreath','hellgate','cinderVolley','demonicHowl','infernalCrown','petalStorm','vineWhip','prismShard','nectarSwarm','gildedThorns','glowWisp','sunfireLance','lightPollen','witheringPetals','petalVeil','gardenGuardians','shatterVolley','reflectedBarrage','prismaticShards','mirageSwarm','silverStrike','phantomChaser','reflectedLance','hauntingReflection','disorientingGaze','shatteredFocus','silveredSkin','mirroredEcho','twinVolley','soulShards','pairedBolts','spiritBurst','boundArrows','spiritChaser','soulLance','kinseeker','sharedWound','soulSap','boundCurse','sharedBlessing','twinSpirits'];
+const BURST_ATTACKS = ['radialBurst','radiantNova','butterflyBurst','rainbowLine','spiralBloom','petalRing','mirrorSplit','phantomBarrage','twinPulse','crossFire','boneShards','frostNova','stormBolt','boneVolley','toxicSpores','boneArmor','witchesBlessing','summon','mudSlow','cinderBurst','thornVolley','healingBloom','lightTwins','flameWhip','eyeLaser','cursedFlameBreath','mirrorDecoy','fracturedBurst','boundStrike','illusionSwap','twinStrike','mirrorGaze','bondedShield','iceLance','boltRunner','soulBarrage','frostBreath','darkPulse','crownfire','numbingChill','staticField','starlightDrain','royalDecree','umbraStep','throneSlam','skullBarrage','boneShrapnel','skeletalSwarm','skullStorm','boneWhip','deathRattle','hauntingWail','graveyardShift','deathMark','tombstoneSlam','gravebind','boneChain','cryptWhisper','rattlingBones','bogBurst','leechSwarm','witchesCurse','numbTonic','witchsEye','cauldronBubble','willOWisp','venomLash','shadowBrew','batSwarm','curseBind','witchsMark','spectralHex','gooBurst','lavaSpurt','cinderSwarm','demonRoar','ashCloud','infernalBond','sulfurBreath','demonEye','infernalChains','flameWreath','hellgate','cinderVolley','demonicHowl','infernalCrown','petalStorm','vineWhip','prismShard','nectarSwarm','gildedThorns','glowWisp','sunfireLance','lightPollen','witheringPetals','petalVeil','gardenGuardians','shatterVolley','reflectedBarrage','prismaticShards','mirageSwarm','silverStrike','phantomChaser','reflectedLance','hauntingReflection','disorientingGaze','shatteredFocus','silveredSkin','mirroredEcho','twinVolley','soulShards','pairedBolts','spiritBurst','boundArrows','spiritChaser','soulLance','kinseeker','sharedWound','soulSap','boundCurse','sharedBlessing','twinSpirits','frostShards','glacialVolley','iceShrapnel','crystalBarrage','polarWind','snowSquall','frostWisp','iceStalker','frostbite','brittleChill','glacialGrip','glacialWard','boltSpray','thunderClap','chargedBurst','windSlash','stormShards','arcVolley','stormChaser','thunderEye','staticShock','galeForce','overcharge','stormShield','shadowShards','voidBurst','darkVolley','eclipseSpray','starfallShards','umbralArc','voidWisp','shadowStalker','voidGrasp','starDrain','nullTouch','voidShroud','crownShards','royalVolley','soulBurst','radiantBlast','scepterShards','dominionSpray','soulChaser','wraithMark','royalCurse','soulDrain','crownBind','royalAegis'];
 const DASH_ATTACKS_EXTRA_TELEGRAPH = ['twinCharge']; // uses the simple line telegraph like real dash attacks, without counting toward the dash budget
 
 function showAttackBanner(boss, type){
@@ -3051,7 +3809,7 @@ function pickAttackAvoidingTripleRepeat(boss, pool){
 function pickBossAttack(boss){
   const basePool = BOSS_ATTACKS[boss.kind] || ['charge','summon','radialBurst'];
   let pool = boss.phase===2 ? [...basePool, basePool[basePool.length-1], basePool[basePool.length-2]] : basePool;
-  if(boss.phase!==2) pool = pool.filter(t=>t!=='megaLaser'); // signature enrage move, can't roll before half HP
+  if(boss.phase!==2) pool = pool.filter(t=>t!=='megaLaser'&&t!=='desperateRush'); // signature enrage moves, can't roll before half HP
   boss.attackCount = (boss.attackCount||0)+1;
   if(boss.lastSummonAttack===undefined) boss.lastSummonAttack = -10;
   const canSummon = (boss.attackCount - boss.lastSummonAttack) >= 10;
@@ -3211,6 +3969,133 @@ function pickBossAttack(boss){
     boss.x = clamp(bnds.x+bnds.w/2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
     boss.y = clamp(bnds.y+bnds.h*0.14, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
     boss.telegraph.t = 0.9; boss.telegraph.dur = 0.9;
+  }
+  if(type==='solarSporeSpiral'){
+    const dur=3.6;
+    boss.telegraph.t=dur; boss.telegraph.dur=dur;
+    boss.telegraph.hotAt=0.5;
+    boss.telegraph.spiralAngle=0;
+    boss.telegraph.spiralTick=0;
+    spawnToast('Espirales de polen solar comienzan a girar');
+  }
+  if(type==='lightSeeds'){
+    boss.telegraph.t=0.6; boss.telegraph.dur=0.6;
+  }
+  if(type==='dandelionWave'){
+    const bndsD=arenaBounds();
+    boss.y = clamp(bndsD.y+bndsD.h*0.18, bndsD.y+boss.radius, bndsD.y+bndsD.h-boss.radius);
+    boss.telegraph.t=0.6; boss.telegraph.dur=0.6;
+  }
+  if(type==='lightDeluge'){
+    const durLD=3.4;
+    boss.telegraph.t=durLD; boss.telegraph.dur=durLD;
+    boss.telegraph.hotAt=0.45;
+    boss.telegraph.delugeAngle=0;
+    boss.telegraph.delugeTick=0;
+    spawnToast('Una flor de luz florece hacia afuera');
+  }
+  if(type==='prismaticCascade'){
+    const durPC=3.8;
+    boss.telegraph.t=durPC; boss.telegraph.dur=durPC;
+    boss.telegraph.hotAt=0.4;
+    boss.telegraph.cascadeTick=0;
+    boss.telegraph.gapX=arenaBounds().x+arenaBounds().w/2;
+    spawnToast('Filas de luz empiezan a caer del techo');
+  }
+  if(type==='radiantMandala'){
+    const durM=3.6;
+    boss.telegraph.t=durM; boss.telegraph.dur=durM;
+    boss.telegraph.hotAt=0.45;
+    boss.telegraph.mandalaAngleA=0;
+    boss.telegraph.mandalaAngleB=0;
+    boss.telegraph.mandalaTick=0;
+    spawnToast('Dos mandalas de luz giran en direcciones opuestas');
+  }
+  if(type==='pincerScan'){
+    const bndsP=arenaBounds();
+    boss.x = bndsP.x+60; boss.y = bndsP.y+100;
+    if(boss.twin && boss.twin.alive){ boss.twin.x = bndsP.x+bndsP.w-60; boss.twin.y = bndsP.y+100; }
+    const durP=2.6;
+    boss.telegraph.t=durP; boss.telegraph.dur=durP;
+    boss.telegraph.hotAt=0.5;
+    boss.telegraph.laserY = bndsP.y+40;
+    boss.telegraph.waveTimer=0.7;
+    spawnToast('Los ojos se posicionan en los extremos — buscá el hueco en el medio');
+  }
+  if(type==='orbitalCross'){
+    const durO=4.2;
+    boss.telegraph.t=durO; boss.telegraph.dur=durO;
+    boss.telegraph.hotAt=0.7;
+    const bndsO=arenaBounds();
+    boss.telegraph.orbitCX = bndsO.x+bndsO.w/2;
+    boss.telegraph.orbitCY = bndsO.y+bndsO.h*0.38;
+    boss.telegraph.orbitR = 130;
+    boss.telegraph.orbitAngle = 0;
+    boss.telegraph.orbitFireTimer = 0.9;
+    // used to snap straight onto the orbit circle the instant this was picked, which looked like
+    // a teleport if the boss was elsewhere in the room — now it remembers where it actually was
+    // and eases onto the orbit over hotAt seconds instead of jumping
+    boss.telegraph.orbitStartBX = boss.x; boss.telegraph.orbitStartBY = boss.y;
+    boss.telegraph.orbitStartTX = boss.twin ? boss.twin.x : boss.x;
+    boss.telegraph.orbitStartTY = boss.twin ? boss.twin.y : boss.y;
+    spawnToast('Las gemelas giran una alrededor de la otra');
+  }
+  if(type==='desperateRush'){
+    const hasTwin = boss.twin && boss.twin.alive;
+    boss.telegraph.beaconIsMain = hasTwin ? Math.random()<0.5 : true;
+    const durR=2.5;
+    boss.telegraph.t=durR; boss.telegraph.dur=durR;
+    boss.telegraph.hotAt=1.5;
+    boss.telegraph.lockX=p.x; boss.telegraph.lockY=p.y;
+    spawnToast('Un ojo te fija con la mira mientras el otro se prepara a embestir');
+  }
+  if(type==='energyBond'){
+    const bndsE=arenaBounds();
+    // used to spawn both eyes on the exact same tile (twin.x/y = boss.x/y), so the "cable between
+    // them" was a zero-length line and the danger zone collapsed to a single point instead of a
+    // wall — now they properly flank the player with a fixed gap, and advance together as a pair
+    const gapE = 260;
+    const dirE = Math.random()<0.5 ? 1 : -1;
+    const centerX = clamp(p.x, bndsE.x+gapE/2+40, bndsE.x+bndsE.w-gapE/2-40);
+    const yE = clamp(p.y, bndsE.y+70, bndsE.y+bndsE.h-70);
+    boss.x = centerX - gapE/2; boss.y = yE;
+    if(boss.twin && boss.twin.alive){ boss.twin.x = centerX + gapE/2; boss.twin.y = yE; }
+    const durE=4.2;
+    boss.telegraph.t=durE; boss.telegraph.dur=durE;
+    boss.telegraph.hotAt=0.4;
+    boss.telegraph.bondDir = dirE;
+    boss.telegraph.bondGap = gapE;
+    boss.telegraph.bondCenterX = centerX;
+    boss.telegraph.bondGapY = yE;
+    spawnToast('Las gemelas se colocan a cada lado tuyo y tienden un cable de energía');
+  }
+  if(type==='circuitPanels'){
+    boss.telegraph.t=0.5; boss.telegraph.dur=0.5;
+  }
+  if(type==='polarityPull'){
+    boss.telegraph.t=0.5; boss.telegraph.dur=0.5;
+  }
+  if(type==='closingBarrier'){
+    boss.telegraph.t=0.5; boss.telegraph.dur=0.5;
+  }
+  if(type==='predictiveLightning'){
+    const durL=3.0;
+    boss.telegraph.t=durL; boss.telegraph.dur=durL;
+    boss.telegraph.hotAt=2.0;
+    boss.telegraph.lockX=p.x;
+    spawnToast('Una mira de rayo empieza a seguir tus pasos');
+  }
+  if(type==='massSingularity'){
+    boss.telegraph.t=0.6; boss.telegraph.dur=0.6;
+  }
+  if(type==='gravityFlip'){
+    boss.telegraph.t=0.6; boss.telegraph.dur=0.6;
+  }
+  if(type==='voidCrackCollapse'){
+    boss.telegraph.t=0.5; boss.telegraph.dur=0.5;
+  }
+  if(type==='eventHorizonPulse'){
+    boss.telegraph.t=0.6; boss.telegraph.dur=0.6;
   }
   addParticles(boss.x,boss.y, boss.def.color, 10, 100, 0.6);
   if(boss.isGuardian){
@@ -3610,6 +4495,127 @@ function resolveBossAttack(type, tg){
     spawnToast('El haz de plasma se disipa');
     addParticles(boss.x,boss.y,'#ff6a3d',18,160,0.35);
     shake(4);
+  } else if(type==='solarSporeSpiral'){
+    spawnToast('El polen solar se disipa');
+    addParticles(boss.x,boss.y,'#ffe08a',18,140,0.35);
+  } else if(type==='lightSeeds'){
+    const n=5;
+    for(let i=0;i<n;i++){
+      const sx = b.x+b.w*((i+0.5)/n);
+      const sy = rand(b.y+80,b.y+b.h-80);
+      game.hazards.push({ x:sx, y:sy, r:26, type:'light', telegraph:2.0, active:1.1, tick:0, dmg:boss.dmg*0.85 });
+    }
+    spawnToast('Semillas de luz caen y echan raíces — buscá el hueco antes de que broten');
+  } else if(type==='dandelionWave'){
+    const fromLeftD = Math.random()<0.5;
+    boss.dandelionActive = true;
+    boss.dandelionTimer = 4.5;
+    boss.dandelionX = fromLeftD ? b.x-40 : b.x+b.w+40;
+    boss.dandelionY = boss.y;
+    boss.dandelionVX = fromLeftD ? 70 : -70;
+    boss.dandelionSeedTimer = 0.4;
+    spawnToast('Un diente de león gigante avanza soltando semillas');
+  } else if(type==='lightDeluge'){
+    spawnToast('El diluvio de luz se disipa');
+    addParticles(boss.x,boss.y,'#ffb0d9',18,150,0.35);
+  } else if(type==='prismaticCascade'){
+    spawnToast('La cascada prismática se detiene');
+    addParticles(boss.x,boss.y,'#ffe6a0',16,140,0.3);
+  } else if(type==='radiantMandala'){
+    spawnToast('El mandala radiante se apaga');
+    addParticles(boss.x,boss.y,'#c9a8ff',20,160,0.35);
+  } else if(type==='pincerScan'){
+    spawnToast('¡Los ojos escanean la sala desde los extremos!');
+  } else if(type==='orbitalCross'){
+    spawnToast('Las gemelas comienzan su baile orbital');
+  } else if(type==='desperateRush'){
+    const rammer = tg.beaconIsMain ? (boss.twin&&boss.twin.alive?boss.twin:boss) : boss;
+    const angR = Math.atan2(tg.lockY-rammer.y, tg.lockX-rammer.x);
+    const dashDistR = Math.max(b.w,b.h)*1.3;
+    const stepsR=14;
+    let hitDoneR=false;
+    for(let i=0;i<stepsR;i++){
+      rammer.x += Math.cos(angR)*(dashDistR/stepsR);
+      rammer.y += Math.sin(angR)*(dashDistR/stepsR);
+      if(!hitDoneR && dist(rammer.x,rammer.y,p.x,p.y) < (rammer.radius||boss.radius)+p.radius+16){
+        hitPlayer(boss.dmg*1.1); hitDoneR=true;
+      }
+    }
+    rammer.x = clamp(rammer.x, b.x+(rammer.radius||boss.radius), b.x+b.w-(rammer.radius||boss.radius));
+    rammer.y = clamp(rammer.y, b.y+(rammer.radius||boss.radius), b.y+b.h-(rammer.radius||boss.radius));
+    shake(9);
+    addParticles(rammer.x,rammer.y,boss.def.color,20,220,0.4);
+    spawnToast('¡El ojo embestidor cruza la sala a toda velocidad!');
+  } else if(type==='energyBond'){
+    spawnToast('El cable de energía se disuelve');
+    addParticles(boss.x,boss.y,boss.def.color,16,140,0.3);
+  } else if(type==='circuitPanels'){
+    boss.circuitActive = true;
+    boss.circuitTimer = 0.05;
+    boss.circuitIndex = 0;
+    boss.circuitCycles = 8;
+    spawnToast('El suelo se electrifica en paneles secuenciales');
+  } else if(type==='polarityPull'){
+    boss.polarityActive = true;
+    boss.polarityTimer = 6;
+    boss.polarityPhase = 'attract';
+    boss.polarityPhaseTimer = 2.2;
+    boss.polarityOrbTimer = 0.5;
+    spawnToast('Un campo magnético envuelve la sala');
+  } else if(type==='closingBarrier'){
+    const weakSide = Math.random()<0.5 ? 'left' : 'right';
+    boss.barrierActive = true;
+    boss.barrierTimer = 7;
+    boss.barrierLeftX = b.x;
+    boss.barrierRightX = b.x+b.w;
+    boss.barrierCloseSpeed = 32;
+    boss.barrierWeakSide = weakSide;
+    boss.cores = (boss.cores||[]).filter(c=>c.alive);
+    boss.barrierCore = { x: weakSide==='left'?b.x:b.x+b.w, y:p.y, hp:38, maxHp:38, radius:26, hitFlash:0, isCore:true, alive:true };
+    boss.cores.push(boss.barrierCore);
+    spawnToast('Columnas de voltaje avanzan desde los bordes — una tiene una falla');
+  } else if(type==='predictiveLightning'){
+    // was one giant circle (radius = whole arena!) — now a real narrow column stacked along
+    // the locked X, so the danger zone is actually just that vertical strip, not the whole room
+    const colR = 34;
+    const rows = Math.ceil(b.h/(colR*1.3));
+    for(let i=0;i<rows;i++){
+      const ly = b.y + colR + i*(colR*1.3);
+      game.hazards.push({ x: tg.lockX, y: ly, r: colR, type:'storm', telegraph:0.05, active:0.35, tick:0, dmg:boss.dmg*1.0 });
+    }
+    spawnToast('¡El rayo cae sobre el punto fijado!');
+    shake(8);
+  } else if(type==='massSingularity'){
+    boss.singularityActive = true;
+    boss.singularityTimer = 7;
+    boss.singularityCX = b.x+b.w/2;
+    boss.singularityCY = b.y+b.h/2;
+    boss.singularityWaveTimer = 0.7;
+    boss.singularityWaveIndex = 0;
+    spawnToast('Una singularidad altera tu peso según hacia dónde camines');
+  } else if(type==='gravityFlip'){
+    const heavy = Math.random()<0.5;
+    p.slowTimer = Math.max(p.slowTimer||0, 5);
+    p.slowFactor = heavy ? 0.5 : 1.7;
+    boss.gravityFlipActive = true;
+    boss.gravityFlipTimer = 4;
+    const fromLeftG = Math.random()<0.5;
+    boss.gravityFlipBeamX = fromLeftG ? b.x : b.x+b.w;
+    boss.gravityFlipBeamVX = (fromLeftG?1:-1)*90;
+    addParticles(p.x,p.y,heavy?'#8a5ad9':'#c9a8ff',18,130,0.35);
+    spawnToast(heavy ? 'Te volviste pesado: caminás lento' : 'Te volviste liviano: caminás rapidísimo');
+  } else if(type==='voidCrackCollapse'){
+    boss.crackActive = true;
+    boss.crackTimer = 0.05;
+    boss.crackRemaining = 3;
+    spawnToast('El vacío se abre bajo tus pasos, tres veces seguidas');
+  } else if(type==='eventHorizonPulse'){
+    boss.pulseActive = true;
+    boss.pulseTimer = 0.05;
+    boss.pulseRemaining = 4;
+    boss.pulseGapAngle = Math.random()*Math.PI*2;
+    boss.pulseWave = 0;
+    spawnToast('Anillos de vacío pulsan hacia afuera desde el jefe');
   } else if(type==='iceSlide' || type==='absoluteZero'){
     // both are pure channel attacks — everything they do happens in the per-frame handling in
     // updateBoss (slide momentum + gusts, or the freeze meter + gusts); nothing left to resolve
@@ -5236,6 +6242,149 @@ function resolveBossAttack(type, tg){
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Un frío entumecedor debilita tus golpes');
+  } else if(type==='frostShards'){
+    const n=9;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*210, vy:Math.sin(ang)*210,
+        dmg:boss.dmg*0.5, radius:8, owner:'enemy', color:boss.def.color, life:2.4, shape:'shard' });
+    }
+    addParticles(boss.x,boss.y,boss.def.color,14,150,0.35);
+    spawnToast('Esquirlas de hielo estallan en todas direcciones');
+  } else if(type==='glacialVolley'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=5;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.18;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
+        dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:2.2, shape:'shard' });
+    }
+    spawnToast('Una descarga de hielo vuela directo hacia vos');
+  } else if(type==='iceShrapnel'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*300, vy:Math.sin(ang)*300,
+        dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
+    }
+    shake(4);
+  } else if(type==='crystalBarrage'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.35;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*115, vy:Math.sin(ang)*115,
+        dmg:boss.dmg*0.8, radius:15, owner:'enemy', color:boss.def.color, life:3.4, shape:'orb' });
+    }
+    spawnToast('Cristales pesados avanzan lentamente');
+  } else if(type==='polarWind'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=7;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.5;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*175, vy:Math.sin(ang)*175,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.6, shape:'wisp', slow:{factor:0.7,dur:0.8} });
+    }
+    spawnToast('Un viento polar barre el área');
+  } else if(type==='snowSquall'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const ang = Math.random()*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*150, vy:Math.sin(ang)*150,
+        dmg:boss.dmg*0.35, radius:6, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
+    }
+    addParticles(boss.x,boss.y,boss.def.color,18,130,0.3);
+  } else if(type==='glacialSpike'){
+    game.hazards.push({ x:targetX, y:targetY, r:46, type:'ice', telegraph:0.75, active:0.4, tick:0, dmg:boss.dmg*1.0 });
+    spawnToast('Un pico de hielo emerge del suelo');
+  } else if(type==='frostRing'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      const hx = clamp(targetX+Math.cos(ang)*90, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*90, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:22, type:'ice', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
+    }
+    spawnToast('Un anillo de escarcha se cierra a tu alrededor');
+  } else if(type==='iceFissure'){
+    const steps=7;
+    for(let i=0;i<steps;i++){
+      const frac=i/(steps-1);
+      const hx = clamp(boss.x+(targetX-boss.x)*frac, b.x+24,b.x+b.w-24);
+      const hy = clamp(boss.y+(targetY-boss.y)*frac, b.y+24,b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:24, type:'ice', telegraph:0.22+frac*0.85, active:0.4, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('Una grieta helada avanza hacia vos');
+  } else if(type==='frozenTrail'){
+    const steps=6;
+    for(let i=0;i<steps;i++){
+      const frac=i/(steps-1);
+      const hx = clamp(boss.x+(targetX-boss.x)*frac, b.x+24,b.x+b.w-24);
+      const hy = clamp(boss.y+(targetY-boss.y)*frac, b.y+24,b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:26, type:'ice', telegraph:0.3+frac*1.0, active:0.7, tick:0, dmg:boss.dmg*0.35 });
+    }
+    spawnToast('Un sendero de hielo se extiende bajo tus pasos');
+  } else if(type==='hailfall'){
+    const n=6;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
+      game.hazards.push({ x:hx, y:hy, r:26, type:'ice', telegraph:0.5+Math.random()*1.0, active:0.5, tick:0, dmg:boss.dmg*0.34 });
+    }
+    spawnToast('Granizo cae por toda la arena');
+  } else if(type==='permafrost'){
+    game.hazards.push({ x:targetX, y:targetY, r:30, type:'ice', telegraph:0.5, active:1.6, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:55 });
+    spawnToast('El suelo se congela y se expande');
+  } else if(type==='crystalRain'){
+    const n=7;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
+      game.hazards.push({ x:hx, y:hy, r:24, type:'ice', telegraph:0.45+Math.random()*0.9, active:0.4, tick:0, dmg:boss.dmg*0.34 });
+    }
+    spawnToast('Cristales afilados caen del techo');
+  } else if(type==='blizzardGust'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      game.hazards.push({ x:targetX+Math.cos(ang)*28, y:targetY+Math.sin(ang)*28, r:18, type:'ice',
+        telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:60 });
+    }
+    spawnToast('Una ráfaga helada se expande hacia afuera');
+  } else if(type==='frostSlam'){
+    const r=160;
+    if(dist(boss.x,boss.y,p.x,p.y)<r){ hitPlayer(boss.dmg*1.0); p.slowTimer=Math.max(p.slowTimer||0,1.6); p.slowFactor=0.6; }
+    addParticles(boss.x,boss.y,boss.def.color,26,230,0.45);
+    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
+    shake(7);
+    spawnToast('El suelo estalla en una onda helada');
+  } else if(type==='frostWisp'){
+    const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
+    spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*110, vy:Math.sin(ang)*110,
+      dmg:boss.dmg*0.65, radius:10, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'wisp' });
+    spawnToast('Un espíritu helado te persigue');
+  } else if(type==='iceStalker'){
+    const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
+    spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*240, vy:Math.sin(ang)*240,
+      dmg:boss.dmg*0.55, radius:9, owner:'enemy', color:boss.def.color, life:2.8, homing:true, shape:'orb' });
+    spawnToast('Algo veloz te acecha entre el hielo');
+  } else if(type==='frostbite'){
+    p.witherTimer = Math.max(p.witherTimer||0, 4.5);
+    addParticles(p.x,p.y,boss.def.color,14,100,0.3);
+    spawnToast('El frío muerde: tu curación se reduce');
+  } else if(type==='brittleChill'){
+    p.chillTimer = Math.max(p.chillTimer||0, 3.5);
+    p.chillFactor = 1.5;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('Un frío quebradizo entorpece tus golpes');
+  } else if(type==='glacialGrip'){
+    p.slowTimer = Math.max(p.slowTimer||0, 2.6);
+    p.slowFactor = 0.55;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('El hielo se aferra a tus piernas');
+  } else if(type==='glacialWard'){
+    boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.07);
+    addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
+    spawnToast('Una armadura de hielo lo restaura');
   } else if(type==='thunderStrike'){
     // almost no warning at all before a single heavy strike — pure reaction test
     game.hazards.push({ x:targetX, y:targetY, r:34, type:'storm', telegraph:0.28, active:0.3, tick:0, dmg:boss.dmg*1.1 });
@@ -5273,6 +6422,154 @@ function resolveBossAttack(type, tg){
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
       dmg:boss.dmg*0.6, radius:9, owner:'enemy', color:boss.def.color, life:2.6, homing:true, shape:'orb' });
     spawnToast('Un rayo veloz te persigue');
+  } else if(type==='boltSpray'){
+    const n=9;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*240, vy:Math.sin(ang)*240,
+        dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:boss.def.color, life:2.2, shape:'shard' });
+    }
+    shake(5);
+    spawnToast('Rayos estallan en todas direcciones');
+  } else if(type==='thunderClap'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=6;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.22;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*280, vy:Math.sin(ang)*280,
+        dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
+    }
+    spawnToast('Un trueno restalla hacia vos');
+  } else if(type==='chargedBurst'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*310, vy:Math.sin(ang)*310,
+        dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
+    }
+  } else if(type==='windSlash'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=5;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.4;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*195, vy:Math.sin(ang)*195,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.4, shape:'wisp' });
+    }
+    spawnToast('El viento corta el aire a tu alrededor');
+  } else if(type==='stormShards'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const ang = Math.random()*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*220, vy:Math.sin(ang)*220,
+        dmg:boss.dmg*0.35, radius:6, owner:'enemy', color:boss.def.color, life:1.8, shape:'shard' });
+    }
+    addParticles(boss.x,boss.y,boss.def.color,16,150,0.3);
+  } else if(type==='arcVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.3;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*300, vy:Math.sin(ang)*300,
+        dmg:boss.dmg*0.7, radius:10, owner:'enemy', color:boss.def.color, life:1.8, shape:'orb' });
+    }
+    spawnToast('Un arco de energía se dispara con fuerza');
+  } else if(type==='thunderPatch'){
+    game.hazards.push({ x:targetX, y:targetY, r:38, type:'storm', telegraph:0.5, active:0.35, tick:0, dmg:boss.dmg*1.0 });
+    spawnToast('Un rayo se prepara para caer');
+  } else if(type==='stormCell'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      const hx = clamp(targetX+Math.cos(ang)*95, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*95, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:22, type:'storm', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
+    }
+    spawnToast('Una celda de tormenta se cierra alrededor tuyo');
+  } else if(type==='lightningField'){
+    const n=7;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
+      game.hazards.push({ x:hx, y:hy, r:26, type:'storm', telegraph:0.5+Math.random()*0.9, active:0.4, tick:0, dmg:boss.dmg*0.34 });
+    }
+    spawnToast('Rayos caen al azar por toda la arena');
+  } else if(type==='galeZone'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      game.hazards.push({ x:targetX+Math.cos(ang)*28, y:targetY+Math.sin(ang)*28, r:18, type:'storm',
+        telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:65 });
+    }
+    spawnToast('Un vendaval se expande desde el centro');
+  } else if(type==='thunderColumn'){
+    const steps=7;
+    for(let i=0;i<steps;i++){
+      const frac=i/(steps-1);
+      const hx = clamp(boss.x+(targetX-boss.x)*frac, b.x+24,b.x+b.w-24);
+      const hy = clamp(boss.y+(targetY-boss.y)*frac, b.y+24,b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:24, type:'storm', telegraph:0.22+frac*0.8, active:0.4, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('Una columna de rayos avanza hacia vos');
+  } else if(type==='stormPocket'){
+    const n=4;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+50,b.x+b.w-50), hy = rand(b.y+50,b.y+b.h-50);
+      game.hazards.push({ x:hx, y:hy, r:55, type:'storm', telegraph:1.1, active:0.45, tick:0, dmg:boss.dmg*0.7 });
+    }
+    spawnToast('Bolsillos de tormenta se forman por la arena');
+  } else if(type==='chainStrike'){
+    const n=6;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
+      game.hazards.push({ x:hx, y:hy, r:28, type:'storm', telegraph:0.3+i*0.15, active:0.35, tick:0, dmg:boss.dmg*0.42 });
+    }
+    spawnToast('Una cadena de rayos se enciende en secuencia');
+  } else if(type==='squallLine'){
+    const vertical = Math.random()<0.5;
+    const n=9;
+    for(let i=0;i<n;i++){
+      const frac=i/(n-1);
+      const hx = vertical ? targetX : (b.x+24+frac*(b.w-48));
+      const hy = vertical ? (b.y+24+frac*(b.h-48)) : targetY;
+      game.hazards.push({ x:hx, y:hy, r:24, type:'storm', telegraph:0.5, active:0.4, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('Una línea de tormenta cruza la arena');
+  } else if(type==='thunderSlam'){
+    const r=165;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+    addParticles(boss.x,boss.y,boss.def.color,28,250,0.45);
+    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
+    shake(8);
+    spawnToast('Truena con toda su fuerza contra el suelo');
+  } else if(type==='stormChaser'){
+    const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
+    spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*250, vy:Math.sin(ang)*250,
+      dmg:boss.dmg*0.55, radius:9, owner:'enemy', color:boss.def.color, life:2.6, homing:true, shape:'orb' });
+    spawnToast('Un rayo veloz cambia de rumbo para alcanzarte');
+  } else if(type==='thunderEye'){
+    const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
+    spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*115, vy:Math.sin(ang)*115,
+      dmg:boss.dmg*0.68, radius:11, owner:'enemy', color:boss.def.color, life:4.4, homing:true, shape:'wisp' });
+    spawnToast('Un ojo eléctrico te sigue de cerca');
+  } else if(type==='staticShock'){
+    p.chillTimer = Math.max(p.chillTimer||0, 3.2);
+    p.chillFactor = 1.55;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('Una descarga estática entorpece tus reflejos');
+  } else if(type==='galeForce'){
+    p.slowTimer = Math.max(p.slowTimer||0, 2.8);
+    p.slowFactor = 0.58;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('Una ráfaga te empuja y frena tus pasos');
+  } else if(type==='overcharge'){
+    p.weakenTimer = Math.max(p.weakenTimer||0, 4);
+    p.weakenFactor = 0.75;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('Una sobrecarga debilita tus golpes');
+  } else if(type==='stormShield'){
+    boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.07);
+    addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
+    spawnToast('Un manto de tormenta lo restaura');
   } else if(type==='voidTendrils'){
     // a six-armed burst radiating from where you stood, instead of magmaCross's four-armed
     // pattern rooted on the boss itself
@@ -5319,6 +6616,146 @@ function resolveBossAttack(type, tg){
     // in the void zone's kit
     game.hazards.push({ x:targetX, y:targetY, r:110, type:'void', telegraph:1.3, active:0.4, tick:0, dmg:boss.dmg*1.2 });
     spawnToast('Una estrella colapsa donde estabas parado');
+  } else if(type==='shadowShards'){
+    const n=9;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*215, vy:Math.sin(ang)*215,
+        dmg:boss.dmg*0.5, radius:8, owner:'enemy', color:boss.def.color, life:2.4, shape:'shard' });
+    }
+    addParticles(boss.x,boss.y,boss.def.color,16,150,0.35);
+  } else if(type==='voidBurst'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=6;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.24;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*250, vy:Math.sin(ang)*250,
+        dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
+    }
+    spawnToast('El vacío escupe esquirlas hacia vos');
+  } else if(type==='darkVolley'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*290, vy:Math.sin(ang)*290,
+        dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
+    }
+  } else if(type==='eclipseSpray'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const ang = Math.random()*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*175, vy:Math.sin(ang)*175,
+        dmg:boss.dmg*0.36, radius:6, owner:'enemy', color:boss.def.color, life:2.2, shape:'wisp' });
+    }
+    spawnToast('Una sombra estalla en todas direcciones');
+  } else if(type==='starfallShards'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.32;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*120, vy:Math.sin(ang)*120,
+        dmg:boss.dmg*0.78, radius:14, owner:'enemy', color:boss.def.color, life:3.4, shape:'orb' });
+    }
+    spawnToast('Fragmentos de estrella caen pesadamente');
+  } else if(type==='umbralArc'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=7;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.48;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*185, vy:Math.sin(ang)*185,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.5, shape:'wisp' });
+    }
+    spawnToast('Un arco de sombra se extiende hacia vos');
+  } else if(type==='voidPool'){
+    game.hazards.push({ x:targetX, y:targetY, r:48, type:'void', telegraph:0.8, active:0.4, tick:0, dmg:boss.dmg*1.0 });
+    spawnToast('Un pozo de vacío se abre en el suelo');
+  } else if(type==='shadowPatch'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      const hx = clamp(targetX+Math.cos(ang)*92, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*92, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:22, type:'void', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
+    }
+    spawnToast('Sombras cierran un anillo a tu alrededor');
+  } else if(type==='darkRift'){
+    const steps=7;
+    for(let i=0;i<steps;i++){
+      const frac=i/(steps-1);
+      const hx = clamp(boss.x+(targetX-boss.x)*frac, b.x+24,b.x+b.w-24);
+      const hy = clamp(boss.y+(targetY-boss.y)*frac, b.y+24,b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:24, type:'void', telegraph:0.22+frac*0.85, active:0.4, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('Una fisura de vacío avanza hacia vos');
+  } else if(type==='eclipseZone'){
+    game.hazards.push({ x:targetX, y:targetY, r:100, type:'void', telegraph:1.25, active:0.5, tick:0, dmg:boss.dmg*1.05 });
+    spawnToast('Una zona de eclipse se cierne sobre el lugar');
+  } else if(type==='starfallField'){
+    const n=6;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
+      game.hazards.push({ x:hx, y:hy, r:30, type:'void', telegraph:0.5+Math.random()*1.0, active:0.45, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('Restos estelares caen al azar');
+  } else if(type==='umbralCage'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      game.hazards.push({ x:targetX+Math.cos(ang)*28, y:targetY+Math.sin(ang)*28, r:18, type:'void',
+        telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:60 });
+    }
+    spawnToast('Una jaula de sombras se expande a tu alrededor');
+  } else if(type==='voidColumn'){
+    const n=4;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+50,b.x+b.w-50), hy = rand(b.y+50,b.y+b.h-50);
+      game.hazards.push({ x:hx, y:hy, r:60, type:'void', telegraph:1.2, active:0.5, tick:0, dmg:boss.dmg*0.75 });
+    }
+    spawnToast('Columnas de vacío se abren por la arena');
+  } else if(type==='nullGround'){
+    const n=7;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
+      game.hazards.push({ x:hx, y:hy, r:24, type:'void', telegraph:0.5+Math.random()*0.9, active:0.4, tick:0, dmg:boss.dmg*0.32 });
+    }
+    spawnToast('El suelo se anula al azar por toda la sala');
+  } else if(type==='shadowSlam'){
+    const r=170;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+    addParticles(boss.x,boss.y,boss.def.color,28,260,0.5);
+    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.4);
+    shake(9);
+    spawnToast('Golpea el suelo con una onda de vacío');
+  } else if(type==='voidWisp'){
+    const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
+    spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*100, vy:Math.sin(ang)*100,
+      dmg:boss.dmg*0.68, radius:11, owner:'enemy', color:boss.def.color, life:4.6, homing:true, shape:'wisp' });
+    spawnToast('Un espíritu de vacío te persigue');
+  } else if(type==='shadowStalker'){
+    const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
+    spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*245, vy:Math.sin(ang)*245,
+      dmg:boss.dmg*0.56, radius:9, owner:'enemy', color:boss.def.color, life:2.7, homing:true, shape:'orb' });
+    spawnToast('Una sombra veloz te acecha');
+  } else if(type==='voidGrasp'){
+    p.slowTimer = Math.max(p.slowTimer||0, 2.8);
+    p.slowFactor = 0.55;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('El vacío se aferra a tus pasos');
+  } else if(type==='starDrain'){
+    p.weakenTimer = Math.max(p.weakenTimer||0, 4);
+    p.weakenFactor = 0.75;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('Algo drena la fuerza de tus golpes');
+  } else if(type==='nullTouch'){
+    p.chillTimer = Math.max(p.chillTimer||0, 3.3);
+    p.chillFactor = 1.5;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('Un toque nulo entorpece tus reflejos');
+  } else if(type==='voidShroud'){
+    boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.07);
+    addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
+    spawnToast('Un manto de vacío lo restaura');
   } else if(type==='royalDecree'){
     // silences your Q and E abilities for a few seconds — the only ability-lock debuff in the game
     p.qLockTimer = Math.max(p.qLockTimer||0, 2.5);
@@ -5359,6 +6796,146 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.5, radius:9, owner:'enemy', color:boss.def.color, life:3.2, homing:true, shape:'wisp' });
     });
     spawnToast('Tres almas te persiguen desde ángulos distintos');
+  } else if(type==='crownShards'){
+    const n=9;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*225, vy:Math.sin(ang)*225,
+        dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:boss.def.color, life:2.2, shape:'ember' });
+    }
+    shake(5);
+    spawnToast('Fragmentos de corona estallan en anillo');
+  } else if(type==='royalVolley'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=6;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
+        dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:2, shape:'ember' });
+    }
+    spawnToast('Una descarga real se dispara hacia vos');
+  } else if(type==='soulBurst'){
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.12;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*300, vy:Math.sin(ang)*300,
+        dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:boss.def.color, life:1.6, shape:'wisp' });
+    }
+  } else if(type==='radiantBlast'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*195, vy:Math.sin(ang)*195,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.4, shape:'ember' });
+    }
+    addParticles(boss.x,boss.y,boss.def.color,16,150,0.35);
+  } else if(type==='scepterShards'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.3;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*300, vy:Math.sin(ang)*300,
+        dmg:boss.dmg*0.72, radius:10, owner:'enemy', color:boss.def.color, life:1.8, shape:'orb' });
+    }
+    spawnToast('El cetro dispara con fuerza real');
+  } else if(type==='dominionSpray'){
+    const n=7;
+    const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const ang = ang0+(i-(n-1)/2)*0.5;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*180, vy:Math.sin(ang)*180,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.5, shape:'wisp' });
+    }
+    spawnToast('Su dominio se extiende hacia vos en abanico');
+  } else if(type==='thronePatch'){
+    game.hazards.push({ x:targetX, y:targetY, r:44, type:'spike', telegraph:0.75, active:0.4, tick:0, dmg:boss.dmg*1.0 });
+    spawnToast('El trono señala un punto de castigo');
+  } else if(type==='judgmentZone'){
+    game.hazards.push({ x:targetX, y:targetY, r:100, type:'fire', telegraph:1.2, active:0.5, tick:0, dmg:boss.dmg*1.05 });
+    spawnToast('Una zona de juicio se enciende bajo tus pies');
+  } else if(type==='soulField'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      const hx = clamp(targetX+Math.cos(ang)*92, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*92, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:22, type:'spike', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
+    }
+    spawnToast('Almas errantes cierran un anillo a tu alrededor');
+  } else if(type==='dominionCircle'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const ang=(i/n)*Math.PI*2;
+      game.hazards.push({ x:targetX+Math.cos(ang)*28, y:targetY+Math.sin(ang)*28, r:18, type:'fire',
+        telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:60 });
+    }
+    spawnToast('Un círculo de dominio se expande hacia afuera');
+  } else if(type==='regalSpikes'){
+    const steps=7;
+    for(let i=0;i<steps;i++){
+      const frac=i/(steps-1);
+      const hx = clamp(boss.x+(targetX-boss.x)*frac, b.x+24,b.x+b.w-24);
+      const hy = clamp(boss.y+(targetY-boss.y)*frac, b.y+24,b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:24, type:'spike', telegraph:0.22+frac*0.85, active:0.4, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('Picos reales emergen en fila hacia vos');
+  } else if(type==='sovereignGround'){
+    const n=6;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
+      game.hazards.push({ x:hx, y:hy, r:28, type:'spike', telegraph:0.5+Math.random()*1.0, active:0.45, tick:0, dmg:boss.dmg*0.36 });
+    }
+    spawnToast('El suelo se alza al azar por orden del trono');
+  } else if(type==='crownfireField'){
+    const n=4;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+50,b.x+b.w-50), hy = rand(b.y+50,b.y+b.h-50);
+      game.hazards.push({ x:hx, y:hy, r:56, type:'fire', telegraph:1.1, active:0.45, tick:0, dmg:boss.dmg*0.7 });
+    }
+    spawnToast('Fuego de corona se enciende por la arena');
+  } else if(type==='royalGround'){
+    const n=7;
+    for(let i=0;i<n;i++){
+      const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
+      game.hazards.push({ x:hx, y:hy, r:24, type:'fire', telegraph:0.5+Math.random()*0.9, active:0.4, tick:0, dmg:boss.dmg*0.32 });
+    }
+    spawnToast('El suelo arde al azar por toda la sala');
+  } else if(type==='royalSlam'){
+    const r=165;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+    addParticles(boss.x,boss.y,boss.def.color,28,250,0.45);
+    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
+    shake(8);
+    spawnToast('Golpea el suelo con autoridad real');
+  } else if(type==='soulChaser'){
+    const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
+    spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*105, vy:Math.sin(ang)*105,
+      dmg:boss.dmg*0.68, radius:11, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'wisp' });
+    spawnToast('Un alma condenada te persigue');
+  } else if(type==='wraithMark'){
+    const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
+    spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*250, vy:Math.sin(ang)*250,
+      dmg:boss.dmg*0.56, radius:9, owner:'enemy', color:boss.def.color, life:2.7, homing:true, shape:'orb' });
+    spawnToast('Una marca espectral te sigue veloz');
+  } else if(type==='royalCurse'){
+    p.weakenTimer = Math.max(p.weakenTimer||0, 4);
+    p.weakenFactor = 0.75;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('Una maldición real debilita tus golpes');
+  } else if(type==='soulDrain'){
+    p.witherTimer = Math.max(p.witherTimer||0, 4.5);
+    addParticles(p.x,p.y,boss.def.color,14,100,0.3);
+    spawnToast('Algo drena tu voluntad de sanar');
+  } else if(type==='crownBind'){
+    p.slowTimer = Math.max(p.slowTimer||0, 2.8);
+    p.slowFactor = 0.55;
+    addParticles(p.x,p.y,boss.def.color,14,90,0.3);
+    spawnToast('Cadenas doradas atan tus pasos');
+  } else if(type==='royalAegis'){
+    boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.07);
+    addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
+    spawnToast('Una égida real lo restaura');
   } else if(type==='fireWave'){
     game.hazards.push({ x:boss.x, y:boss.y, r:24, type:'fire', telegraph:0, active:2.4, tick:0, dmg:boss.dmg*0.5, expanding:true, expandRate:145 });
     spawnToast('Una oleada de fuego se expande');
@@ -5438,6 +7015,8 @@ function updateProjectiles(dt){
     if(!remove && pr.owner==='player'){
       const targets = [...game.enemies, ...bossTargets()];
       for(const t of targets){
+        // pierce: skip targets this same projectile already hit, so it can keep going through a line
+        if(pr.pierce && pr.hitSet && pr.hitSet.has(t)) continue;
         if(dist(pr.x,pr.y,t.x,t.y) < pr.radius+t.radius){
           if(t.def && t.def.erratic && Math.random()<t.def.dodgeChance){
             addParticles(t.x,t.y,'#c9b8ff',5,90,0.18);
@@ -5446,7 +7025,15 @@ function updateProjectiles(dt){
           const dmgObj = pr.dmg.value!==undefined ? pr.dmg : computeDamage(pr.dmg);
           dealDamageToTarget(t, dmgObj.value!==undefined?dmgObj:{value:dmgObj,crit:false}, 'proj');
           if(pr.explode){ explodeAt(pr.x,pr.y,pr.explodeRadius, computeDamage(pr.dmg.value?pr.dmg.value*0.6:20)); }
-          remove=true; break;
+          if(pr.pierce){
+            pr.hitSet = pr.hitSet || new Set();
+            pr.hitSet.add(t);
+            pr.pierceLeft = (pr.pierceLeft===undefined ? (pr.pierceCount!==undefined?pr.pierceCount:99) : pr.pierceLeft) - 1;
+            if(pr.pierceLeft<=0) remove=true;
+          } else {
+            remove=true;
+          }
+          break;
         }
       }
     } else if(!remove && pr.owner==='enemy'){
@@ -5851,6 +7438,7 @@ function render(){
   if(game.boss && game.boss.telegraph) drawBossTelegraphIndicator(game.boss);
   if(game.boss) drawBoss(game.boss);
   if(game.boss && game.boss.cores) drawBossCores(game.boss.cores.filter(c=>c.alive));
+  if(game.boss && game.boss.barrierActive) drawClosingBarrier(game.boss);
   if(game.boss && game.boss.movers) drawBossMovers(game.boss.movers);
   if(game.boss && game.boss.enrageActive) drawAbyssEnrageWorld(game.boss);
   if(game.boss && game.boss.twin && game.boss.twin.alive) drawTwinCompanion(game.boss.twin, game.boss.def);
@@ -5926,10 +7514,307 @@ function drawBossCountdown(t){
   ctx.restore();
 }
 
+const ZONE_THEMES = {
+  cripta:    { top:'#5a4426', bottom:'#2e2210', terrainA:'#caa25c', terrainB:'#a97f3e', grid:'rgba(120,90,40,0.15)', border:'#7a5c30', decor:'cactus',      decorColor:'#4f7a3d', secondaryColor:'#8a6438', landmark:'ruins' },
+  pantano:   { top:'#1c3320', bottom:'#0c1810', terrainA:'#3f6b42', terrainB:'#274a2c', grid:'rgba(90,180,110,0.12)', border:'#3a5c3e', decor:'reeds',        decorColor:'#4f8a5a', secondaryColor:'#1f3a28', landmark:'deadtree' },
+  fortaleza: { top:'#4a1c0c', bottom:'#210a04', terrainA:'#7a2f14', terrainB:'#4a1a0a', grid:'rgba(255,120,60,0.12)', border:'#7a3010', decor:'rockspike',    decorColor:'#3a2018', secondaryColor:'#c94a1e', landmark:'brokenpillar' },
+  jardin:    { top:'#3a2350', bottom:'#1c1030', terrainA:'#7a4f9e', terrainB:'#5a3878', grid:'rgba(255,214,240,0.10)', border:'#6a4090', decor:'flowercluster',decorColor:'#ffb0d9', secondaryColor:'#c98adf', landmark:'archvines' },
+  espejos:   { top:'#232c42', bottom:'#10141f', terrainA:'#3f4d6e', terrainB:'#2a3450', grid:'rgba(207,214,232,0.12)', border:'#4a5a80', decor:'mirrorshards', decorColor:'#cfd6e8', secondaryColor:'#5a6a90', landmark:'brokenmirror' },
+  gemelo:    { top:'#4a2438', bottom:'#20101c', terrainA:'#8a3f64', terrainB:'#5e2844', grid:'rgba(255,176,217,0.10)', border:'#7a3a5c', decor:'twinmotif',    decorColor:'#ffb0d9', secondaryColor:'#c9698f', landmark:'twinstatues' },
+  glaciar:   { top:'#1c4258', bottom:'#0c1e28', terrainA:'#4f8ab0', terrainB:'#2f5f7e', grid:'rgba(159,216,255,0.14)', border:'#3f7294', decor:'icecrystal',   decorColor:'#bfe6ff', secondaryColor:'#7cc4e8', landmark:'icespire' },
+  tormenta:  { top:'#4a4318', bottom:'#221f0a', terrainA:'#8a7d2e', terrainB:'#5e5518', grid:'rgba(255,228,90,0.12)', border:'#7a6e28', decor:'stormshard',   decorColor:'#ffe45a', secondaryColor:'#3a3612', landmark:'watchtower' },
+  abismo:    { top:'#241a3e', bottom:'#0f0a1e', terrainA:'#4a3578', terrainB:'#2e2050', grid:'rgba(155,122,224,0.12)', border:'#4a3578', decor:'starpoint',    decorColor:'#c9b6ff', secondaryColor:'#3a2a5c', landmark:'monolith' },
+  trono:     { top:'#4a3a14', bottom:'#221a08', terrainA:'#8a6f2e', terrainB:'#5e4c18', grid:'rgba(224,201,160,0.14)', border:'#8a6f2e', decor:'crownmotif',   decorColor:'#ffd97a', secondaryColor:'#6b5220', landmark:'thronesil' },
+};
+
+// Deterministic per-floor decoration layout, generated once when a stage loads (see startStage)
+// and stored on game.arenaDecor — kept stable across the whole floor instead of reshuffling every
+// frame, and reused as-is if you ever revisit the same floor number.
+function generateArenaDecor(stage, b){
+  const key = stage ? stage.key : 'cripta';
+  const isFinal = !!(stage && stage.floor === TOWER_MAX_FLOOR);
+  let seed = ((stage ? stage.floor : 1) * 9301 + 49297) % 233280;
+  const rnd = ()=>{ seed = (seed*9301+49297)%233280; return seed/233280; };
+
+  // soft organic terrain blobs — replaces the old flat linear gradient with patches of light/dark
+  // ground tone, so the floor reads as actual uneven terrain instead of a flat color
+  const terrain = [];
+  for(let i=0;i<7;i++){
+    terrain.push({
+      x: b.x + rnd()*b.w, y: b.y + rnd()*b.h,
+      r: 90 + rnd()*160, dark: rnd()<0.5, a: 0.25+rnd()*0.25,
+    });
+  }
+
+  const primaryCount = key==='abismo' ? 42 : 11;
+  const items = [];
+  for(let i=0;i<primaryCount;i++){
+    items.push({
+      x: b.x + 30 + rnd()*(b.w-60),
+      y: b.y + 30 + rnd()*(b.h-60),
+      s: 0.75 + rnd()*0.95,
+      r: rnd()*Math.PI*2,
+      seed: rnd(),
+    });
+  }
+
+  const secondaryCount = 6;
+  const patches = [];
+  for(let i=0;i<secondaryCount;i++){
+    patches.push({
+      x: b.x + 40 + rnd()*(b.w-80),
+      y: b.y + 40 + rnd()*(b.h-80),
+      s: 0.8 + rnd()*0.7,
+      r: rnd()*Math.PI*2,
+      seed: rnd(),
+    });
+  }
+
+  // one background landmark structure, tucked into whichever corner keeps it clear of the
+  // portal/altar that spawns near the arena's center
+  const corners = [
+    { x:b.x+b.w*0.14, y:b.y+b.h*0.22 }, { x:b.x+b.w*0.86, y:b.y+b.h*0.22 },
+    { x:b.x+b.w*0.14, y:b.y+b.h*0.82 }, { x:b.x+b.w*0.86, y:b.y+b.h*0.82 },
+  ];
+  const landmark = corners[Math.floor(rnd()*corners.length)];
+  landmark.s = 1.0 + rnd()*0.4;
+
+  return { key, isFinal, terrain, items, patches, landmark };
+}
+
+// Small ambient cluster props — one per zone theme — scattered across the floor.
+function drawArenaDecorItem(type, item, color){
+  ctx.save();
+  ctx.translate(item.x, item.y);
+  ctx.rotate(item.r*0.25); // gentle tilt only — most of these read as "standing" props, not debris
+  ctx.scale(item.s, item.s);
+  ctx.globalAlpha = 0.55 + item.seed*0.3;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 2;
+  if(type==='cactus'){
+    const dark = '#345c29';
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-6,-26,12,32,6) : ctx.rect(-6,-26,12,32); ctx.fill();
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-16,-10,10,16,5) : ctx.rect(-16,-10,10,16); ctx.fill();
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(6,-16,10,16,5) : ctx.rect(6,-16,10,16); ctx.fill();
+    ctx.fillStyle = color;
+    ctx.globalAlpha *= 0.9;
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-4,-24,4,28,3) : ctx.rect(-4,-24,4,28); ctx.fill();
+  } else if(type==='reeds'){
+    for(let k=-1;k<=1;k++){
+      ctx.beginPath();
+      ctx.moveTo(k*6,10);
+      ctx.quadraticCurveTo(k*10,-8, k*4,-22-Math.abs(k)*3);
+      ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(k*4,-24-Math.abs(k)*3,2.6,5,0,0,Math.PI*2); ctx.fill();
+    }
+  } else if(type==='rockspike'){
+    ctx.beginPath();
+    ctx.moveTo(-12,10); ctx.lineTo(-9,-14); ctx.lineTo(0,-24); ctx.lineTo(8,-10); ctx.lineTo(13,10);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#ff8a5a'; ctx.globalAlpha = 0.7+0.25*Math.sin(performance.now()/300+item.seed*10);
+    ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.moveTo(-2,6); ctx.lineTo(2,-6); ctx.lineTo(-1,-16); ctx.stroke();
+  } else if(type==='flowercluster'){
+    [[-9,4,0.8],[9,6,0.7],[0,-6,1]].forEach(([fx,fy,fs])=>{
+      ctx.save(); ctx.translate(fx,fy); ctx.scale(fs,fs);
+      for(let k=0;k<5;k++){
+        const a = (k/5)*Math.PI*2;
+        ctx.beginPath(); ctx.ellipse(Math.cos(a)*6,Math.sin(a)*6,4.4,2.6,a,0,Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha = 0.85; ctx.fillStyle='#ffe6a0';
+      ctx.beginPath(); ctx.arc(0,0,2.2,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = color;
+      ctx.restore();
+    });
+  } else if(type==='mirrorshards'){
+    [[-7,0,1],[7,-4,0.75],[3,7,0.6]].forEach(([mx,my,ms])=>{
+      ctx.save(); ctx.translate(mx,my); ctx.scale(ms,ms);
+      ctx.globalAlpha = 0.35 + 0.3*Math.sin(performance.now()/450 + item.seed*12 + mx);
+      ctx.beginPath(); ctx.moveTo(0,-11); ctx.lineTo(8,0); ctx.lineTo(0,11); ctx.lineTo(-8,0); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    });
+  } else if(type==='twinmotif'){
+    ctx.beginPath(); ctx.arc(-9,0,5,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(9,0,5,0,Math.PI*2); ctx.stroke();
+    ctx.globalAlpha *= 0.6;
+    ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(4,0); ctx.stroke();
+  } else if(type==='icecrystal'){
+    [[-8,0,0.85],[6,3,0.7],[0,-3,1]].forEach(([ix,iy,is])=>{
+      ctx.save(); ctx.translate(ix,iy); ctx.scale(is,is);
+      ctx.beginPath(); ctx.moveTo(0,-16); ctx.lineTo(6,0); ctx.lineTo(0,14); ctx.lineTo(-6,0); ctx.closePath();
+      ctx.globalAlpha=0.45; ctx.fill();
+      ctx.globalAlpha=0.85; ctx.stroke();
+      ctx.restore();
+    });
+  } else if(type==='stormshard'){
+    ctx.beginPath();
+    ctx.moveTo(-4,-17); ctx.lineTo(4,-4); ctx.lineTo(-2,-4); ctx.lineTo(6,17); ctx.lineTo(-2,2); ctx.lineTo(4,2);
+    ctx.closePath(); ctx.globalAlpha *= 0.55+0.3*Math.sin(performance.now()/260+item.seed*9); ctx.fill();
+  } else if(type==='starpoint'){
+    ctx.globalAlpha = 0.4 + item.seed*0.5;
+    ctx.beginPath(); ctx.arc(0,0,1.5,0,Math.PI*2); ctx.fill();
+  } else if(type==='crownmotif'){
+    ctx.beginPath(); ctx.moveTo(-10,10); ctx.lineTo(-6,-6); ctx.lineTo(0,4); ctx.lineTo(6,-10); ctx.lineTo(10,10); ctx.closePath(); ctx.stroke();
+    ctx.globalAlpha *= 0.9; ctx.fillStyle='#fff3c9';
+    ctx.beginPath(); ctx.arc(0,-1,2,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Filled ground patches with a bit of surface detail — puddles, cracked earth, frost, embers —
+// drawn under the standing props so the floor itself feels textured, not just decorated.
+function drawArenaSecondaryPatch(type, item, color){
+  ctx.save();
+  ctx.translate(item.x, item.y);
+  ctx.scale(item.s, item.s);
+  ctx.globalAlpha = 0.22 + item.seed*0.12;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  if(type==='crackedearth'){
+    ctx.beginPath(); ctx.ellipse(0,0,42,24,item.r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha *= 1.8; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(-24,-4); ctx.lineTo(-4,4); ctx.lineTo(8,-6); ctx.lineTo(22,6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-4,4); ctx.lineTo(-8,16); ctx.stroke();
+  } else if(type==='puddle'){
+    ctx.beginPath(); ctx.ellipse(0,0,38,18,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha *= 1.5; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.ellipse(0,0,20,9,0,0,Math.PI*2); ctx.stroke();
+  } else if(type==='lavacrack'){
+    ctx.beginPath(); ctx.ellipse(0,0,40,20,item.r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=0.7+0.25*Math.sin(performance.now()/260+item.seed*11); ctx.fillStyle='#ff8a5a';
+    ctx.beginPath(); ctx.moveTo(-26,4); ctx.lineTo(-6,-6); ctx.lineTo(4,4); ctx.lineTo(24,-4); ctx.lineTo(26,2); ctx.lineTo(4,10); ctx.lineTo(-6,0); ctx.lineTo(-24,10); ctx.closePath(); ctx.fill();
+  } else if(type==='lightpatch'){
+    ctx.beginPath(); ctx.arc(0,0,34,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha *= 1.6; ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
+  } else if(type==='mirrorsheen'){
+    ctx.beginPath(); ctx.ellipse(0,0,36,20,item.r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 0.3+0.25*Math.sin(performance.now()/500+item.seed*8); ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.ellipse(0,0,22,4,item.r+0.5,0,Math.PI*2); ctx.fill();
+  } else if(type==='heartpetal'){
+    ctx.beginPath(); ctx.ellipse(0,0,30,18,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha *= 1.6;
+    [[-8,-2],[6,3],[0,8]].forEach(([hx,hy])=>{ ctx.beginPath(); ctx.arc(hx,hy,3,0,Math.PI*2); ctx.fill(); });
+  } else if(type==='frostpatch'){
+    ctx.beginPath(); ctx.ellipse(0,0,36,20,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha *= 1.6; ctx.lineWidth=1.2;
+    for(let k=0;k<5;k++){ const a=(k/5)*Math.PI*2; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*22,Math.sin(a)*11); ctx.stroke(); }
+  } else if(type==='scorchedpatch'){
+    ctx.beginPath(); ctx.ellipse(0,0,38,20,item.r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=0.6+0.3*Math.sin(performance.now()/300+item.seed*7); ctx.fillStyle='#ffb347';
+    ctx.beginPath(); ctx.arc(-6,-2,3,0,Math.PI*2); ctx.arc(8,4,2.4,0,Math.PI*2); ctx.fill();
+  } else if(type==='voidcrack'){
+    ctx.beginPath(); ctx.ellipse(0,0,34,20,item.r,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha *= 1.7; ctx.lineWidth=1.2;
+    for(let k=0;k<4;k++){ const a=(k/4)*Math.PI*2+item.r; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*20,Math.sin(a)*12); ctx.stroke(); }
+  } else if(type==='goldinlay'){
+    ctx.beginPath(); ctx.ellipse(0,0,34,20,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha *= 1.7; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.ellipse(0,0,18,10,0,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// One background landmark per floor — a big, low-opacity structural silhouette that gives the
+// place an identity, sitting behind everything else and well clear of the portal/altar.
+function drawArenaLandmark(type, item, theme){
+  ctx.save();
+  ctx.translate(item.x, item.y);
+  ctx.scale(item.s, item.s);
+  ctx.globalAlpha = 0.28;
+  ctx.fillStyle = theme.border;
+  ctx.strokeStyle = theme.border;
+  ctx.lineWidth = 3;
+  if(type==='ruins'){
+    ctx.fillRect(-48,-70,16,140); ctx.fillRect(32,-70,16,140);
+    ctx.beginPath(); ctx.moveTo(-48,-70); ctx.lineTo(0,-108); ctx.lineTo(48,-70); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=0.5; ctx.fillStyle='#0a0710';
+    ctx.beginPath(); ctx.moveTo(-20,60); ctx.lineTo(-20,-30); ctx.quadraticCurveTo(0,-55,20,-30); ctx.lineTo(20,60); ctx.closePath(); ctx.fill();
+  } else if(type==='deadtree'){
+    ctx.beginPath(); ctx.moveTo(0,80); ctx.lineTo(-6,-20); ctx.lineTo(-36,-70); ctx.moveTo(-6,-20); ctx.lineTo(22,-64);
+    ctx.moveTo(-6,-20); ctx.lineTo(-4,-90); ctx.moveTo(-20,-40); ctx.lineTo(-42,-52); ctx.moveTo(10,-42); ctx.lineTo(34,-38);
+    ctx.lineWidth=6; ctx.stroke();
+  } else if(type==='brokenpillar'){
+    ctx.fillRect(-18,-40,36,120);
+    ctx.beginPath(); ctx.moveTo(-24,-40); ctx.lineTo(-6,-70); ctx.lineTo(14,-52); ctx.lineTo(24,-40); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=0.55; ctx.fillStyle='#ff8a5a';
+    ctx.beginPath(); ctx.arc(0,60,10,0,Math.PI*2); ctx.fill();
+  } else if(type==='archvines'){
+    ctx.lineWidth=16; ctx.beginPath(); ctx.arc(0,20,70,Math.PI,0); ctx.stroke();
+    ctx.globalAlpha=0.45; ctx.strokeStyle='#7fbf6a'; ctx.lineWidth=3;
+    for(let k=0;k<6;k++){ const a=Math.PI+ (k/5)*Math.PI; ctx.beginPath(); ctx.moveTo(Math.cos(a)*70,20+Math.sin(a)*70); ctx.lineTo(Math.cos(a)*70,20+Math.sin(a)*70+22); ctx.stroke(); }
+  } else if(type==='brokenmirror'){
+    ctx.strokeRect(-40,-70,80,140);
+    ctx.globalAlpha=0.35; ctx.fillStyle='#cfd6e8';
+    ctx.beginPath(); ctx.moveTo(-36,-66); ctx.lineTo(10,10); ctx.lineTo(-36,40); ctx.closePath(); ctx.fill();
+  } else if(type==='twinstatues'){
+    [-46,46].forEach(sx=>{
+      ctx.beginPath(); ctx.ellipse(sx,-10,16,40,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(sx,-56,14,0,Math.PI*2); ctx.fill();
+    });
+  } else if(type==='icespire'){
+    ctx.beginPath(); ctx.moveTo(-30,70); ctx.lineTo(-10,-90); ctx.lineTo(14,-60); ctx.lineTo(30,70); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=0.4; ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(-10,-90); ctx.lineTo(-4,40); ctx.stroke();
+  } else if(type==='watchtower'){
+    ctx.fillRect(-22,-20,44,110);
+    ctx.beginPath(); ctx.moveTo(-30,-20); ctx.lineTo(0,-56); ctx.lineTo(30,-20); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=0.6; ctx.strokeStyle='#ffe45a'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(0,-56); ctx.lineTo(-8,-30); ctx.lineTo(4,-30); ctx.lineTo(-6,0); ctx.stroke();
+  } else if(type==='monolith'){
+    ctx.beginPath(); ctx.moveTo(-20,60); ctx.lineTo(-26,-70); ctx.lineTo(0,-96); ctx.lineTo(24,-64); ctx.lineTo(20,60); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=0.35; ctx.strokeStyle='#c9b6ff'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(-10,40); ctx.lineTo(-14,-50); ctx.stroke();
+  } else if(type==='thronesil'){
+    ctx.fillRect(-40,-20,80,90);
+    ctx.fillRect(-48,-80,16,80); ctx.fillRect(32,-80,16,80);
+    ctx.globalAlpha=0.55; ctx.fillStyle='#ffd97a';
+    ctx.beginPath(); ctx.arc(-40,-80,6,0,Math.PI*2); ctx.arc(40,-80,6,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// maps each zone's primary prop type to the ground-patch type that belongs with it
+function secondaryDecorFor(decorType){
+  const map = {
+    cactus:'crackedearth', reeds:'puddle', rockspike:'lavacrack', flowercluster:'lightpatch',
+    mirrorshards:'mirrorsheen', twinmotif:'heartpetal', icecrystal:'frostpatch',
+    stormshard:'scorchedpatch', starpoint:'voidcrack', crownmotif:'goldinlay',
+  };
+  return map[decorType] || 'crackedearth';
+}
+
 function drawArena(b){
-  ctx.fillStyle = '#120b1c';
+  const stage = game.currentStage;
+  const theme = ZONE_THEMES[stage ? stage.key : 'cripta'] || ZONE_THEMES.cripta;
+  const isFinal = !!(stage && stage.floor === TOWER_MAX_FLOOR);
+  const decor = game.arenaDecor;
+
+  const bgGrad = ctx.createLinearGradient(b.x,b.y,b.x,b.y+b.h);
+  bgGrad.addColorStop(0, isFinal ? '#3a1a20' : theme.top);
+  bgGrad.addColorStop(1, isFinal ? '#180a0e' : theme.bottom);
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(b.x,b.y,b.w,b.h);
-  ctx.strokeStyle = 'rgba(210,74,255,0.12)';
+
+  // soft organic terrain blobs — patches of lighter/darker ground tone so the floor reads as
+  // uneven natural terrain instead of one flat color
+  if(decor && decor.terrain){
+    ctx.save();
+    decor.terrain.forEach(t=>{
+      const tg = ctx.createRadialGradient(t.x,t.y,0,t.x,t.y,t.r);
+      const c = t.dark ? theme.terrainB : theme.terrainA;
+      tg.addColorStop(0, c); tg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = t.a;
+      ctx.fillStyle = tg;
+      ctx.beginPath(); ctx.arc(t.x,t.y,t.r,0,Math.PI*2); ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = theme.grid;
   ctx.lineWidth=1;
   const grid=40;
   for(let x=b.x; x<b.x+b.w; x+=grid){
@@ -5938,13 +7823,43 @@ function drawArena(b){
   for(let y=b.y; y<b.y+b.h; y+=grid){
     ctx.beginPath(); ctx.moveTo(b.x,y); ctx.lineTo(b.x+b.w,y); ctx.stroke();
   }
-  ctx.strokeStyle = '#382a4a';
-  ctx.lineWidth=3;
+
+  // background landmark structure — drawn early so props and gameplay elements always read on top
+  if(decor && decor.landmark){
+    drawArenaLandmark(theme.landmark, decor.landmark, theme);
+  }
+
+  // filled ground patches (puddles, cracks, frost...), then standing props on top of them
+  if(decor && decor.patches){
+    decor.patches.forEach(p2=> drawArenaSecondaryPatch(secondaryDecorFor(theme.decor), p2, theme.secondaryColor));
+  }
+  if(decor && decor.items){
+    decor.items.forEach(item=> drawArenaDecorItem(theme.decor, item, theme.decorColor));
+  }
+
+  // floor 100 gets an extra, more ceremonial treatment on top of the throne zone's usual theme
+  if(isFinal){
+    ctx.save();
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = '#ffcb47';
+    const pillarW = 10;
+    ctx.fillRect(b.x+18, b.y, pillarW, b.h);
+    ctx.fillRect(b.x+b.w-18-pillarW, b.y, pillarW, b.h);
+    ctx.restore();
+    const glow = ctx.createRadialGradient(b.x+b.w/2,b.y+b.h/2,10,b.x+b.w/2,b.y+b.h/2,Math.max(b.w,b.h)*0.55);
+    glow.addColorStop(0,'rgba(255,203,71,0.12)');
+    glow.addColorStop(1,'rgba(255,203,71,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+  }
+
+  ctx.strokeStyle = isFinal ? '#ffcb47' : theme.border;
+  ctx.lineWidth = isFinal ? 4 : 3;
   ctx.strokeRect(b.x,b.y,b.w,b.h);
   // vignette
   const grad = ctx.createRadialGradient(b.x+b.w/2,b.y+b.h/2,Math.min(b.w,b.h)*0.2,b.x+b.w/2,b.y+b.h/2,Math.max(b.w,b.h)*0.7);
   grad.addColorStop(0,'rgba(0,0,0,0)');
-  grad.addColorStop(1,'rgba(0,0,0,0.55)');
+  grad.addColorStop(1, isFinal ? 'rgba(20,0,10,0.6)' : 'rgba(0,0,0,0.55)');
   ctx.fillStyle=grad;
   ctx.fillRect(b.x,b.y,b.w,b.h);
 }
@@ -6462,6 +8377,21 @@ function drawBossCores(cores){
   });
 }
 
+function drawClosingBarrier(boss){
+  const b = arenaBounds();
+  ctx.save();
+  ctx.globalAlpha = 0.8;
+  ctx.strokeStyle = '#fff05a';
+  ctx.lineWidth = 14;
+  ctx.beginPath(); ctx.moveTo(boss.barrierLeftX,b.y); ctx.lineTo(boss.barrierLeftX,b.y+b.h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(boss.barrierRightX,b.y); ctx.lineTo(boss.barrierRightX,b.y+b.h); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(boss.barrierLeftX,b.y); ctx.lineTo(boss.barrierLeftX,b.y+b.h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(boss.barrierRightX,b.y); ctx.lineTo(boss.barrierRightX,b.y+b.h); ctx.stroke();
+  ctx.restore();
+}
 function drawBossTelegraphIndicator(boss){
   const tg = boss.telegraph;
   if(!tg) return;
@@ -6471,17 +8401,28 @@ function drawBossTelegraphIndicator(boss){
   const b = arenaBounds();
 
   if(tg.type==='boneGrab'){
-    // the wind covers the whole room and never lets up on its own — the only tell for the safe
-    // pocket is that the wind just doesn't reach there. No marker, no label; you have to notice
-    // the one patch that isn't being pulled at
     const windProg = clamp((tg.elapsed||0)/(tg.rampDur||3.2), 0, 1);
     ctx.save();
     ctx.globalAlpha = 0.05+windProg*0.12;
     ctx.fillStyle = color;
     ctx.fillRect(b.x,b.y,b.w,b.h);
     ctx.restore();
+    // the safe pocket now gets an explicit hollow ring marker — a real, readable dodge target
+    // instead of only being noticeable as "the one spot the wind particles don't reach"
+    if(tg.safeX!==undefined){
+      ctx.save();
+      const pulse = 0.55+Math.sin(performance.now()/180)*0.25;
+      ctx.globalAlpha = pulse;
+      ctx.strokeStyle = '#8bff6b';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(tg.safeX,tg.safeY,tg.safeR,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha = pulse*0.5;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(tg.safeX,tg.safeY,tg.safeR*0.6,0,Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
     // streaking wind particles drifting toward the boss, arena-wide — skipped inside the safe
-    // pocket so it visibly sits calmer than everywhere else, without calling attention to it
+    // pocket so it visibly sits calmer than everywhere else, on top of the explicit ring above
     if(Math.random()<0.6){
       const ang0 = Math.random()*Math.PI*2;
       const rr = 60+Math.random()*Math.max(b.w,b.h)*0.6;
@@ -6638,6 +8579,53 @@ function drawBossTelegraphIndicator(boss){
       ctx.moveTo(x1-3,y1); ctx.lineTo(x1+3,y1);
     }
     ctx.stroke();
+    ctx.restore();
+  } else if(tg.type==='pincerScan'){
+    const elapsedPD = tg.dur - tg.t;
+    if(elapsedPD > tg.hotAt){
+      ctx.save();
+      ctx.globalAlpha=0.85;
+      ctx.strokeStyle = '#fff05a';
+      ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.moveTo(b.x,tg.laserY); ctx.lineTo(b.x+b.w,tg.laserY); ctx.stroke();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(b.x,tg.laserY); ctx.lineTo(b.x+b.w,tg.laserY); ctx.stroke();
+      ctx.restore();
+    }
+  } else if(tg.type==='desperateRush'){
+    ctx.save();
+    ctx.globalAlpha = 0.5+Math.sin(performance.now()/70)*0.3;
+    ctx.strokeStyle = '#ff3d3d';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(tg.lockX,tg.lockY,22,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tg.lockX-14,tg.lockY); ctx.lineTo(tg.lockX+14,tg.lockY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tg.lockX,tg.lockY-14); ctx.lineTo(tg.lockX,tg.lockY+14); ctx.stroke();
+    ctx.restore();
+  } else if(tg.type==='energyBond'){
+    const elapsedED = tg.dur - tg.t;
+    if(elapsedED > tg.hotAt && boss.twin && boss.twin.alive){
+      ctx.save();
+      ctx.globalAlpha=0.75;
+      ctx.strokeStyle = boss.def.color;
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(boss.x, boss.y); ctx.lineTo(boss.twin.x, boss.twin.y); ctx.stroke();
+      // the safe passage is the whole strip between the two eyes at bondGapY, not just a single
+      // point in the middle — draw it as a band so that reads clearly
+      ctx.globalAlpha=0.85;
+      ctx.fillStyle='#fff';
+      ctx.fillRect(boss.x-16, tg.bondGapY-40, (boss.twin.x-boss.x)+32, 80);
+      ctx.restore();
+    }
+  } else if(tg.type==='predictiveLightning'){
+    const elapsedLD = tg.dur - tg.t;
+    const pastLock = elapsedLD >= tg.hotAt;
+    ctx.save();
+    ctx.globalAlpha = pastLock ? 0.9 : 0.5+Math.sin(performance.now()/80)*0.3;
+    ctx.strokeStyle = pastLock ? '#ff3d3d' : '#fff05a';
+    ctx.lineWidth = pastLock ? 4 : 2;
+    ctx.setLineDash(pastLock?[]:[6,6]);
+    ctx.beginPath(); ctx.moveTo(tg.lockX,b.y); ctx.lineTo(tg.lockX,b.y+b.h); ctx.stroke();
+    ctx.setLineDash([]);
     ctx.restore();
   } else if(GROUND_SELF_ATTACKS.includes(tg.type)){
     const maxR = tg.type==='slam' ? 170 : 150;

@@ -18,15 +18,32 @@
     <div class="title-main">DESCENSO</div>
     <div class="subtitle">No hay fondo. Cada puerta guarda un altar, y cada altar despierta a algo
       que no debería despertar. Sobrevive tanto como puedas y desbloquea nuevos héroes por el camino.</div>
-    <div class="roster" id="roster"></div>
-    <div class="eyebrow" style="margin-top:30px;">Habilidades Prohibidas · tecla R · caída rara de jefes</div>
-    <div class="ultimates-row" id="ultimates-row"></div>
 
-    <div class="eyebrow" style="margin-top:30px;">Altar del Hogar · Esencia: <span id="essence-count">0</span> · Récord: Etapa <span id="best-stage-count">0</span></div>
-    <div class="ultimates-row" id="home-altar-row"></div>
+    <div class="menu-tabs" id="menu-tabs">
+      <button class="menu-tab active" data-tab="personajes">Personajes</button>
+      <button class="menu-tab" data-tab="habilidades">Habilidades Prohibidas</button>
+      <button class="menu-tab" data-tab="altar">Altar del Hogar</button>
+      <button class="menu-tab" data-tab="pactos">Pactos de Riesgo</button>
+    </div>
 
-    <div class="eyebrow" style="margin-top:30px;">Pactos de Riesgo (opcional)</div>
-    <div class="route-row" id="pacts-row"></div>
+    <div class="menu-tab-panel" data-tab="personajes">
+      <div class="roster" id="roster"></div>
+    </div>
+
+    <div class="menu-tab-panel hidden" data-tab="habilidades">
+      <div class="eyebrow">Habilidades Prohibidas · tecla R · caída rara de jefes</div>
+      <div class="ultimates-row" id="ultimates-row"></div>
+    </div>
+
+    <div class="menu-tab-panel hidden" data-tab="altar">
+      <div class="eyebrow">Altar del Hogar · Esencia: <span id="essence-count">0</span> · Récord: Etapa <span id="best-stage-count">0</span></div>
+      <div class="ultimates-row" id="home-altar-row"></div>
+    </div>
+
+    <div class="menu-tab-panel hidden" data-tab="pactos">
+      <div class="eyebrow">Pactos de Riesgo (opcional)</div>
+      <div class="route-row" id="pacts-row"></div>
+    </div>
 
     <div class="start-row">
       <button class="btn" id="btn-start" disabled>Descender</button>
