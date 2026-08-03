@@ -250,6 +250,80 @@ function loadProgress(){
 }
 loadProgress(); // pulls back whatever was unlocked/earned last time, so a page refresh doesn't wipe it
 
+// ---------- single-slot run save/continue: pause mid-run, come back later ----------
+// Only ever one saved run at a time — saving again just overwrites it. Loading it consumes it
+// (so a stale save can't be reloaded twice by mistake); save again from pause if you want to
+// preserve further progress.
+const SAVED_RUN_KEY = 'descenso_savedrun_v1';
+function findItemById(id){
+  return ITEM_POOL.common.find(it=>it.id===id) || ITEM_POOL.rare.find(it=>it.id===id) ||
+    ITEM_POOL.epic.find(it=>it.id===id) || CURSED_ITEMS.find(it=>it.id===id) ||
+    Object.values(BOSS_ITEMS).find(it=>it.id===id) || null;
+}
+function hasSavedRun(){
+  try{ return !!localStorage.getItem(SAVED_RUN_KEY); }catch(e){ return false; }
+}
+function saveRun(){
+  if(!game || !game.player) return false;
+  const p = game.player;
+  const snapshot = {
+    heroId: p.def.id,
+    pacts: {...selectedPacts},
+    stageIndex: game.stageIndex,
+    gold: game.gold,
+    kills: game.kills,
+    stats: {...game.stats},
+    player: {
+      hp:p.hp, maxHp:p.maxHp, dmgMult:p.dmgMult, speedMult:p.speedMult, speedFlat:p.speedFlat,
+      cdMult:p.cdMult, armor:p.armor, critChance:p.critChance, lifesteal:p.lifesteal, regen:p.regen,
+      curseDmgTakenMult:p.curseDmgTakenMult, goldMult:p.goldMult, charLevel:p.charLevel,
+      itemIds: p.items.map(it=>it.id),
+      relics:{...p.relics}, families:{...p.families}, synergiesUnlocked:{...p.synergiesUnlocked},
+      phoenixUsed:p.phoenixUsed, stance:p.stance,
+    },
+    savedAt: Date.now(),
+  };
+  try{ localStorage.setItem(SAVED_RUN_KEY, JSON.stringify(snapshot)); return true; }
+  catch(e){ return false; } // storage unavailable/full — save silently fails rather than crashing
+}
+function loadSavedRun(){
+  try{
+    const raw = localStorage.getItem(SAVED_RUN_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; } // corrupted save — treat as if there wasn't one
+}
+function clearSavedRun(){
+  try{ localStorage.removeItem(SAVED_RUN_KEY); }catch(e){ /* ignore */ }
+}
+function continueSavedRun(){
+  const snap = loadSavedRun();
+  if(!snap) return;
+  const hero = HEROES[snap.heroId];
+  if(!hero) return; // hero id no longer exists for some reason — nothing sane to resume into
+  selectedHero = hero;
+  selectedPacts = snap.pacts || {};
+  game = newGame();
+  const p = game.player;
+  Object.assign(p, snap.player);
+  p.items = (snap.player.itemIds||[]).map(id=>findItemById(id)).filter(Boolean);
+  delete p.itemIds;
+  game.stageIndex = snap.stageIndex;
+  game.gold = snap.gold;
+  game.kills = snap.kills;
+  game.stats = snap.stats || game.stats;
+  clearSavedRun();
+  syncCharacterLevel(p, game.stageIndex);
+  hideScreen('screen-menu');
+  showScreen('screen-stage');
+  setStageIntro(game.stageIndex);
+}
+function refreshContinueButton(){
+  const btn = $('btn-continue-run');
+  if(!btn) return;
+  btn.classList.toggle('hidden', !hasSavedRun());
+}
+refreshContinueButton();
+
 function checkAchievements(){
   if(!game) return;
   ACHIEVEMENTS.forEach(a=>{
@@ -718,8 +792,8 @@ const CHEST_TIERS = {
   epic:   { label:'Épico', costMult:4,   color:'#d24aff', glow:'rgba(210,74,255,0.55)', wood:'#3a1a4a' },
 };
 
-// ---------- traveling merchant: every 5 floors (5,15,25...95), offers a curated choice of 3 items ----------
-const MERCHANT_INTERVAL = 5;
+// ---------- traveling merchant: every 3 floors (3,6,9...), offers a curated choice of 3 items ----------
+const MERCHANT_INTERVAL = 3;
 function isMerchantFloor(stageIndex){
   const floor = stageIndex+1;
   return floor%MERCHANT_INTERVAL===0 && floor%10!==0 && floor<TOWER_MAX_FLOOR;
@@ -995,7 +1069,7 @@ function freshPlayerStats(heroDef){
 // ---------- character level scaling ----------
 // Each hero grows in whichever stat defines their class (melee -> HP, caster -> damage, etc,
 // see the `scaling` field on each HEROES entry). Level starts at 1 each run and rises with depth.
-const LEVEL_FLOORS_PER_STEP = 5; // one level every 5 floors, in sync with the merchant cadence
+const LEVEL_FLOORS_PER_STEP = 5; // one level every 5 floors (independent of the merchant's own cadence)
 function characterLevelForFloorIndex(stageIndex){
   return 1 + Math.floor(stageIndex / LEVEL_FLOORS_PER_STEP);
 }
@@ -1124,7 +1198,49 @@ function buildUltimates(){
       </div>`;
   }).join('');
 }
+const FAMILY_COLOR_VAR = { ofensiva:'--ember', vital:'--blood', mistica:'--arcane', veloz:'--toxic' };
+function itemFamilyOf(id){
+  for(const fam of Object.keys(ITEM_FAMILIES)){
+    if(ITEM_FAMILIES[fam].includes(id)) return fam;
+  }
+  return null;
+}
+function compendiumItemHTML(it, cursed){
+  const fam = itemFamilyOf(it.id);
+  const fcAttr = fam ? ` style="--fc:var(${FAMILY_COLOR_VAR[fam]})"` : '';
+  return `<div class="compendium-item${cursed?' cursed':''}"${fcAttr}>
+      <div class="ic">${it.icon}</div>
+      <div class="body"><div class="nm">${it.name}</div><div class="ds">${it.desc}</div></div>
+    </div>`;
+}
+function buildCompendium(){
+  const familiesHTML = Object.keys(ITEM_FAMILIES).map(fam=>{
+    const syn = SYNERGIES[fam];
+    return `<div class="family-card" style="--fc:var(${FAMILY_COLOR_VAR[fam]})">
+        <div class="nm">${syn.name}</div>
+        <div class="ds">${syn.desc}</div>
+        <div class="thr">${SYNERGY_THRESHOLD} objetos de esta familia</div>
+      </div>`;
+  }).join('');
+
+  const sections = [
+    ['Objetos Comunes', ITEM_POOL.common, false],
+    ['Objetos Raros', ITEM_POOL.rare, false],
+    ['Objetos Épicos', ITEM_POOL.epic, false],
+    ['Objetos Malditos · cofres malditos', CURSED_ITEMS, true],
+    [`Reliquias · caída de jefe (${Math.round(RELIC_DROP_CHANCE*100)}%)`, RELICS, false],
+    ['Objetos Únicos de Jefe', Object.values(BOSS_ITEMS), false],
+    ['Pociones de Combate', POTIONS, false],
+  ];
+  const sectionsHTML = sections.map(([title, list, cursed])=>{
+    const itemsHTML = list.map(it=> compendiumItemHTML(it, cursed)).join('');
+    return `<div class="compendium-section-title">${title}</div><div class="compendium-grid">${itemsHTML}</div>`;
+  }).join('');
+
+  $('compendium').innerHTML = `<div class="family-row">${familiesHTML}</div>` + sectionsHTML;
+}
 buildRoster();
+buildCompendium();
 buildUltimates();
 buildHomeAltar();
 buildPacts();
@@ -1173,6 +1289,12 @@ $('btn-retry').addEventListener('click', ()=>{
 $('btn-menu').addEventListener('click', ()=>{ resetToMenu(); });
 $('btn-resume').addEventListener('click', ()=>{ togglePause(); });
 $('btn-pause-menu').addEventListener('click', ()=>{ resetToMenu(); });
+$('btn-save-quit').addEventListener('click', ()=>{
+  const ok = saveRun();
+  spawnToast(ok ? '💾 Run guardada' : '⚠️ No se pudo guardar la run');
+  resetToMenu();
+});
+$('btn-continue-run').addEventListener('click', ()=>{ continueSavedRun(); });
 
 function resetToMenu(){
   stopLoop();
@@ -1186,6 +1308,7 @@ function resetToMenu(){
   buildUltimates();
   buildHomeAltar();
   buildPacts();
+  refreshContinueButton();
 }
 
 function showScreen(id){ $(id).classList.remove('hidden'); }
@@ -1236,6 +1359,7 @@ function startStage(i){
   game.arenaDecor = generateArenaDecor(s, b);
   game.player.x = b.x + b.w/2;
   game.player.y = b.y + b.h/2;
+  game.player.hp = game.player.maxHp; // full heal on every floor transition, including floor 1
   game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[];
   game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.sacrificeAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
   game.phase='combat';
@@ -1359,13 +1483,19 @@ function pickBossKindForStage(i){
 function beginBossPhase(){
   game.phase='boss';
   updatePhaseNote();
+  // the traveling merchant is done once the boss fight starts — it used to just stay standing
+  // there for the whole fight since nothing ever cleared it
+  if(merchantOpen) closeMerchant();
+  game.merchant = null;
   const s = game.currentStage;
   const bossKind = pickBossKindForStage(game.stageIndex);
   const def = BOSS_DEFS[bossKind];
   const b = arenaBounds();
   const isTrueFinal = bossKind==='trueFinal';
   const guardianMult = s.isGuardianFloor && !isTrueFinal ? 1.5 : 1; // guardian floors (10, 20, 30...) hit noticeably harder
-  const lateGameHpMult = s.floor > 15 ? 4 : 1; // bosses past floor 15 hit a much steeper HP wall
+  // used to be a hard step (1x through floor 15, then an instant 4x at floor 16) — now it ramps
+  // smoothly from 1x at floor 15 up to 4x by floor 40, then holds at 4x for the rest of the tower
+  const lateGameHpMult = s.floor <= 15 ? 1 : Math.min(4, 1 + (s.floor-15)*(3/25));
   const hp = Math.round(def.hp*s.hpMult*(isTrueFinal?1.3:2.6)*guardianMult*lateGameHpMult);
   let dmg = Math.round(def.dmg*s.dmgMult*guardianMult);
   const hover = bossKind==='empressOfLight';
@@ -1548,9 +1678,13 @@ $('merchant-close') && $('merchant-close').addEventListener('click', closeMercha
 
 function buildInventoryPanel(){
   const p = game.player;
+  // Velocidad used to show only p.speedMult as a ×multiplier, but almost every speed item
+  // (boots, crown, curse_shackle...) grants +flat speed instead, so that multiplier barely moved
+  // even after stacking several speed items. Show the actual resulting move speed instead.
+  const effSpeed = Math.round(Math.min(MAX_PLAYER_SPEED, p.def.speed*p.speedMult + p.speedFlat));
   $('inv-stats').innerHTML = `
     <div>Daño: <b>×${p.dmgMult.toFixed(2)}</b></div>
-    <div>Velocidad: <b>×${p.speedMult.toFixed(2)}</b></div>
+    <div>Velocidad: <b>${effSpeed}</b></div>
     <div>Enfriamiento: <b>×${p.cdMult.toFixed(2)}</b></div>
     <div>Armadura: <b>${Math.round(p.armor*100)}%</b></div>
     <div>Robo de vida: <b>${Math.round(p.lifesteal*100)}%</b></div>

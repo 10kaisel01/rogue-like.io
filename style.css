@@ -98,6 +98,33 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 .roster{
   display:flex; gap:26px; margin-top:20px; flex-wrap:wrap; justify-content:center; max-width:1100px;
 }
+.compendium{ width:100%; max-width:980px; display:flex; flex-direction:column; gap:10px; }
+.family-row{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-bottom:8px; }
+.family-card{
+  width:210px; padding:14px 16px; border-radius:4px; text-align:left;
+  background:linear-gradient(180deg, var(--panel-2), var(--panel)); border:1px solid var(--fc, var(--line));
+  border-left:4px solid var(--fc, var(--line));
+}
+.family-card .nm{ font-family:var(--font-title); font-size:13px; color:var(--bone); margin-bottom:3px; }
+.family-card .ds{ font-family:var(--font-mono); font-size:10.5px; color:var(--bone-dim); line-height:1.4; margin-bottom:6px; }
+.family-card .thr{ font-family:var(--font-mono); font-size:9.5px; color:var(--fc, var(--bone-dim)); letter-spacing:.05em; text-transform:uppercase; }
+.compendium-section-title{
+  font-family:var(--font-mono); letter-spacing:.25em; font-size:10.5px; color:var(--bone-dim);
+  text-transform:uppercase; margin:18px 0 8px; text-align:left; width:100%;
+}
+.compendium-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:8px; width:100%; }
+.compendium-item{
+  display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.25);
+  border:1px solid var(--fc, var(--line)); border-left:3px solid var(--fc, var(--line));
+  border-radius:3px; padding:8px 10px;
+}
+.compendium-item.cursed{ border-color:var(--blood-dim); border-left-color:var(--blood); }
+.compendium-item .ic{ font-size:18px; width:24px; text-align:center; flex-shrink:0; }
+.compendium-item .body{ min-width:0; }
+.compendium-item .nm{ font-family:var(--font-title); font-size:12px; color:var(--bone); }
+.compendium-item .ds{ font-family:var(--font-mono); font-size:10px; color:var(--bone-dim); line-height:1.35; margin-top:1px; }
+.compendium{ padding-bottom:10px; }
+.compendium .compendium-section-title:first-child{ margin-top:4px; }
 .hero-card{
   position:relative;
   width:230px;

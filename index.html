@@ -21,6 +21,7 @@
 
     <div class="menu-tabs" id="menu-tabs">
       <button class="menu-tab active" data-tab="personajes">Personajes</button>
+      <button class="menu-tab" data-tab="objetos">Objetos</button>
       <button class="menu-tab" data-tab="habilidades">Habilidades Prohibidas</button>
       <button class="menu-tab" data-tab="altar">Altar del Hogar</button>
       <button class="menu-tab" data-tab="pactos">Pactos de Riesgo</button>
@@ -28,6 +29,11 @@
 
     <div class="menu-tab-panel" data-tab="personajes">
       <div class="roster" id="roster"></div>
+    </div>
+
+    <div class="menu-tab-panel hidden" data-tab="objetos">
+      <div class="subtitle" style="max-width:640px; margin-top:0;">Reuní 3 objetos de la misma familia (marcados con el mismo color) en una run para activar su sinergia.</div>
+      <div class="compendium" id="compendium"></div>
     </div>
 
     <div class="menu-tab-panel hidden" data-tab="habilidades">
@@ -47,6 +53,7 @@
 
     <div class="start-row">
       <button class="btn" id="btn-start" disabled>Descender</button>
+      <button class="btn ghost hidden" id="btn-continue-run">Continuar Run Guardada</button>
     </div>
     <div class="controls-hint">
       <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> moverse &nbsp; · &nbsp; <kbd>Click</kbd> ataque básico (apunta con el mouse)</div>
@@ -92,8 +99,10 @@
     <div class="title-main" style="font-size:44px;">PAUSA</div>
     <div class="start-row">
       <button class="btn" id="btn-resume">Continuar</button>
+      <button class="btn ghost" id="btn-save-quit">Guardar y salir</button>
       <button class="btn ghost" id="btn-pause-menu">Salir al menú</button>
     </div>
+    <div class="controls-hint" id="save-quit-hint" style="margin-top:16px;">Guarda tu progreso actual (un solo espacio de guardado — pisa cualquier guardado anterior).</div>
   </div>
 
   <!-- HUD -->
