@@ -3331,7 +3331,10 @@ function updateBoss(dt){
       const tgB = boss.telegraph;
       const elapsed = tgB.dur - tgB.t;
       if(elapsed > tgB.hotAt){
-        const sweepProg = clamp((elapsed-tgB.hotAt)/(tgB.dur-tgB.hotAt), 0, 1);
+        // the beam only travels 3/4 of the arena from the edge it charged on, always leaving a
+        // safe strip on the far side — previously it swept edge-to-edge with nowhere safe to stand
+        const sweepLimit = 0.75;
+        const sweepProg = clamp((elapsed-tgB.hotAt)/(tgB.dur-tgB.hotAt), 0, 1)*sweepLimit;
         let beamPos;
         if(tgB.vertical){
           beamPos = tgB.fromStart ? b.x+sweepProg*b.w : b.x+b.w-sweepProg*b.w;
