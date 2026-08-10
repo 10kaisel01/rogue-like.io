@@ -25,6 +25,7 @@
       <button class="menu-tab" data-tab="habilidades">Habilidades Prohibidas</button>
       <button class="menu-tab" data-tab="altar">Altar del Hogar</button>
       <button class="menu-tab" data-tab="pactos">Pactos de Riesgo</button>
+      <button class="menu-tab" data-tab="estadisticas">Estadísticas</button>
     </div>
 
     <div class="menu-tab-panel" data-tab="personajes">
@@ -44,11 +45,20 @@
     <div class="menu-tab-panel hidden" data-tab="altar">
       <div class="eyebrow">Altar del Hogar · Esencia: <span id="essence-count">0</span> · Récord: Etapa <span id="best-stage-count">0</span></div>
       <div class="ultimates-row" id="home-altar-row"></div>
+      <div class="eyebrow" style="margin-top:22px;">Paletas Cosméticas · elegí la que usa cada héroe desde su ficha en Personajes</div>
+      <div class="ultimates-row" id="skins-row"></div>
+      <div class="eyebrow" style="margin-top:22px;">Habilidad de Luz · tecla Shift · se consigue venciendo a El Sol en Ascenso</div>
+      <div class="ultimates-row" id="shift-abilities-row"></div>
     </div>
 
     <div class="menu-tab-panel hidden" data-tab="pactos">
       <div class="eyebrow">Pactos de Riesgo (opcional)</div>
       <div class="route-row" id="pacts-row"></div>
+    </div>
+
+    <div class="menu-tab-panel hidden" data-tab="estadisticas">
+      <div class="eyebrow">Historial de Runs · últimas 20</div>
+      <div class="merchant-list" id="run-history-list"></div>
     </div>
 
     <div class="start-row">
@@ -83,7 +93,27 @@
     <div class="eyebrow">El Abismo calla</div>
     <div class="title-main">HAS DESCENDIDO Y VUELTO</div>
     <div class="panel-box" id="victory-summary"></div>
-    <div class="start-row"><button class="btn" id="btn-victory-restart">Jugar de nuevo</button></div>
+    <div class="start-row">
+      <button class="btn hidden" id="btn-ascend">Ascender hacia la luz</button>
+      <button class="btn ghost" id="btn-victory-restart">Jugar de nuevo</button>
+    </div>
+  </div>
+
+  <!-- ASCENSO: ALTAR DE FE -->
+  <div id="screen-ascenso-altar" class="screen hidden">
+    <div class="eyebrow" id="ascenso-eyebrow">Altar de Fe · Piso 1 / 100</div>
+    <div class="title-main" id="ascenso-title">Larva de Sombra</div>
+    <div class="subtitle" id="ascenso-desc"></div>
+    <div class="subtitle hidden" id="ascenso-construction">Este piso todavía no está construido. Volvé en una próxima actualización.</div>
+    <div class="start-row"><button class="btn" id="btn-enter-ascenso">Entrar</button></div>
+  </div>
+
+  <!-- ASCENSO: MESA DE BOTÍN -->
+  <div id="screen-ascenso-loot" class="screen hidden">
+    <div class="eyebrow">Mesa de Botín</div>
+    <div class="title-main">Elegí 2 de 5</div>
+    <div class="ultimates-row" id="ascenso-loot-row"></div>
+    <div class="start-row"><button class="btn" id="btn-ascenso-loot-confirm" disabled>Confirmar</button></div>
   </div>
 
   <!-- GAME OVER -->
@@ -135,6 +165,7 @@
       <div class="ability-slot"><span class="key">Q</span><span class="ic" id="q-icon">✦</span><div class="cd" id="q-cd" style="display:none"></div></div>
       <div class="ability-slot"><span class="key">E</span><span class="ic" id="e-icon">✦</span><div class="cd" id="e-cd" style="display:none"></div></div>
       <div class="ability-slot ult" id="r-slot" style="display:none;"><span class="key">R</span><span class="ic" id="r-icon">✦</span><div class="cd" id="r-cd" style="display:none"></div></div>
+      <div class="ability-slot ult" id="shift-slot" style="display:none;"><span class="key">⇧</span><span class="ic" id="shift-icon">☀</span><div class="cd" id="shift-cd" style="display:none"></div></div>
       <div class="potion-row" id="potion-row"></div>
     </div>
   </div>
@@ -159,6 +190,7 @@
     </div>
     <div class="inv-stats"><div>Oro: <b id="merchant-gold">0</b></div></div>
     <div class="merchant-list" id="merchant-list"></div>
+    <button class="btn ghost" id="merchant-reroll" style="margin-top:10px; width:100%;">🔄 Tirar de nuevo</button>
   </div>
 </div>
 

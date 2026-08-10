@@ -139,7 +139,7 @@ const HEROES = {
   berserker: {
     id:'berserker', name:'Grum', className:'Berserker', icon:'🪓', accent:'#ff3d3d', glow:'rgba(255,61,61,0.35)',
     hp:220, speed:240, atk:{cd:0.4, dmg:18, range:96, arc:78, kind:'melee'},
-    q:{name:'Giro Salvaje', icon:'🌀', cd:7, desc:'Gira golpeando todo alrededor; más daño cuanta menos vida te queda'},
+    q:{name:'Giro Salvaje', icon:'🌀', cd:7, desc:'Gira golpeando todo alrededor durante 3s; más daño cuanta menos vida te queda'},
     e:{name:'Furia de Sangre', icon:'🩸', cd:14, desc:'Sacrificás vida a cambio de +daño temporal'},
     locked:true, unlockAch:'killStreak300',
     scaling:{stat:'hp', perLevel:0.04},
@@ -196,41 +196,46 @@ const HEROES = {
 
 const ACHIEVEMENTS = [
   { id:'threeBosses', name:'Cazador de Jefes', desc:'Derrota 3 jefes en una misma run', unlocks:'paladin',
-    check: g=> g.stats.bossesThisRun>=3 },
+    check: g=> g.stats.bossesThisRun>=3, target:3, progressVal: g=> g.stats.bossesThisRun },
   { id:'depth6', name:'Descenso Profundo', desc:'Alcanza la etapa 6', unlocks:'nigromante',
-    check: g=> g.stats.stageReached>=6 },
+    check: g=> g.stats.stageReached>=6, target:6, progressVal: g=> g.stats.stageReached },
   { id:'noHitBoss', name:'Filo de Cristal', desc:'Derrota un jefe sin recibir daño en esa pelea', unlocks:'vidrio',
-    check: g=> g.stats.noHitBoss===true },
+    check: g=> g.stats.noHitBoss===true, target:1, progressVal: g=> g.stats.noHitBoss?1:0 },
   { id:'tankyRun', name:'Muro Viviente', desc:'Alcanza 300 de HP máxima en una run', unlocks:'coloso',
-    check: g=> g.player.maxHp>=300 },
+    check: g=> g.player.maxHp>=300, target:300, progressVal: g=> Math.round(g.player.maxHp) },
   { id:'itemHoarder', name:'Coleccionista', desc:'Consigue 6 objetos en una misma run', unlocks:'silvano',
-    check: g=> g.player.items.length>=6 },
+    check: g=> g.player.items.length>=6, target:6, progressVal: g=> g.player.items.length },
   { id:'killStreak', name:'Cazador Incansable', desc:'Elimina 150 enemigos en una misma run', unlocks:'dual',
-    check: g=> g.kills>=150 },
+    check: g=> g.kills>=150, target:150, progressVal: g=> g.kills },
   { id:'comboMaster', name:'Racha Perfecta', desc:'Alcanza una racha de combo de 25 en una misma run', unlocks:'monje',
-    check: g=> g.player.combo>=25 },
+    check: g=> g.player.combo>=25, target:25, progressVal: g=> g.player.combo },
   { id:'deepDescent15', name:'Exploradora Profunda', desc:'Alcanza la etapa 15', unlocks:'arquera',
-    check: g=> g.stats.stageReached>=15 },
+    check: g=> g.stats.stageReached>=15, target:15, progressVal: g=> g.stats.stageReached },
   { id:'relicCollector', name:'Coleccionista de Reliquias', desc:'Consigue 3 reliquias en una misma run', unlocks:'elementalista',
-    check: g=> Object.keys(g.player.relics||{}).length>=3 },
+    check: g=> Object.keys(g.player.relics||{}).length>=3, target:3, progressVal: g=> Object.keys(g.player.relics||{}).length },
   { id:'killStreak300', name:'Furia Incansable', desc:'Elimina 300 enemigos en una misma run', unlocks:'berserker',
-    check: g=> g.kills>=300 },
+    check: g=> g.kills>=300, target:300, progressVal: g=> g.kills },
   { id:'richRun', name:'Fortuna del Descenso', desc:'Junta 500 de oro en una misma run', unlocks:'ilusionista',
-    check: g=> g.gold>=500 },
+    check: g=> g.gold>=500, target:500, progressVal: g=> g.gold },
   { id:'veteranLevel', name:'Veterano', desc:'Alcanza el nivel 10 de personaje en una misma run', unlocks:'alquimista',
-    check: g=> g.player.charLevel>=10 },
+    check: g=> g.player.charLevel>=10, target:10, progressVal: g=> g.player.charLevel },
   { id:'fiveBosses', name:'Cazadora de Cinco', desc:'Derrota 5 jefes en una misma run', unlocks:'druida',
-    check: g=> g.stats.bossesThisRun>=5 },
+    check: g=> g.stats.bossesThisRun>=5, target:5, progressVal: g=> g.stats.bossesThisRun },
   { id:'bloodCombo', name:'Sed de Sangre', desc:'Alcanza una racha de combo de 40 en una misma run', unlocks:'sangre',
-    check: g=> g.player.combo>=40 },
+    check: g=> g.player.combo>=40, target:40, progressVal: g=> g.player.combo },
   { id:'fortressHp', name:'Fortaleza Andante', desc:'Alcanza 450 de HP máxima en una run', unlocks:'centinela',
-    check: g=> g.player.maxHp>=450 },
+    check: g=> g.player.maxHp>=450, target:450, progressVal: g=> Math.round(g.player.maxHp) },
   { id:'critMaster', name:'Filo Certero', desc:'Alcanza 30% de probabilidad de golpe crítico en una run', unlocks:'cazador',
-    check: g=> g.player.critChance>=0.30 },
+    check: g=> g.player.critChance>=0.30, target:30, progressVal: g=> Math.round(g.player.critChance*100) },
 ];
 const progress = { unlocked:{ guerrero:true, maga:true, picaro:true, paladin:false, nigromante:false, vidrio:false, coloso:false, silvano:false, dual:false,
     monje:false, arquera:false, elementalista:false, berserker:false, ilusionista:false, alquimista:false, druida:false, sangre:false, centinela:false, cazador:false },
-  unlockedAbilities:[], essence:0, homeUpgrades:{}, bestStage:0 };
+  unlockedAbilities:[], essence:0, homeUpgrades:{}, bestStage:0,
+  achievementProgress:{}, // best value ever seen per achievement id, so locked cards can show "18/25" instead of just the goal text
+  runHistory:[], skins:{}, selectedSkins:{},
+  selectedUltimate:null, // which unlocked Habilidad Prohibida gets brought into the next run
+  unlockedShiftAbilities:[], selectedShiftAbility:null, // ASCENSO's tecla-Shift abilities (see SHIFT_ABILITIES)
+};
 
 const PROGRESS_SAVE_KEY = 'descenso_progress_v1';
 function saveProgress(){
@@ -246,6 +251,13 @@ function loadProgress(){
     if(saved.homeUpgrades) Object.assign(progress.homeUpgrades, saved.homeUpgrades);
     if(typeof saved.essence==='number') progress.essence = saved.essence;
     if(typeof saved.bestStage==='number') progress.bestStage = saved.bestStage;
+    if(saved.achievementProgress) Object.assign(progress.achievementProgress, saved.achievementProgress);
+    if(Array.isArray(saved.runHistory)) progress.runHistory = saved.runHistory;
+    if(saved.skins) Object.assign(progress.skins, saved.skins);
+    if(saved.selectedSkins) Object.assign(progress.selectedSkins, saved.selectedSkins);
+    if(typeof saved.selectedUltimate==='string') progress.selectedUltimate = saved.selectedUltimate;
+    if(Array.isArray(saved.unlockedShiftAbilities)) progress.unlockedShiftAbilities = saved.unlockedShiftAbilities;
+    if(typeof saved.selectedShiftAbility==='string') progress.selectedShiftAbility = saved.selectedShiftAbility;
   }catch(e){ /* corrupted/old save — just start fresh rather than crash */ }
 }
 loadProgress(); // pulls back whatever was unlocked/earned last time, so a page refresh doesn't wipe it
@@ -326,65 +338,77 @@ refreshContinueButton();
 
 function checkAchievements(){
   if(!game) return;
+  let progressChanged = false;
   ACHIEVEMENTS.forEach(a=>{
-    if(!progress.unlocked[a.unlocks] && a.check(game)){
+    if(progress.unlocked[a.unlocks]) return;
+    if(a.check(game)){
       progress.unlocked[a.unlocks] = true;
       const hero = HEROES[a.unlocks];
       spawnToast(`🏆 Logro: ${a.name} — nuevo héroe: ${hero.name}`);
-      saveProgress();
+      progress.achievementProgress[a.id] = a.target;
+      progressChanged = true;
+    } else if(a.progressVal){
+      // track the best value ever reached across all runs, so a locked hero card can show
+      // "18/25" progress even if the current run doesn't clear the achievement
+      const cur = a.progressVal(game);
+      if(typeof cur==='number' && cur > (progress.achievementProgress[a.id]||0)){
+        progress.achievementProgress[a.id] = Math.min(cur, a.target);
+        progressChanged = true;
+      }
     }
   });
+  if(progressChanged) saveProgress();
 }
 
 const TOWER_MAX_FLOOR = 100; // the tower has a hard top: floor 100 holds the true final boss
 const ZONES = [
   { key:'cripta', name:'La Cripta Olvidada', desc:'Huesos viejos y aire quieto. Algo aquí sigue montando guardia.',
-    enemyKinds:['skeleton','archer','charger'], guardianBoss:'boneGuardian',
+    enemyKinds:['skeleton','archer','charger','boneWarden'], guardianBoss:'boneGuardian',
     baseHp:210, baseSpeed:95, baseDmg:13, baseRadius:29, baseContactCd:1.0, minion:'skeleton', baseColor:'#c9bda0',
     movePool:['boneVolley','risingSpikes','boneArmor','boneTrap','summon','boneCross','boneSpiral','skullBarrage','graveSpikes','boneWhip','deathRattle','hauntingWail','cryptCollapse','boneShrapnel','graveyardShift','deathMark','skeletalSwarm','tombstoneSlam','ribcage','deathToll','skullStorm','gravebind','boneChain','cryptWhisper','deathsDoor','rattlingBones','deathKnell'], dashMove:'charge',
     regularNames:['Centinela Óseo','Guardián Polvoriento','Custodio de Cenizas','Vigía sin Rostro','Heraldo de Tumba','Espectro de Cripta','Portador de Huesos','Sombra Sepulta','Centinela del Osario'] },
   { key:'pantano', name:'El Pantano Maldito', desc:'El barro respira. Las voces bajo el agua ya saben tu nombre.',
-    enemyKinds:['zombie','witch','shaman'], guardianBoss:'motherWitch',
+    enemyKinds:['zombie','witch','shaman','bogSpitter'], guardianBoss:'motherWitch',
     baseHp:250, baseSpeed:92, baseDmg:12, baseRadius:28, baseContactCd:1.0, minion:'zombie', baseColor:'#7fd98f',
     movePool:['toxicSpores','swampGrasp','witchesBlessing','hexTrail','mudSlow','bogBurst','leechSwarm','witchesCurse','numbTonic','rootSnare','quicksand','poisonBrew','witchsEye','cauldronBubble','swampSurge','willOWisp','vineLine','venomLash','shadowBrew','batSwarm','mireField','curseBind','witchsMark','spectralHex','gooBurst','plagueCloud','witchesRing'], dashMove:'blinkStrike',
     regularNames:['Bruja del Lodo','Susurro de Ciénaga','Hechicera Ahogada','Voz del Pantano','Tejedora de Niebla','Madre de Sapos','Encantadora Podrida','Sombra del Lodazal','Bruja de Raíces'] },
   { key:'fortaleza', name:'La Fortaleza Infernal', desc:'El calor sube desde abajo. Cada piso pesa más que el anterior.',
-    enemyKinds:['demon','summoner','brute'], guardianBoss:'abyssLord',
+    enemyKinds:['demon','summoner','brute','cinderImp'], guardianBoss:'abyssLord',
     baseHp:310, baseSpeed:100, baseDmg:15, baseRadius:31, baseContactCd:0.95, minion:'demon', baseColor:'#ff8a5a',
     movePool:['cinderBurst','emberField','moltenCore','cinderRain','flameWhip','lavaSpurt','infernoRing','brimstoneRain','demonRoar','ashCloud','moltenTrap','cinderSwarm','flameSurge','infernalBond','sulfurBreath','pyreCollapse','scorchedEarth','demonEye','infernalChains','brimstoneSpiral','flameWreath','hellgate','cinderVolley','moltenWave','demonicHowl','infernalCrown','demonicBlast'], dashMove:null,
     regularNames:['Heraldo de Magma','Guardián en Llamas','Verdugo Infernal','Centinela Ardiente','Custodio del Fuego','Sombra Incandescente','Bestia de Cenizas','Portador de Brasas','Vigía del Cráter'] },
   { key:'jardin', name:'El Jardín Prismático', desc:'Pétalos de luz caen sin ruido. Algo hermoso te está observando.',
-    enemyKinds:['wisp','summoner','frostSprite'], guardianBoss:'empressOfLight',
+    enemyKinds:['wisp','summoner','frostSprite','petalNymph'], guardianBoss:'empressOfLight',
     baseHp:290, baseSpeed:128, baseDmg:11, baseRadius:27, baseContactCd:1.0, minion:'wisp', baseColor:'#ffd6f0',
     movePool:['thornVolley','bloomTrap','healingBloom','lightTwins','radiantPath','petalStorm','vineWhip','prismShard','nectarSwarm','gildedThorns','dewTrap','crystalBloom','thornCage','sunbeamLine','bloomRing','sunfireCross','radianceField','lightCascade','tangleRoots','mirrorBloom','verdantSurge','glowWisp','sunfireLance','lightPollen','witheringPetals','petalVeil','gardenGuardians'], dashMove:'prismDash',
     regularNames:['Doncella de Pétalos','Guardiana de Luz','Espíritu Floreciente','Susurro de Jardín','Custodia Radiante','Ninfa de Cristal','Bailarina de Luz','Centinela de Rocío','Doncella Prismática'] },
   { key:'espejos', name:'El Salón de Espejos', desc:'Cada reflejo se mueve un instante tarde. O un instante antes.',
-    enemyKinds:['wisp','erratic','archer'], guardianBoss:'mirrorLord',
+    enemyKinds:['wisp','erratic','archer','glassSentinel'], guardianBoss:'mirrorLord',
     baseHp:330, baseSpeed:110, baseDmg:14, baseRadius:28, baseContactCd:1.0, minion:'skeleton', baseColor:'#cfd6e8',
     movePool:['mirrorDecoy','glassField','illusionSwap','mirrorGaze','fracturedBurst','shatterVolley','reflectedBarrage','prismaticShards','mirageSwarm','silverStrike','mirrorMaze','shatterZone','reflectivePool','glassSpikes','doubleVision','distortionField','echoChamber','hallOfMirrors','mirrorShatter','reflectivePulse','phantomChaser','reflectedLance','hauntingReflection','disorientingGaze','shatteredFocus','silveredSkin','mirroredEcho'], dashMove:'echoDash',
     regularNames:['Eco Fracturado','Reflejo Distante','Sombra Especular','Fragmento de Espejo','Doble Silencioso','Imagen Rota','Espejo Errante','Reflejo Tardío','Eco de Cristal'] },
   { key:'gemelo', name:'El Santuario Gemelo', desc:'Todo aquí viene de a dos. Vos sos el único que llegó solo.',
-    enemyKinds:['witch','summoner','charger'], guardianBoss:'twinBoss',
+    enemyKinds:['witch','summoner','charger','boundWisp'], guardianBoss:'twinBoss',
     baseHp:290, baseSpeed:105, baseDmg:12, baseRadius:26, baseContactCd:1.0, minion:'wisp', baseColor:'#ffb0d9',
     movePool:['boundStrike','bondPulse','twinStrike','bondedShield','spiritLink','twinVolley','soulShards','pairedBolts','spiritBurst','boundArrows','soulTether','kinshipRing','dualBloom','sharedPain','weaveTrap','pactCircle','tetherLine','soulPulse','boundSurge','spiritChaser','soulLance','kinseeker','sharedWound','soulSap','boundCurse','sharedBlessing','twinSpirits'], dashMove:'charge',
     regularNames:['Espíritu Vinculado','Alma Gemela','Sombra Compartida','Eco Fraternal','Vínculo Roto','Espíritu Doble','Presencia Gemela','Aliento Compartido','Sombra Hermana'] },
   { key:'glaciar', name:'El Glaciar Eterno', desc:'El frío no muerde: espera. Cada aliento se ve, cada paso se oye.',
-    enemyKinds:['frostSprite','charger','brute'], guardianBoss:'glacierMonarch',
+    enemyKinds:['frostSprite','charger','brute','frostStalker'], guardianBoss:'glacierMonarch',
     baseHp:370, baseSpeed:95, baseDmg:16, baseRadius:30, baseContactCd:0.95, minion:'frostSprite', baseColor:'#9fd8ff',
     movePool:['iceLance','crystalPrison','avalanche','frostBreath','numbingChill','frostShards','glacialVolley','iceShrapnel','crystalBarrage','polarWind','snowSquall','glacialSpike','frostRing','iceFissure','frozenTrail','hailfall','permafrost','crystalRain','blizzardGust','frostSlam','frostWisp','iceStalker','frostbite','brittleChill','glacialGrip','glacialWard','summon'], dashMove:'echoDash',
     regularNames:['Centinela de Escarcha','Guardián de Hielo','Custodio Glacial','Espíritu del Frío','Vigía Congelado','Sombra de Escarcha','Portador de Nieve','Centinela Blanco','Custodia del Hielo'] },
   { key:'tormenta', name:'El Yermo Tormentoso', desc:'El cielo nunca se queda quieto. Tampoco lo que vive en él.',
-    enemyKinds:['sniper','charger','swarmling'], guardianBoss:'stormLord',
+    enemyKinds:['sniper','charger','swarmling','stormWisp'], guardianBoss:'stormLord',
     baseHp:390, baseSpeed:115, baseDmg:17, baseRadius:29, baseContactCd:0.9, minion:'sniper', baseColor:'#ffe45a',
     movePool:['thunderStrike','stormVortex','staticField','skySiege','boltRunner','boltSpray','thunderClap','chargedBurst','windSlash','stormShards','arcVolley','thunderPatch','stormCell','lightningField','galeZone','thunderColumn','stormPocket','chainStrike','squallLine','thunderSlam','stormChaser','thunderEye','staticShock','galeForce','overcharge','stormShield','summon'], dashMove:'prismDash',
     regularNames:['Heraldo de la Tormenta','Portador del Trueno','Custodio del Rayo','Vigía Tormentoso','Espíritu del Viento','Sombra Eléctrica','Centinela del Cielo','Heraldo del Relámpago','Guardián de la Tempestad'] },
   { key:'abismo', name:'El Abismo Sin Fondo', desc:'Acá abajo, hasta el eco tarda en volver. Si es que vuelve.',
-    enemyKinds:['erratic','shaman','brute'], guardianBoss:'starDevourer',
+    enemyKinds:['erratic','shaman','brute','voidHusk'], guardianBoss:'starDevourer',
     baseHp:430, baseSpeed:100, baseDmg:18, baseRadius:30, baseContactCd:0.9, minion:'erratic', baseColor:'#8a5ad9',
     movePool:['voidTendrils','darkPulse','starlightDrain','umbraStep','collapsingStar','shadowShards','voidBurst','darkVolley','eclipseSpray','starfallShards','umbralArc','voidPool','shadowPatch','darkRift','eclipseZone','starfallField','umbralCage','voidColumn','nullGround','shadowSlam','voidWisp','shadowStalker','voidGrasp','starDrain','nullTouch','voidShroud','summon'], dashMove:'charge',
     regularNames:['Susurro del Vacío','Sombra Insondable','Eco de la Nada','Custodio Oscuro','Presencia del Abismo','Vigía sin Luz','Espíritu Vacío','Sombra Profunda','Heraldo de la Nada'] },
   { key:'trono', name:'El Trono del Descenso', desc:'Lo que sea que gobierna esta torre te espera arriba de todo.',
-    enemyKinds:['demon','sniper','brute'], guardianBoss:'trueFinal',
+    enemyKinds:['demon','sniper','brute','royalGuard'], guardianBoss:'trueFinal',
     baseHp:470, baseSpeed:110, baseDmg:19, baseRadius:31, baseContactCd:0.9, minion:'demon', baseColor:'#e0c9a0',
     movePool:['royalDecree','throneSlam','crownfire','finalJudgment','soulBarrage','crownShards','royalVolley','soulBurst','radiantBlast','scepterShards','dominionSpray','thronePatch','judgmentZone','soulField','dominionCircle','regalSpikes','sovereignGround','crownfireField','royalGround','royalSlam','soulChaser','wraithMark','royalCurse','soulDrain','crownBind','royalAegis','summon'], dashMove:'blinkStrike',
     regularNames:['Guardián del Trono','Custodio Final','Centinela del Descenso','Sombra del Trono','Vigía Postrero','Heraldo del Final','Guardián Postrero','Custodio del Umbral','Sombra Final'] },
@@ -618,6 +642,30 @@ const ENEMY_DEFS = {
   frostSprite: { name:'Espina de Escarcha', hp:22, speed:112, dmg:7, kind:'ranged', range:270, atkCd:1.8, projSpeed:300, radius:14, color:'#9fd8ff', gold:[2,4],
     slowOnHit:true, slowFactor:0.55, slowDur:1.2 },
   swarmling: { name:'Enjambre Óseo', hp:12, speed:172, dmg:4, kind:'melee', range:20, atkCd:0.6, radius:10, color:'#b8ada0', gold:[1,2] },
+
+  // ---- zone-exclusive enemies: one thematic type per zone, added to their `movePool`-sibling
+  // `enemyKinds` list below. Each reuses an existing generic mechanic flag (armor/poison/healer/
+  // erratic/chargeShot/explodesOnDeath) so no new AI code is needed — only new stats/name/color. ----
+  boneWarden:   { name:'Centinela Encadenado', hp:52, speed:80, dmg:11, kind:'melee', range:28, atkCd:1.2, radius:19, color:'#e8dcc0', gold:[2,4],
+    armor:30 }, // cripta — a heavier bone guard, hard to bring down quickly
+  bogSpitter:   { name:'Escupidor de Ciénaga', hp:24, speed:86, dmg:6, kind:'ranged', range:260, atkCd:1.6, projSpeed:250, radius:14, color:'#5fae4f', gold:[2,4],
+    poison:true }, // pantano — a ranged poison spitter, distinct from the healer shaman
+  cinderImp:    { name:'Diablillo de Ceniza', hp:22, speed:150, dmg:7, kind:'melee', range:22, atkCd:0.9, radius:14, color:'#ffab5a', gold:[2,4],
+    explodesOnDeath:true, explodeRadius:64, explodeDmg:14 }, // fortaleza — quick, detonates on death
+  petalNymph:   { name:'Ninfa de Pétalos', hp:26, speed:110, dmg:5, kind:'ranged', range:250, atkCd:2.0, projSpeed:230, radius:14, color:'#ffcdeb', gold:[2,4],
+    healer:true, healRadius:140, healAmount:5, healCd:2.8 }, // jardin — a second healer type, softer but heals more often
+  glassSentinel:{ name:'Guardián de Cristal', hp:46, speed:90, dmg:12, kind:'melee', range:26, atkCd:1.15, radius:18, color:'#dfe6f5', gold:[2,5],
+    armor:26 }, // espejos — armored, fitting the reflective/hardened theme
+  boundWisp:    { name:'Espíritu Atado', hp:20, speed:140, dmg:6, kind:'ranged', range:260, atkCd:1.4, projSpeed:280, radius:13, color:'#ff8fc0', gold:[2,5],
+    erratic:true, dodgeChance:0.32 }, // gemelo — erratic, evokes the "moves a beat off" twin motif
+  frostStalker: { name:'Acechador de Escarcha', hp:26, speed:72, dmg:24, kind:'ranged', range:420, atkCd:2.5, projSpeed:460, radius:14, color:'#bfe9ff', gold:[2,5],
+    chargeShot:true, chargeShotWindup:0.85 }, // glaciar — a precise cold sniper
+  stormWisp:    { name:'Chispa Errática', hp:20, speed:158, dmg:7, kind:'ranged', range:270, atkCd:1.3, projSpeed:340, radius:13, color:'#fff0a0', gold:[2,4],
+    erratic:true, dodgeChance:0.3 }, // tormenta — a second erratic type, quicker and squishier
+  voidHusk:     { name:'Cáscara del Vacío', hp:24, speed:120, dmg:8, kind:'melee', range:22, atkCd:1.0, radius:15, color:'#6a4fb0', gold:[2,5],
+    explodesOnDeath:true, explodeRadius:74, explodeDmg:18 }, // abismo — collapses into a small void burst
+  royalGuard:   { name:'Guardia Real', hp:64, speed:85, dmg:14, kind:'melee', range:30, atkCd:1.1, radius:20, color:'#e0c060', gold:[3,6],
+    armor:32 }, // trono — the toughest of the armored rank-and-file, fitting the final zone
 };
 const ELITE_CHANCE = 0.055;
 const ELITE_MULT = { hp:2.3, dmg:1.5, gold:2.0 };
@@ -647,6 +695,239 @@ const BOSS_DEFS = {
     minion:'erratic', title:'Se traga hasta la luz' },
   // the 90 regular-floor bosses (one unique boss per non-guardian floor, 1-100) are generated
   // programmatically right after ZONES is defined — see generateFloorBosses() below.
+
+  // ---- ASCENSO — the tower above floor 100. Every boss here has its own hand-built kit, none
+  // shared or generated (unlike the 90 regular-floor Descenso bosses above). Piso 1 is barely a
+  // threat; piso 100 (El Sol) is the true final boss of the whole game. ----
+  shadowLarva: { name:'Larva de Sombra', hp:280, speed:95, dmg:12, radius:28, color:'#3a2f52', contactCd:1.1,
+    minion:null, title:'Lo primero que se agita en la oscuridad' },
+  hollowEcho: { name:'Eco Hueco', hp:340, speed:105, dmg:13, radius:26, color:'#4a3d68', contactCd:1.05,
+    minion:null, title:'Repite un grito que nadie soltó' },
+  crackWeaver: { name:'Tejedor de Grietas', hp:400, speed:90, dmg:15, radius:27, color:'#5a4a7a', contactCd:1.0,
+    minion:null, title:'Hila fisuras donde antes no había nada' },
+  muteGuardian: { name:'Guardiana Muda', hp:520, speed:70, dmg:16, radius:32, color:'#6a5a8c', contactCd:1.15,
+    minion:null, title:'No hace falta hablar para golpear fuerte' },
+  echoDevourer: { name:'Devorador de Ecos', hp:560, speed:115, dmg:17, radius:29, color:'#7a6a9e', contactCd:0.95,
+    minion:null, title:'Se traga hasta el silencio' },
+  ashSentinel: { name:'Centinela de Ceniza', hp:620, speed:85, dmg:18, radius:30, color:'#8a7ab0', contactCd:1.0,
+    minion:null, title:'Lo que queda cuando la sombra empieza a arder' },
+  crackWhisper: { name:'Susurro de Grieta', hp:660, speed:130, dmg:19, radius:27, color:'#9a5ac0', contactCd:0.9,
+    minion:null, title:'Habla desde huecos que no deberían tener eco' },
+  shadowThorn: { name:'Espina de Sombra', hp:700, speed:95, dmg:20, radius:28, color:'#5c2f7a', contactCd:1.0,
+    minion:null, title:'Cada corte que deja sigue sangrando oscuridad' },
+  silentWarden: { name:'Custodio Callado', hp:820, speed:65, dmg:20, radius:34, color:'#7a6a9e', contactCd:1.2,
+    minion:null, title:'Vigila una puerta que nadie más recuerda' },
+  ashSwarm: { name:'Enjambre de Cenizas', hp:760, speed:140, dmg:18, radius:24, color:'#9a8ab8', contactCd:0.85,
+    minion:null, title:'Mil motas que alguna vez fueron una sola sombra' },
+  fissureHerald: { name:'Heraldo de la Grieta', hp:950, speed:100, dmg:22, radius:32, color:'#aa7ad0', contactCd:0.95,
+    minion:null, title:'El primer nombre que la grieta aprendió a pronunciar' },
+  drownedScream: { name:'Grito Ahogado', hp:1020, speed:100, dmg:22, radius:30, color:'#4a2f6a', contactCd:1.0,
+    minion:null, title:'Un grito que nunca llegó a salir' },
+  duskWeave: { name:'Tejido de Penumbra', hp:1080, speed:105, dmg:23, radius:29, color:'#6a4a8a', contactCd:0.95,
+    minion:null, title:'Ni sombra ni luz — apenas el borde entre las dos' },
+  facelessGuard: { name:'Guardián sin Rostro', hp:1250, speed:68, dmg:24, radius:35, color:'#7a5a9a', contactCd:1.2,
+    minion:null, title:'Custodia algo que ni él recuerda ya' },
+  darkVine: { name:'Enredadera Oscura', hp:1150, speed:88, dmg:22, radius:28, color:'#3a5a3a', contactCd:1.05,
+    minion:null, title:'Crece hacia la luz aunque la odie' },
+  twinWhisper: { name:'Susurro Doble', hp:1220, speed:120, dmg:23, radius:27, color:'#8a4a9a', contactCd:0.9,
+    minion:null, title:'Dos voces que olvidaron ser una sola' },
+  brokenShard: { name:'Fragmento Roto', hp:1300, speed:95, dmg:24, radius:28, color:'#9a6ac0', contactCd:0.95,
+    minion:null, title:'Se quebró y decidió que le gustaba así' },
+  ashCustodian: { name:'Custodia de Cenizas', hp:1400, speed:70, dmg:25, radius:33, color:'#a08ac0', contactCd:1.15,
+    minion:null, title:'Guarda lo que ya se apagó hace mucho' },
+  namelessLament: { name:'Lamento sin Nombre', hp:1350, speed:130, dmg:24, radius:27, color:'#b07ad0', contactCd:0.85,
+    minion:null, title:'Perdió el nombre antes que la voz' },
+  fissureHeart: { name:'Corazón de Grieta', hp:1600, speed:100, dmg:26, radius:34, color:'#c08ae0', contactCd:0.95,
+    minion:null, title:'Late al mismo ritmo que la torre entera' },
+  thresholdEchoes: { name:'Ecos del Umbral', hp:1450, speed:105, dmg:25, radius:29, color:'#a070c0', contactCd:0.9,
+    minion:null, title:'Marca dónde termina la sombra y no sabe qué sigue' },
+  hollowChoir: { name:'Coro Hueco', hp:1520, speed:100, dmg:26, radius:28, color:'#9a5ab0', contactCd:0.9,
+    minion:null, title:'Cantan al unísono aunque ninguno tenga voz propia' },
+  duskMarauder: { name:'Merodeador del Ocaso', hp:1580, speed:145, dmg:25, radius:26, color:'#b06ac0', contactCd:0.8,
+    minion:null, title:'Caza en el instante exacto entre la sombra y la luz' },
+  graniteWarden: { name:'Custodio de Granito', hp:1900, speed:60, dmg:27, radius:37, color:'#8a7a9a', contactCd:1.25,
+    minion:null, title:'Ni la torre entera lo movería de su sitio' },
+  witheredBloom: { name:'Florecer Marchito', hp:1650, speed:95, dmg:26, radius:29, color:'#6a8a5a', contactCd:1.0,
+    minion:null, title:'Intentó florecer hacia la luz y se quedó a mitad de camino' },
+  crownOfEmbers: { name:'Corona de Brasas', hp:1850, speed:110, dmg:28, radius:33, color:'#d0906a', contactCd:0.9,
+    minion:null, title:'La sombra empieza a arder de verdad a esta altura' },
+  wanderingAsh: { name:'Ceniza Errante', hp:1780, speed:148, dmg:27, radius:25, color:'#c07850', contactCd:0.85,
+    minion:null, title:'Va dejando su propio rastro de brasas al andar' },
+  achingEmber: { name:'Brasa Doliente', hp:2050, speed:78, dmg:30, radius:34, color:'#a8452c', contactCd:1.05,
+    minion:null, title:'Cada golpe le duele tanto a él como a quien lo recibe' },
+  paleFlame: { name:'Llama Pálida', hp:1950, speed:100, dmg:28, radius:29, color:'#8a6a7a', contactCd:0.95,
+    minion:null, title:'Ni fuego ni sombra — apenas los dos negándose a apagarse' },
+  emberWarden: { name:'Custodio de Rescoldos', hp:2200, speed:58, dmg:30, radius:38, color:'#903a20', contactCd:1.3,
+    minion:null, title:'La segunda mitad del ascenso empieza a pesar de verdad' },
+  emberSwarm: { name:'Enjambre de Rescoldos', hp:1900, speed:150, dmg:26, radius:23, color:'#d68a4a', contactCd:0.8,
+    minion:null, title:'Cientos de brasas que alguna vez fueron una corona entera' },
+
+  // ---- Pisos 32-36: el fuego se apaga y vuelve la penumbra — sub-arco "apagado" ----
+  dimmedMist: { name:'Bruma Apagada', hp:2000, speed:95, dmg:27, radius:29, color:'#5a5468', contactCd:1.0,
+    minion:null, title:'Lo que queda del humo cuando ya no hay brasa que lo alimente' },
+  dimmedWarden: { name:'Custodio Apagado', hp:2150, speed:65, dmg:29, radius:36, color:'#4a4658', contactCd:1.25,
+    minion:null, title:'Guardó una llama tanto tiempo que olvidó que ya no ardía' },
+  dimmedThorn: { name:'Espina Apagada', hp:1980, speed:100, dmg:27, radius:27, color:'#524a5a', contactCd:1.0,
+    minion:null, title:'El veneno que deja es frío, no como el fuego que fue' },
+  dimmedWhisper: { name:'Susurro Apagado', hp:1900, speed:135, dmg:26, radius:26, color:'#4e485c', contactCd:0.9,
+    minion:null, title:'Ni siquiera su propio eco recuerda el calor' },
+  dimmedHeart: { name:'Corazón Apagado', hp:2250, speed:100, dmg:29, radius:31, color:'#403c50', contactCd:0.95,
+    minion:null, title:'Cierra el arco: de la ceniza a la nada, otra vez' },
+
+  // ---- Pisos 37-41: lo que queda se asienta como polvo — último tramo antes de la mitad ----
+  wanderingDust: { name:'Polvo Errante', hp:2100, speed:140, dmg:28, radius:24, color:'#8a8478', contactCd:0.85,
+    minion:null, title:'Ni ceniza ni piedra — solo lo que sobra de ambas' },
+  ashFissure: { name:'Fisura de Ceniza', hp:2300, speed:90, dmg:29, radius:30, color:'#6a6258', contactCd:1.0,
+    minion:null, title:'El suelo mismo empieza a resentir tanto peso encima' },
+  hollowReflection: { name:'Reflejo Hueco', hp:2200, speed:105, dmg:28, radius:28, color:'#9a948c', contactCd:0.95,
+    minion:null, title:'Devuelve una imagen que ya no reconoce a nadie' },
+  stoneWhisper: { name:'Susurro de Piedra', hp:2050, speed:138, dmg:27, radius:26, color:'#78726a', contactCd:0.85,
+    minion:null, title:'Habla lento, pero nunca dos veces desde el mismo sitio' },
+  dustHeart: { name:'Corazón de Polvo', hp:2600, speed:100, dmg:30, radius:33, color:'#7a746a', contactCd:0.95,
+    minion:null, title:'Punto medio del camino — late con el peso de todo lo que ya cayó' },
+
+  // ---- Pisos 42-46: primeros brillos — la luz empieza a filtrarse entre la penumbra ----
+  dimmedGleam: { name:'Brillo Apagado', hp:2350, speed:105, dmg:28, radius:28, color:'#948a78', contactCd:0.95,
+    minion:null, title:'Apenas un destello, pero ya no es solo sombra' },
+  stoneWarden: { name:'Custodio de Piedra', hp:2450, speed:62, dmg:31, radius:37, color:'#6a645c', contactCd:1.3,
+    minion:null, title:'Octavo en guardia, y ninguno tan inmóvil como este' },
+  lightThorn: { name:'Espina de Luz', hp:2300, speed:100, dmg:29, radius:27, color:'#c9b878', contactCd:0.95,
+    minion:null, title:'El primer dolor que quema en vez de pudrir' },
+  greyEchoes: { name:'Ecos Grises', hp:2250, speed:118, dmg:28, radius:26, color:'#8a8290', contactCd:0.9,
+    minion:null, title:'Cada eco repite un poco menos de sombra que el anterior' },
+  ashLightGuardian: { name:'Guardiana de Ceniza y Luz', hp:2550, speed:95, dmg:30, radius:30, color:'#b0a488', contactCd:0.95,
+    minion:null, title:'Cierra el tramo — ya no defiende solo la sombra' },
+
+  // ---- Pisos 47-51: el límite — donde termina la penumbra y empieza a crecer la luz ----
+  faintVeil: { name:'Velo Tenue', hp:2400, speed:120, dmg:29, radius:27, color:'#a89ccc', contactCd:0.9,
+    minion:null, title:'Ni sombra ni luz — un velo que todavía no decide qué es' },
+  edgeGuardian: { name:'Guardiana del Límite', hp:2650, speed:60, dmg:31, radius:38, color:'#7a6e98', contactCd:1.3,
+    minion:null, title:'Novena en guardia — custodia la frontera misma' },
+  dawnThorn: { name:'Espina del Alba', hp:2450, speed:102, dmg:29, radius:28, color:'#d8b878', contactCd:0.95,
+    minion:null, title:'Ya no es fuego ni sombra lo que quema — es el alba' },
+  edgeHeart: { name:'Corazón del Límite', hp:2850, speed:98, dmg:31, radius:34, color:'#8878a8', contactCd:0.95,
+    minion:null, title:'Cierra el tramo 26-50 entero — la penumbra termina acá' },
+  wanderingDawn: { name:'Alba Errante', hp:2350, speed:152, dmg:28, radius:24, color:'#e8c888', contactCd:0.8,
+    minion:null, title:'Abre el siguiente tramo — la luz empieza a crecer de verdad' },
+
+  // ---- Pisos 52-56: la luz gana terreno — décimo tramo antes de acercarse al Sol ----
+  dawnGuardian: { name:'Guardiana del Alba', hp:2700, speed:64, dmg:31, radius:37, color:'#c8a848', contactCd:1.25,
+    minion:null, title:'Décima en guardia — la luz también sabe ser paciente' },
+  goldenEcho: { name:'Eco Dorado', hp:2500, speed:120, dmg:29, radius:26, color:'#e0b858', contactCd:0.9,
+    minion:null, title:'Cada eco brilla un poco más que el anterior' },
+  goldenThorn: { name:'Espina Dorada', hp:2550, speed:104, dmg:30, radius:28, color:'#f0c868', contactCd:0.95,
+    minion:null, title:'El dolor del alba ya pesa más que el de la sombra' },
+  dawnWhisper: { name:'Susurro del Alba', hp:2400, speed:140, dmg:28, radius:26, color:'#e8d078', contactCd:0.85,
+    minion:null, title:'Ni siquiera necesita esconderse ya en la penumbra' },
+  brightHollow: { name:'Hueco Brillante', hp:2750, speed:100, dmg:30, radius:31, color:'#f4d888', contactCd:0.95,
+    minion:null, title:'Cierra el tramo — lo que fue vacío ahora refleja luz' },
+
+  // ---- Pisos 57-61: la luz ya domina — se acerca la mitad del camino al Sol ----
+  goldenSwarm: { name:'Enjambre Dorado', hp:2450, speed:158, dmg:27, radius:23, color:'#f0d068', contactCd:0.78,
+    minion:null, title:'Cientos de chispas que ya no recuerdan haber sido sombra' },
+  radiantWarden: { name:'Custodio Radiante', hp:2900, speed:66, dmg:32, radius:38, color:'#e8c048', contactCd:1.25,
+    minion:null, title:'Undécimo en guardia — ni la luz más fuerte lo hace parpadear' },
+  radiantThorn: { name:'Espina Radiante', hp:2650, speed:106, dmg:31, radius:29, color:'#ffd868', contactCd:0.95,
+    minion:null, title:'Duele más de lo que cualquier sombra dolió jamás' },
+  sunHerald: { name:'Heraldo del Sol', hp:3100, speed:100, dmg:32, radius:35, color:'#ffdc78', contactCd:0.95,
+    minion:null, title:'Anuncia lo que viene — todavía falta, pero ya se siente el calor' },
+  goldenSentinel: { name:'Centinela Dorado', hp:2500, speed:150, dmg:28, radius:25, color:'#ffe088', contactCd:0.82,
+    minion:null, title:'Abre el tramo final antes del ecuador del camino' },
+
+  // ---- Pisos 62-66: el sol ya se siente cerca — se acerca la mitad del camino a la cima ----
+  solarWarden: { name:'Custodio Solar', hp:3050, speed:68, dmg:32, radius:38, color:'#ffcc48', contactCd:1.25,
+    minion:null, title:'Duodécimo en guardia — ya casi no queda sombra que proteger' },
+  solarWhisper: { name:'Susurro Solar', hp:2650, speed:142, dmg:29, radius:26, color:'#ffd858', contactCd:0.85,
+    minion:null, title:'Su voz ya no es un susurro — apenas logra contenerse' },
+  solarEcho: { name:'Eco Solar', hp:2700, speed:122, dmg:29, radius:27, color:'#ffe068', contactCd:0.9,
+    minion:null, title:'Cada eco es un poco más brillante que la fuente' },
+  blazeSwarm: { name:'Enjambre de Llamas', hp:2600, speed:160, dmg:28, radius:23, color:'#ffb848', contactCd:0.76,
+    minion:null, title:'Ya no quedan cenizas — solo llama pura y en movimiento' },
+  solarGuardian: { name:'Guardiana Solar', hp:2950, speed:98, dmg:31, radius:32, color:'#ffe488', contactCd:0.95,
+    minion:null, title:'Cierra el tramo — el ecuador del camino al Sol está cerca' },
+
+  // ---- Pisos 67-71: la corona del Sol ya se distingue en el horizonte ----
+  flareWarden: { name:'Custodio de Flare', hp:3150, speed:70, dmg:33, radius:38, color:'#ffb828', contactCd:1.25,
+    minion:null, title:'Decimotercero en guardia — hasta el fuego respeta su turno' },
+  flareThorn: { name:'Espina de Flare', hp:2750, speed:108, dmg:31, radius:29, color:'#ffa838', contactCd:0.95,
+    minion:null, title:'Cada espina es una pequeña llamarada que no se apaga' },
+  coronaWhisper: { name:'Susurro de Corona', hp:2800, speed:144, dmg:29, radius:26, color:'#ffc048', contactCd:0.85,
+    minion:null, title:'Ya brilla tanto que cuesta verlo moverse' },
+  coronaHeart: { name:'Corazón de Corona', hp:3300, speed:100, dmg:32, radius:35, color:'#ffb438', contactCd:0.95,
+    minion:null, title:'Cierra el tramo — la corona del Sol ya se distingue entera' },
+  flareSwarm: { name:'Enjambre de Flare', hp:2750, speed:162, dmg:29, radius:23, color:'#ffcc58', contactCd:0.75,
+    minion:null, title:'Abre el siguiente tramo — cada vez menos falta para la cima' },
+
+  // ---- Pisos 72-76: el cenit — se acerca el tres cuartos del camino ----
+  zenithWarden: { name:'Custodio del Cenit', hp:3250, speed:72, dmg:33, radius:39, color:'#ffdc38', contactCd:1.25,
+    minion:null, title:'Decimocuarto en guardia — arriba, el sol ya pesa sobre todos' },
+  zenithThorn: { name:'Espina del Cenit', hp:2850, speed:110, dmg:32, radius:29, color:'#ffe048', contactCd:0.95,
+    minion:null, title:'A esta altura, hasta el dolor tiene su propio brillo' },
+  zenithWhisper: { name:'Susurro del Cenit', hp:2900, speed:146, dmg:30, radius:27, color:'#ffe458', contactCd:0.85,
+    minion:null, title:'Ya no necesita sombra ninguna para moverse rápido' },
+  zenithEcho: { name:'Eco del Cenit', hp:2950, speed:124, dmg:30, radius:28, color:'#ffe868', contactCd:0.9,
+    minion:null, title:'Marca los tres cuartos del camino — cada eco es puro mediodía' },
+  zenithGuardian: { name:'Guardiana del Cenit', hp:3100, speed:100, dmg:32, radius:33, color:'#ffec78', contactCd:0.95,
+    minion:null, title:'Cierra el tramo — desde acá, todo el camino es cuesta de luz' },
+
+  // ---- Pisos 77-81: luz cegadora — el último tramo antes de la recta final ----
+  blindingWarden: { name:'Custodio Cegador', hp:3350, speed:74, dmg:34, radius:39, color:'#fff088', contactCd:1.25,
+    minion:null, title:'Decimoquinto en guardia — casi no se distingue ya su forma' },
+  blindingThorn: { name:'Espina Cegadora', hp:2950, speed:112, dmg:32, radius:29, color:'#fff498', contactCd:0.95,
+    minion:null, title:'El dolor y la luz son, a esta altura, la misma cosa' },
+  blindingWhisper: { name:'Susurro Cegador', hp:3000, speed:148, dmg:31, radius:27, color:'#fff6a8', contactCd:0.85,
+    minion:null, title:'Ya nadie recuerda si alguna vez fue penumbra' },
+  blindingHeart: { name:'Corazón Cegador', hp:3550, speed:102, dmg:33, radius:36, color:'#fff8b8', contactCd:0.95,
+    minion:null, title:'Cierra el tramo, 4 ataques — falta poco para el final del camino' },
+  blindingSwarm: { name:'Enjambre Cegador', hp:2950, speed:165, dmg:30, radius:23, color:'#fffac8', contactCd:0.74,
+    minion:null, title:'Abre la recta final — cada chispa ya es casi Sol' },
+
+  // ---- Pisos 82-86: lo ascendente — ya casi no hay distancia entre el jefe y la cima ----
+  ascendantWarden: { name:'Custodio Ascendente', hp:3450, speed:76, dmg:34, radius:40, color:'#fff4a0', contactCd:1.2,
+    minion:null, title:'Decimosexto en guardia — sube con el camino, nunca lo abandona' },
+  ascendantThorn: { name:'Espina Ascendente', hp:3050, speed:114, dmg:33, radius:30, color:'#fff6b0', contactCd:0.9,
+    minion:null, title:'Cada paso hacia arriba se paga con un poco de dolor propio' },
+  ascendantWhisper: { name:'Susurro Ascendente', hp:3100, speed:150, dmg:31, radius:28, color:'#fff8c0', contactCd:0.85,
+    minion:null, title:'Habla en el idioma que solo se escucha cerca de la cima' },
+  ascendantEcho: { name:'Eco Ascendente', hp:3150, speed:126, dmg:31, radius:29, color:'#fffad0', contactCd:0.9,
+    minion:null, title:'Cada eco sube un poco más que el anterior, sin cansarse nunca' },
+  ascendantGuardian: { name:'Guardiana Ascendente', hp:3300, speed:104, dmg:33, radius:34, color:'#fffce0', contactCd:0.95,
+    minion:null, title:'Cierra el tramo — desde acá se ve, por fin, la cima entera' },
+
+  // ---- Pisos 87-91: la cumbre — el último tramo antes de enfrentar al Sol mismo ----
+  summitWarden: { name:'Custodio de la Cumbre', hp:3550, speed:78, dmg:35, radius:40, color:'#fffef0', contactCd:1.2,
+    minion:null, title:'Decimoséptimo en guardia — el último que custodia algo antes del Sol' },
+  summitThorn: { name:'Espina de la Cumbre', hp:3150, speed:116, dmg:34, radius:31, color:'#fffff4', contactCd:0.9,
+    minion:null, title:'A esta altura, el dolor y la luz ya no se distinguen en nada' },
+  summitWhisper: { name:'Susurro de la Cumbre', hp:3200, speed:152, dmg:32, radius:28, color:'#fffff8', contactCd:0.85,
+    minion:null, title:'El último susurro — después de este, solo queda gritar' },
+  summitHeart: { name:'Corazón de la Cumbre', hp:3700, speed:106, dmg:34, radius:37, color:'#fffffc', contactCd:0.95,
+    minion:null, title:'Cierra el tramo, 4 ataques — el Sol ya está del otro lado de la puerta' },
+  summitSwarm: { name:'Enjambre de la Cumbre', hp:3050, speed:168, dmg:31, radius:24, color:'#ffffff', contactCd:0.72,
+    minion:null, title:'Abre el tramo final — después de esto ya no hay más tramos' },
+
+  // ---- Pisos 92-96: el portal — el último tramo antes de enfrentar al Sol mismo ----
+  portalWarden: { name:'Custodio del Portal', hp:3650, speed:80, dmg:35, radius:41, color:'#fffef5', contactCd:1.2,
+    minion:null, title:'Decimoctavo en guardia — el último que custodia la entrada' },
+  portalThorn: { name:'Espina del Portal', hp:3250, speed:118, dmg:34, radius:31, color:'#fffff6', contactCd:0.9,
+    minion:null, title:'Ya no queda distancia entre el dolor y la luz misma' },
+  portalWhisper: { name:'Susurro del Portal', hp:3300, speed:154, dmg:32, radius:28, color:'#fffff9', contactCd:0.85,
+    minion:null, title:'Lo que susurra ya no es un idioma — es solo calor' },
+  portalEcho: { name:'Eco del Portal', hp:3350, speed:128, dmg:32, radius:29, color:'#fffffb', contactCd:0.9,
+    minion:null, title:'El último eco antes del silencio total del Sol' },
+  portalGuardian: { name:'Guardiana del Portal', hp:3500, speed:108, dmg:34, radius:35, color:'#fffffd', contactCd:0.95,
+    minion:null, title:'Cierra el tramo — el Sol está justo del otro lado' },
+
+  // ---- Pisos 97-99: los últimos tres — después de esto, solo queda El Sol ----
+  lastWarden: { name:'Último Custodio', hp:3800, speed:82, dmg:36, radius:42, color:'#fffefb', contactCd:1.15,
+    minion:null, title:'El último que hace guardia — nadie viene después de él' },
+  lastThorn: { name:'Última Espina', hp:3400, speed:120, dmg:35, radius:32, color:'#fffefe', contactCd:0.9,
+    minion:null, title:'El último dolor antes de que ya no haya más que luz' },
+  sunPrecursor: { name:'Precursor del Sol', hp:4200, speed:112, dmg:36, radius:38, color:'#ffffff', contactCd:0.9,
+    minion:null, title:'Anuncia al Sol en persona — después de él, ya no hay más puertas' },
+
+  theSun: { name:'El Sol', hp:2200, speed:110, dmg:26, radius:48, color:'#fff3c4', contactCd:0.7,
+    minion:null, title:'Lo único que queda al final de la luz' },
 };
 
 const BOSS_ATTACKS = {
@@ -656,13 +937,137 @@ const BOSS_ATTACKS = {
   empressOfLight: ['gracefulVeil','radiantNova','rainbowLine','spiralBloom','petalRing','solarSporeSpiral','dandelionWave','lightDeluge','prismaticCascade','radiantMandala'],
   mirrorLord: ['mirrorSplit','phantomBarrage','glassRain','infiniteReflections','boundlessBeam','crystalCage'],
   twinBoss: ['eyeLaser','cursedFlameBreath','twinCharge','sisterCall','megaLaser','pincerScan','orbitalCross','desperateRush','energyBond'],
-  trueFinal: ['boneWall','boneGrab','curseMark','wither','fireWave','mirrorSplit','phantomBarrage','twinPulse','twinSwap','echoDash','slam','meteor','poisonPool','boneCage','abyssalCollapse'],
+  trueFinal: [
+    // Guardián de Hueso (piso 10)
+    'boneGrab','boneCage',
+    // Bruja Madre (piso 20)
+    'witchCauldron','venomousWeb',
+    // Señor del Abismo (piso 30)
+    'blazingFissure','growingMagma',
+    // Emperatriz de Luz (piso 40)
+    'radiantMandala','prismaticCascade',
+    // Señor de los Espejos (piso 50)
+    'infiniteReflections','boundlessBeam',
+    // Gemelas Espectrales (piso 60) — twinCharge is the one Twins move that works without a
+    // live twin (it's just a straight-line charge with a wind-up line telegraph)
+    'twinCharge',
+    // Monarca Glacial (piso 70)
+    'absoluteZero','iceAvalanche',
+    // Señor de la Tormenta (piso 80)
+    'thunderdome','closingBarrier',
+    // Devorador de Estrellas (piso 90)
+    'massSingularity','eventHorizonPulse',
+    // El Verdadero Abismo's own signature finisher
+    'abyssalCollapse',
+  ],
 
   // zone guardians — every move below is exclusive to its own Guardian; none of the 9 non-final
   // Guardians share a single attack with any other Guardian
   glacierMonarch: ['frostNova','iceCage','blizzardWall','frozenGround','iceSlide','growingSpikes','absoluteZero','movingIceWalls','iceAvalanche'],
   stormLord: ['chainLightning','stormField','thunderdome','circuitPanels','polarityPull','closingBarrier','predictiveLightning'],
   starDevourer: ['voidLance','voidRift','gravityWell','starCollapse','massSingularity','gravityFlip','voidCrackCollapse','eventHorizonPulse'],
+
+  // ASCENSO
+  shadowLarva: ['voidClaw','voidPuddles','shadowBurst'],
+  hollowEcho: ['echoSlam','hollowVolley','duplicantPulse'],
+  crackWeaver: ['crackLine','tendrilBloom','weaverBurst'],
+  muteGuardian: ['silentSlam','mutePulse','whisperVolley'],
+  echoDevourer: ['devourLunge','echoSwarmBurst','voidMawPuddles'],
+  ashSentinel: ['ashSlam','cinderRing','ashStorm'],
+  crackWhisper: ['whisperDodge','crackVolley','whisperCrawl'],
+  shadowThorn: ['thornLash','thornField','thornBurst'],
+  silentWarden: ['wardenCrush','wardenBarrier','wardenVolley'],
+  ashSwarm: ['swarmDash','swarmPepper','swarmField'],
+  fissureHerald: ['heraldSlam','heraldLine','heraldBurst','heraldCollapse'],
+  drownedScream: ['screamSlam','drownedVolley','echoTrap'],
+  duskWeave: ['duskLash','duskWeb','twilightBurst'],
+  facelessGuard: ['facelessCrush','facelessWard','facelessGaze'],
+  darkVine: ['vineLash','vineField','vineBurst'],
+  twinWhisper: ['whisperTwinDash','doubleVolley','twinCrawl'],
+  brokenShard: ['shardSlam','shardRain','shardBurst'],
+  ashCustodian: ['custodianSlam','custodianRing','custodianVolley'],
+  namelessLament: ['lamentDodge','lamentCrawl','lamentWail'],
+  fissureHeart: ['heartSlam','heartLine','heartBurst','heartCollapse'],
+  thresholdEchoes: ['thresholdSlam','thresholdField','voidBeam'],
+  hollowChoir: ['choirSlam','choirWave','choirEcho'],
+  duskMarauder: ['marauderPounce','marauderRake','marauderHail'],
+  graniteWarden: ['graniteCrush','graniteWall','graniteVolley'],
+  witheredBloom: ['bloomLash','bloomField','bloomBurst'],
+  crownOfEmbers: ['emberSlam','crownAshfall','emberBurst'],
+  wanderingAsh: ['ashDash','emberWake','cinderScatter'],
+  achingEmber: ['emberCrush','achingRing','emberVolley'],
+  paleFlame: ['paleFlicker','paleWake','paleBurst'],
+  emberWarden: ['wardenEmberSlam','emberWardenRing','emberWardenVolley'],
+  emberSwarm: ['swarmEmberDash','emberSwarmField','emberSwarmBurst'],
+  dimmedMist: ['mistSlam','mistField','mistBurst'],
+  dimmedWarden: ['dimmedCrush','dimmedRing','dimmedVolley'],
+  dimmedThorn: ['greyThornLash','greyThornField','greyThornBurst'],
+  dimmedWhisper: ['dimWhisperDodge','dimmedCrawl','dimmedWhisperVolley'],
+  dimmedHeart: ['heartDimSlam','dimmedHeartLine','dimmedHeartBurst'],
+  wanderingDust: ['dustDash','dustTrail','dustScatter'],
+  ashFissure: ['fissureLash','fissureField','fissureBurst'],
+  hollowReflection: ['hollowSlam','hollowField','hollowBurst'],
+  stoneWhisper: ['stoneWhisperDodge','stoneCrawl','stoneVolley'],
+  dustHeart: ['dustHeartSlam','dustHeartLine','dustHeartBurst','dustHeartCollapse'],
+  dimmedGleam: ['gleamSlam','gleamField','gleamBurst'],
+  stoneWarden: ['stoneWardenCrush','stoneWardenRing','stoneWardenVolley'],
+  lightThorn: ['lightThornLash','lightThornField','lightThornBurst'],
+  greyEchoes: ['greyEchoDash','greyEchoField','greyEchoBurst'],
+  ashLightGuardian: ['ashLightSlam','ashLightField','ashLightBurst'],
+  faintVeil: ['veilSlam','veilField','veilBurst'],
+  edgeGuardian: ['edgeGuardCrush','edgeGuardRing','edgeGuardVolley'],
+  dawnThorn: ['dawnThornLash','dawnThornField','dawnThornBurst'],
+  edgeHeart: ['edgeHeartSlam','edgeHeartLine','edgeHeartBurst','edgeHeartCollapse'],
+  wanderingDawn: ['dawnDash','dawnTrail','dawnScatter'],
+  dawnGuardian: ['dawnGuardCrush','dawnGuardRing','dawnGuardVolley'],
+  goldenEcho: ['goldenEchoDash','goldenEchoField','goldenEchoBurst'],
+  goldenThorn: ['goldenThornLash','goldenThornField','goldenThornBurst'],
+  dawnWhisper: ['dawnWhisperDodge','dawnWhisperCrawl','dawnWhisperVolley'],
+  brightHollow: ['brightSlam','brightField','brightBurst'],
+  goldenSwarm: ['swarmGoldenDash','goldenSwarmField','goldenSwarmBurst'],
+  radiantWarden: ['radiantCrush','radiantRing','radiantVolley'],
+  radiantThorn: ['radiantThornLash','radiantThornField','radiantThornBurst'],
+  sunHerald: ['sunHeraldSlam','sunHeraldLine','sunHeraldBurst','sunHeraldCollapse'],
+  goldenSentinel: ['sentinelDash','sentinelTrail','sentinelScatter'],
+  solarWarden: ['solarWardenCrush','solarWardenRing','solarWardenVolley'],
+  solarWhisper: ['solarWhisperDodge','solarWhisperCrawl','solarWhisperVolley'],
+  solarEcho: ['solarEchoDash','solarEchoField','solarEchoBurst'],
+  blazeSwarm: ['swarmBlazeDash','blazeSwarmField','blazeSwarmBurst'],
+  solarGuardian: ['solarGuardSlam','solarGuardField','solarGuardBurst'],
+  flareWarden: ['flareWardenCrush','flareWardenRing','flareWardenVolley'],
+  flareThorn: ['flareThornLash','flareThornField','flareThornBurst'],
+  coronaWhisper: ['coronaWhisperDodge','coronaWhisperCrawl','coronaWhisperVolley'],
+  coronaHeart: ['coronaHeartSlam','coronaHeartLine','coronaHeartBurst','coronaHeartCollapse'],
+  flareSwarm: ['swarmFlareDash','flareSwarmField','flareSwarmBurst'],
+  zenithWarden: ['zenithWardenCrush','zenithWardenRing','zenithWardenVolley'],
+  zenithThorn: ['zenithThornLash','zenithThornField','zenithThornBurst'],
+  zenithWhisper: ['zenithWhisperDodge','zenithWhisperCrawl','zenithWhisperVolley'],
+  zenithEcho: ['zenithEchoDash','zenithEchoField','zenithEchoBurst'],
+  zenithGuardian: ['zenithGuardSlam','zenithGuardField','zenithGuardBurst'],
+  blindingWarden: ['blindWardenCrush','blindWardenRing','blindWardenVolley'],
+  blindingThorn: ['blindThornLash','blindThornField','blindThornBurst'],
+  blindingWhisper: ['blindWhisperDodge','blindWhisperCrawl','blindWhisperVolley'],
+  blindingHeart: ['blindHeartSlam','blindHeartLine','blindHeartBurst','blindHeartCollapse'],
+  blindingSwarm: ['swarmBlindDash','blindSwarmField','blindSwarmBurst'],
+  ascendantWarden: ['ascWardenCrush','ascWardenRing','ascWardenVolley'],
+  ascendantThorn: ['ascThornLash','ascThornField','ascThornBurst'],
+  ascendantWhisper: ['ascWhisperDodge','ascWhisperCrawl','ascWhisperVolley'],
+  ascendantEcho: ['ascEchoDash','ascEchoField','ascEchoBurst'],
+  ascendantGuardian: ['ascGuardSlam','ascGuardField','ascGuardBurst'],
+  summitWarden: ['summitWardenCrush','summitWardenRing','summitWardenVolley'],
+  summitThorn: ['summitThornLash','summitThornField','summitThornBurst'],
+  summitWhisper: ['summitWhisperDodge','summitWhisperCrawl','summitWhisperVolley'],
+  summitHeart: ['summitHeartSlam','summitHeartLine','summitHeartBurst','summitHeartCollapse'],
+  summitSwarm: ['swarmSummitDash','summitSwarmField','summitSwarmBurst'],
+  portalWarden: ['portalWardenCrush','portalWardenRing','portalWardenVolley'],
+  portalThorn: ['portalThornLash','portalThornField','portalThornBurst'],
+  portalWhisper: ['portalWhisperDodge','portalWhisperCrawl','portalWhisperVolley'],
+  portalEcho: ['portalEchoDash','portalEchoField','portalEchoBurst'],
+  portalGuardian: ['portalGuardSlam','portalGuardField','portalGuardBurst'],
+  lastWarden: ['lastWardenCrush','lastWardenRing','lastWardenVolley'],
+  lastThorn: ['lastThornLash','lastThornField','lastThornBurst'],
+  sunPrecursor: ['precursorSlam','precursorRing','precursorLine','precursorBurst','precursorCollapse'],
+  theSun: ['geoSweep','stormSpiral','eruptionConvergence','zeroGravityRings','totalCollapse'],
 };
 generateFloorBosses(); // now that BOSS_DEFS/BOSS_ATTACKS exist, fill in the 90 regular-floor bosses
 
@@ -698,6 +1103,54 @@ const ULTIMATE_ABILITIES = [
       p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.28);
       addParticles(p.x,p.y,'#e8434f',24,170,0.5);
     } },
+  { id:'pliegue_temporal', name:'Pliegue Temporal', icon:'⏳', cd:36, color:'#8affe0',
+    desc:'Detiene a todos los enemigos y al jefe en pantalla por 1.8s y los golpea',
+    cast: p=>{
+      game.enemies.forEach(en=>{
+        en.stunTimer = Math.max(en.stunTimer||0, 1.8);
+        dealDamageToTarget(en, computeDamage(10), 'ult');
+      });
+      bossTargets().forEach(t=>{
+        t.stunTimer = Math.max(t.stunTimer||0, 1.8);
+        dealDamageToTarget(t, computeDamage(10), 'ult');
+      });
+      addParticles(p.x,p.y,'#8affe0',20,120,0.4);
+      shake(6);
+    } },
+  { id:'escudo_especular', name:'Escudo Especular', icon:'◎', cd:34, color:'#6ad8ff',
+    desc:'Por 4s, todo el daño que recibís se refleja al enemigo más cercano',
+    cast: p=>{
+      p.effects.mirrorShield = 4;
+      addParticles(p.x,p.y,'#6ad8ff',22,150,0.45);
+      shake(3);
+    } },
+  { id:'guardian_efimero', name:'Guardián Efímero', icon:'⚚', cd:40, color:'#c9a8ff',
+    desc:'Invoca un guardián espectral que ataca solo durante 8s',
+    cast: p=>{
+      // reuses the same single pet slot/AI as Silvano's wolf summon (updatePet/drawPet are
+      // generic over any {x,y,radius,color,speed,dmg,atkCd,life} shape) — if Silvano already has
+      // a wolf out, this simply replaces it with the guardian for its duration
+      game.pet = { x:p.x-30, y:p.y, hp:1, maxHp:1, radius:15, speed:210,
+        dmg:Math.round(p.def.atk ? p.def.atk.dmg*1.6 : 16),
+        atkCd:0.6, atkTimer:0, hitFlash:0, life:8, color:'#c9a8ff' };
+      addParticles(p.x,p.y,'#c9a8ff',26,170,0.5);
+    } },
+];
+
+// ---------- ASCENSO's key-Shift abilities ----------
+// Unlocked through Ascenso progress (currently just: beat El Sol) rather than boss drops, and
+// selected the same single-active way as ULTIMATE_ABILITIES (see selectShiftAbility). Only one
+// real ability exists so far — more are planned once more of the tower above floor 100 is built,
+// see the continuation doc for the backlog.
+const SHIFT_ABILITIES = [
+  { id:'mantoLuz', name:'Manto de Luz', icon:'☀', cd:20, color:'#fff3c4',
+    desc:'1.5s de invulnerabilidad y +40% de velocidad — un respiro robado del Sol mismo',
+    cast: p=>{
+      p.invuln = Math.max(p.invuln, 1.5);
+      p.effects.mantoLuz = Math.max(p.effects.mantoLuz||0, 1.5); // dedicated field — reusing 'shadow' would
+      // wrongly show Picaro's "Paso Sombrío" tooltip and only grant +15% instead of the advertised +40%
+      addParticles(p.x,p.y,'#fff3c4',24,180,0.45);
+    } },
 ];
 
 const ITEM_POOL = {
@@ -707,6 +1160,21 @@ const ITEM_POOL = {
     { id:'clover', name:'Trébol de la Suerte', icon:'☘', desc:'+3% prob. crítico', apply:p=>{ p.critChance+=0.03; } },
     { id:'flask', name:'Frasco Templado', icon:'✚', desc:'Regenera un poco de HP', apply:p=>{ p.regen+=0.35; } },
     { id:'dagger', name:'Filo Menor', icon:'✊', desc:'+2.5% daño', apply:p=>{ p.dmgMult*=1.025; } },
+    { id:'c_bandage', name:'Vendaje Áspero', icon:'♥', desc:'+6 HP máx', apply:p=>{ p.maxHp+=6; p.hp+=6; } },
+    { id:'c_sandals', name:'Sandalias Gastadas', icon:'👢', desc:'+6 velocidad', apply:p=>{ p.speedFlat+=6; } },
+    { id:'c_whetstone', name:'Piedra de Afilar', icon:'✊', desc:'+2% daño', apply:p=>{ p.dmgMult*=1.02; } },
+    { id:'c_bitterherb', name:'Hierba Amarga', icon:'✚', desc:'Regenera un poco de HP', apply:p=>{ p.regen+=0.25; } },
+    { id:'c_bentcoin', name:'Moneda Doblada', icon:'🜏', desc:'+5% de oro', apply:p=>{ p.goldMult+=0.05; } },
+    { id:'c_glove', name:'Guante Remendado', icon:'☘', desc:'+2% prob. crítico', apply:p=>{ p.critChance+=0.02; } },
+    { id:'c_cord', name:'Cordón Tenso', icon:'☥', desc:'-3% enfriamiento', apply:p=>{ p.cdMult*=0.97; } },
+    { id:'c_scale', name:'Escama Suelta', icon:'▣', desc:'+2% reducción de daño', apply:p=>{ p.armor+=0.02; } },
+    { id:'c_halfflask', name:'Frasco a Medio Llenar', icon:'♥', desc:'+5 HP máx y regenera un poco de HP', apply:p=>{ p.maxHp+=5; p.hp+=5; p.regen+=0.15; } },
+    { id:'c_coldember', name:'Brasa Fría', icon:'✊', desc:'+2% daño', apply:p=>{ p.dmgMult*=1.02; } },
+    { id:'c_whitefeather', name:'Pluma Blanca', icon:'👢', desc:'+2% velocidad de movimiento', apply:p=>{ p.speedMult*=1.02; } },
+    { id:'c_stonedust', name:'Polvo de Piedra', icon:'▣', desc:'+3% reducción de daño', apply:p=>{ p.armor+=0.03; } },
+    { id:'c_minorspark', name:'Chispa Menor', icon:'☘', desc:'+2% prob. crítico', apply:p=>{ p.critChance+=0.02; } },
+    { id:'c_huntercord', name:'Cordel de Cazador', icon:'👢', desc:'+7 velocidad', apply:p=>{ p.speedFlat+=7; } },
+    { id:'c_witheredseed', name:'Semilla Marchita', icon:'✚', desc:'Regenera un poco de HP', apply:p=>{ p.regen+=0.3; } },
   ],
   rare: [
     { id:'gauntlet', name:'Guantelete de Fuerza', icon:'✊', desc:'+6% daño', apply:p=>{ p.dmgMult*=1.06; } },
@@ -716,6 +1184,21 @@ const ITEM_POOL = {
     { id:'boots2', name:'Botas del Cazador', icon:'👢', desc:'+18 velocidad', apply:p=>{ p.speedFlat+=18; } },
     { id:'effect_execute', name:'Filo Ejecutor', icon:'☠', desc:'Los golpes críticos ejecutan enemigos con menos de 12% de vida', apply:p=>{ p.relics.effect_execute=true; } },
     { id:'effect_thorns', name:'Talismán de Represalia', icon:'⛊', desc:'20% de prob. de liberar una onda de daño al recibir un golpe', apply:p=>{ p.relics.effect_thorns=true; } },
+    { id:'r_fireglove', name:'Guantelete Ígneo', icon:'✊', desc:'+8% daño', apply:p=>{ p.dmgMult*=1.08; } },
+    { id:'r_dawnveil', name:'Velo del Alba', icon:'☥', desc:'-10% enfriamiento', apply:p=>{ p.cdMult*=0.90; } },
+    { id:'r_ashplate', name:'Coraza de Ceniza', icon:'▣', desc:'+8% reducción de daño', apply:p=>{ p.armor+=0.08; } },
+    { id:'r_emberheart', name:'Corazón de Rescoldo', icon:'♥', desc:'+12 HP máx y regenera HP', apply:p=>{ p.maxHp+=12; p.hp+=12; p.regen+=0.4; } },
+    { id:'r_solarboots', name:'Botas del Viento Solar', icon:'👢', desc:'+22 velocidad', apply:p=>{ p.speedFlat+=22; } },
+    { id:'r_nighthunter', name:'Anillo del Cazador Nocturno', icon:'☘', desc:'+4% crítico y +3% daño', apply:p=>{ p.critChance+=0.04; p.dmgMult*=1.03; } },
+    { id:'r_goldensap', name:'Frasco de Savia Dorada', icon:'✚', desc:'Regenera bastante HP con el tiempo', apply:p=>{ p.regen+=1.0; } },
+    { id:'r_echotalisman', name:'Talismán del Eco', icon:'⦿', desc:'+5% robo de vida', apply:p=>{ grantLifesteal(p,0.05); } },
+    { id:'r_curvedthorn', name:'Espina Curva', icon:'✊', desc:'+6% daño', apply:p=>{ p.dmgMult*=1.06; } },
+    { id:'r_ashmantle', name:'Manto Ceniciento', icon:'▣', desc:'+7% reducción de daño', apply:p=>{ p.armor+=0.07; } },
+    { id:'r_brokenhourglass', name:'Reloj de Arena Roto', icon:'☥', desc:'-9% enfriamiento', apply:p=>{ p.cdMult*=0.91; } },
+    { id:'r_frostfang', name:'Colmillo de Escarcha', icon:'☘', desc:'+5% crítico', apply:p=>{ p.critChance+=0.05; } },
+    { id:'r_pilgrim', name:'Brazalete del Peregrino', icon:'👢', desc:'+16 velocidad y +4 HP máx', apply:p=>{ p.speedFlat+=16; p.maxHp+=4; p.hp+=4; } },
+    { id:'r_minorsolar', name:'Anillo Solar Menor', icon:'✊', desc:'+5% daño y +6 velocidad', apply:p=>{ p.dmgMult*=1.05; p.speedFlat+=6; } },
+    { id:'r_amberflask', name:'Frasco de Ámbar', icon:'▣', desc:'+9% reducción de daño', apply:p=>{ p.armor+=0.09; } },
   ],
   epic: [
     { id:'phoenix', name:'Corazón de Fénix', icon:'♦', desc:'+20 HP máx', apply:p=>{ p.maxHp+=20; p.hp+=20; } },
@@ -725,6 +1208,31 @@ const ITEM_POOL = {
     { id:'ring', name:'Anillo Vampírico', icon:'⦿', desc:'+2% robo de vida', apply:p=>{ grantLifesteal(p,0.02); } },
     { id:'soul', name:'Fragmento de Alma', icon:'✦', desc:'+3% robo de vida y +5% crítico', apply:p=>{ grantLifesteal(p,0.03); p.critChance+=0.05; } },
     { id:'effect_deathburst', name:'Núcleo Volátil', icon:'☄', desc:'25% de prob. de que un enemigo derrotado libere una explosión de daño', apply:p=>{ p.relics.effect_deathburst=true; } },
+    { id:'e_solarheart', name:'Corazón Solar', icon:'♦', desc:'+24 HP máx', apply:p=>{ p.maxHp+=24; p.hp+=24; } },
+    { id:'e_zenithfragment', name:'Fragmento del Cenit', icon:'⚡', desc:'+8% daño y -10% enfriamiento', apply:p=>{ p.dmgMult*=1.08; p.cdMult*=0.90; } },
+    { id:'e_ashwing', name:'Ala de Ceniza', icon:'👢', desc:'+20 velocidad y +3% crítico', apply:p=>{ p.speedFlat+=20; p.critChance+=0.03; } },
+    { id:'e_dimmedcrown', name:'Corona Apagada', icon:'♛', desc:'+7% daño y +6% reducción de daño', apply:p=>{ p.dmgMult*=1.07; p.armor+=0.06; } },
+    { id:'e_voidseal', name:'Sello del Vacío', icon:'⛊', desc:'20% de prob. de aturdir brevemente al enemigo golpeado', apply:p=>{ p.relics.effect_voidSeal=true; } },
+    { id:'e_frostcore', name:'Núcleo Gélido', icon:'❄', desc:'15% de prob. de ralentizar al enemigo golpeado', apply:p=>{ p.relics.effect_frostCore=true; } },
+    { id:'e_echorelic', name:'Reliquia del Eco', icon:'⦿', desc:'Cada 10º ataque básico no gasta el enfriamiento de Q', apply:p=>{ p.relics.effect_echoRelic=true; } },
+    { id:'e_minorphoenix', name:'Anillo del Fénix Menor', icon:'♦', desc:'Al caer bajo 20% de vida, curás 15 HP — una vez por run', apply:p=>{ p.relics.effect_minorPhoenix=true; } },
+    { id:'e_combopact', name:'Pacto del Combo', icon:'✦', desc:'El bonus de daño por racha se duplica', apply:p=>{ p.relics.effect_comboPact=true; } },
+    { id:'e_persistenceseal', name:'Sello de Persistencia', icon:'✦', desc:'Cada golpe conectado extiende un poco más el temporizador de racha', apply:p=>{ p.relics.effect_persistenceSeal=true; } },
+    { id:'e_impactwave', name:'Onda de Impacto', icon:'☄', desc:'Al usar Q, liberás una onda de daño en área a tu alrededor', apply:p=>{ p.relics.effect_impactWave=true; } },
+    { id:'e_fireembers', name:'Estela de Fuego', icon:'☄', desc:'Al usar E, herís a los enemigos cercanos con una ráfaga de fuego', apply:p=>{ p.relics.effect_fireEmbers=true; } },
+    { id:'e_huntersmark', name:'Marca de Caza', icon:'☠', desc:'El primer golpe contra cada enemigo hace 30% más daño', apply:p=>{ p.relics.effect_huntersMark=true; } },
+    { id:'e_chainbond', name:'Vínculo de Cadenas', icon:'⚡', desc:'15% de prob. de que tus golpes salten como rayo a otro enemigo cercano', apply:p=>{ p.relics.relic_storm=true; } },
+    { id:'e_instantreflex', name:'Reflejo Instantáneo', icon:'⛊', desc:'Un golpe que te dejaría con menos de 1 HP te deja con 1 en su lugar — una vez por run', apply:p=>{ p.relics.effect_instantReflex=true; } },
+    { id:'e_shadowstep', name:'Paso de Sombra', icon:'👢', desc:'Al terminar tu invulnerabilidad, ganás un impulso de velocidad breve', apply:p=>{ p.relics.effect_shadowStep=true; } },
+    { id:'e_warcrystreak', name:'Grito de Batalla', icon:'⚡', desc:'Matar 3 enemigos en 2 segundos activa un fuerte bonus de daño temporal', apply:p=>{ p.relics.effect_warcryStreak=true; } },
+    { id:'e_frostspine', name:'Espina de Escarcha', icon:'❄', desc:'Los enemigos que te golpean cuerpo a cuerpo quedan lentos', apply:p=>{ p.relics.effect_frostSpine=true; } },
+    { id:'e_altarblessing', name:'Bendición del Altar', icon:'♥', desc:'Las pociones de vida curan 50% más', apply:p=>{ p.relics.effect_altarBlessing=true; } },
+    { id:'e_repeatrune', name:'Runa de Repetición', icon:'✦', desc:'10% de prob. de que un ataque básico no gaste su enfriamiento', apply:p=>{ p.relics.effect_repeatRune=true; } },
+    { id:'e_allseeingeye', name:'Ojo que Todo Ve', icon:'👁', desc:'Usar tu Habilidad Prohibida te da unos segundos de invulnerabilidad', apply:p=>{ p.relics.effect_allSeeingEye=true; } },
+    { id:'e_lifecurrent', name:'Corriente de Vida', icon:'♥', desc:'Recoger oro te cura un poco de HP', apply:p=>{ p.relics.effect_lifeCurrent=true; } },
+    { id:'e_reactiveshield', name:'Escudo de Reacción', icon:'⛊', desc:'Al caer bajo 30% de vida, ganás un escudo que absorbe el próximo golpe — una vez por piso', apply:p=>{ p.relics.effect_reactiveShield=true; } },
+    { id:'e_ghoststep', name:'Paso Fantasma', icon:'👻', desc:'La primera vez que tocás cada tipo de peligro elemental en un piso, no te hace daño', apply:p=>{ p.relics.effect_ghostStep=true; } },
+    { id:'e_unstablecore', name:'Núcleo Inestable', icon:'☄', desc:'Tus golpes críticos tienen 15% de prob. de causar una explosión en área', apply:p=>{ p.relics.effect_unstableCore=true; } },
   ],
 };
 const CURSED_ITEMS = [
@@ -744,6 +1252,12 @@ const CURSED_ITEMS = [
     apply:p=>{ p.critChance+=0.10; p.lifesteal*=0.5; } },
   { id:'curse_yoke', name:'Yugo del Poder', icon:'🔗', desc:'-18% enfriamiento de habilidades, pero -8% de armadura', cursed:true,
     apply:p=>{ p.cdMult*=0.82; p.armor=Math.max(0,p.armor-0.08); } },
+  { id:'curse_lastspark', name:'Última Chispa', icon:'✨', desc:'+9% crítico, pero -20% velocidad de ataque', cursed:true,
+    apply:p=>{ p.critChance+=0.09; p.cdMult*=1.20; } },
+  { id:'curse_blooddebt', name:'Deuda de Sangre', icon:'🩸', desc:'+15% daño, pero cada golpe que recibís te quita 1% de tu HP máximo actual', cursed:true,
+    apply:p=>{ p.dmgMult*=1.15; p.relics.effect_bloodDebt=true; } },
+  { id:'curse_dawnweight', name:'Peso del Alba', icon:'⚖', desc:'+25% de oro, pero -12 HP máx ya mismo', cursed:true,
+    apply:p=>{ p.goldMult+=0.25; p.maxHp=Math.max(20,p.maxHp-12); p.hp=Math.max(1,p.hp-12); } },
 ];
 const CURSED_CHEST_CHANCE = 0.14;
 const POTIONS = [
@@ -758,14 +1272,30 @@ const RELICS = [
   { id:'relic_storm', name:'Tormenta Contenida', icon:'🌩', desc:'12% de prob. de encadenar un rayo a otro enemigo cercano', apply:p=>{} },
   { id:'relic_greed', name:'Codicia Infinita', icon:'💰', desc:'+25% de oro por el resto de la run', apply:p=>{ p.goldMult+=0.25; } },
   { id:'relic_phoenix', name:'Pluma de Fénix', icon:'🔥', desc:'Revive una vez con 50% de vida al morir', apply:p=>{} },
+  { id:'relic_dawnFeather', name:'Pluma de Alba', icon:'🌅', desc:'Revive una vez con 30% de vida al morir', apply:p=>{} },
+  { id:'relic_doubleHeart', name:'Corazón Doble', icon:'❤️‍🔥', desc:'Duplica tu robo de vida por 8s después de derrotar a un jefe', apply:p=>{ p.relics.effect_doubleHeart=true; } },
 ];
 const RELIC_DROP_CHANCE = 0.35;
 
 const ITEM_FAMILIES = {
-  ofensiva: ['dagger','gauntlet','rage','crown','curse_blood','curse_whisper','bossBone','bossAbyss'],
-  vital: ['potion','phoenix','flask','regen','bossEmpress','curse_gold','curse_eye'],
-  mistica: ['amulet','core','clover','soul','curse_haste','curse_coldheart','curse_yoke','bossWitch','bossMirror','bossTwin','bossTrueFinal'],
-  veloz: ['boots','boots2','ring','curse_shackle'],
+  ofensiva: ['dagger','gauntlet','rage','crown','curse_blood','curse_whisper','bossBone','bossAbyss',
+    'c_whetstone','c_glove','c_coldember','c_minorspark',
+    'r_fireglove','r_nighthunter','r_curvedthorn','r_frostfang','r_minorsolar',
+    'e_zenithfragment','e_dimmedcrown','e_voidseal','e_frostcore','e_impactwave','e_fireembers','e_huntersmark','e_warcrystreak','e_repeatrune','e_unstablecore',
+    'curse_lastspark','curse_blooddebt'],
+  vital: ['potion','phoenix','flask','regen','bossEmpress','curse_gold','curse_eye',
+    'c_bandage','c_bitterherb','c_bentcoin','c_halfflask','c_witheredseed',
+    'r_emberheart','r_goldensap','r_echotalisman',
+    'e_solarheart','e_minorphoenix','e_instantreflex','e_altarblessing','e_lifecurrent','e_reactiveshield',
+    'curse_dawnweight'],
+  mistica: ['amulet','core','clover','soul','curse_haste','curse_coldheart','curse_yoke','bossWitch','bossMirror','bossTwin','bossTrueFinal',
+    'c_cord','c_scale','c_stonedust',
+    'r_dawnveil','r_ashplate','r_ashmantle','r_brokenhourglass','r_amberflask',
+    'e_echorelic','e_combopact','e_persistenceseal','e_chainbond','e_frostspine','e_allseeingeye','e_ghoststep'],
+  veloz: ['boots','boots2','ring','curse_shackle',
+    'c_sandals','c_whitefeather','c_huntercord',
+    'r_solarboots','r_pilgrim',
+    'e_ashwing','e_shadowstep'],
 };
 const SYNERGY_THRESHOLD = 3;
 const SYNERGIES = {
@@ -798,6 +1328,23 @@ function isMerchantFloor(stageIndex){
   const floor = stageIndex+1;
   return floor%MERCHANT_INTERVAL===0 && floor%10!==0 && floor<TOWER_MAX_FLOOR;
 }
+// Reroll cost scales with how many times this merchant visit has already been rerolled, and with
+// depth (mirrors chest-cost scaling so it stays meaningful at every floor).
+function merchantRerollCost(stageIndex, rerollCount){
+  const s = stageAt(stageIndex);
+  return Math.round(s.chestCost*0.6*Math.pow(1.6, rerollCount)*essenceDiscountMult());
+}
+function rerollMerchantOffers(){
+  const m = game.merchant;
+  if(!m || m.chosen) return;
+  const cost = merchantRerollCost(game.stageIndex, m.rerollCount||0);
+  if(game.gold<cost){ spawnToast(`Necesitas ${cost} de oro para volver a tirar.`); return; }
+  game.gold -= cost;
+  m.rerollCount = (m.rerollCount||0)+1;
+  m.offers = rollMerchantOffers(game.stageIndex);
+  spawnToast('🔄 El mercader baraja una nueva selección');
+  buildMerchantPanel();
+}
 function rollMerchantOffers(stageIndex){
   const s = stageAt(stageIndex);
   const pool = [
@@ -810,7 +1357,7 @@ function rollMerchantOffers(stageIndex){
     const cand = pool[Math.floor(Math.random()*pool.length)];
     if(usedIds.has(cand.item.id)) continue;
     usedIds.add(cand.item.id);
-    const cost = Math.round(s.chestCost*CHEST_TIERS[cand.tier].costMult*1.3);
+    const cost = Math.round(s.chestCost*CHEST_TIERS[cand.tier].costMult*1.3*essenceDiscountMult());
     picks.push({ item:cand.item, tier:cand.tier, cost, bought:false });
   }
   return picks;
@@ -871,8 +1418,8 @@ function updateDevModeBadge(){
       + 'border-radius:0 0 8px 8px;font-family:monospace;font-size:12px;color:#fff;'
       + 'box-shadow:0 2px 10px rgba(0,0,0,0.4);';
     jumpEl.innerHTML = `
-      <span>Ir al piso:</span>
-      <input id="dev-floor-input" type="number" min="1" max="${TOWER_MAX_FLOOR}" value="10"
+      <span>Ir al piso (101+ = Ascenso):</span>
+      <input id="dev-floor-input" type="number" min="1" max="${TOWER_MAX_FLOOR+ASCENSO_MAX_FLOOR}" value="10"
         style="width:52px;background:#1a1024;border:1px solid #a44fd9;color:#fff;border-radius:4px;padding:2px 4px;font-family:monospace;">
       <button id="dev-floor-go" style="background:#a44fd9;border:none;color:#fff;border-radius:4px;padding:3px 10px;cursor:pointer;font-family:monospace;">Ir</button>
     `;
@@ -935,17 +1482,33 @@ function syncDevAttackPanel(){
 // specific boss in isolation. Requires a run already in progress (a hero picked, game.player set).
 function devJumpToFloor(floor){
   if(!game || !game.player){ spawnToast('Iniciá una partida primero para poder saltar de piso'); return; }
-  floor = clamp(Math.round(floor), 1, TOWER_MAX_FLOOR);
-  game.stageIndex = floor-1;
-  syncCharacterLevel(game.player, game.stageIndex);
+  floor = clamp(Math.round(floor), 1, TOWER_MAX_FLOOR+ASCENSO_MAX_FLOOR);
   hideScreen('screen-stage'); hideScreen('screen-clear'); hideScreen('screen-victory');
-  $('hud').classList.remove('hidden');
-  startStage(game.stageIndex);
-  game.spawnQueue = []; // skip the wave entirely
-  game.enemies = [];
-  beginBossPhase();
-  startLoop();
-  spawnToast(`🛠️ Saltaste al piso ${floor}: ${game.currentStage.name}`);
+  hideScreen('screen-ascenso-altar'); hideScreen('screen-ascenso-loot');
+  if(floor <= TOWER_MAX_FLOOR){
+    game.ascenso = false;
+    game.stageIndex = floor-1;
+    syncCharacterLevel(game.player, game.stageIndex);
+    $('hud').classList.remove('hidden');
+    startStage(game.stageIndex);
+    game.spawnQueue = []; // skip the wave entirely
+    game.enemies = [];
+    beginBossPhase();
+    startLoop();
+    spawnToast(`🛠️ Saltaste al piso ${floor}: ${game.currentStage.name}`);
+  } else {
+    // 101-200 maps to Ascenso floor 1-100 — jumps straight past the Altar de Fe screen and the
+    // 3-2-1 countdown, same "skip everything, go straight to the boss" spirit as the Descenso jump
+    const ascensoIdx = floor - TOWER_MAX_FLOOR - 1;
+    game.ascenso = true;
+    enterAscensoFloor(ascensoIdx);
+    if(!ASCENSO_FLOORS[ascensoIdx]){ spawnToast(`🛠️ Piso ${floor-TOWER_MAX_FLOOR} de Ascenso todavía no está construido`); return; }
+    hideScreen('screen-ascenso-altar');
+    $('hud').classList.remove('hidden');
+    beginAscensoBossPhase();
+    startLoop();
+    spawnToast(`🛠️ Saltaste a Ascenso piso ${floor-TOWER_MAX_FLOOR}: ${game.currentStage.name}`);
+  }
 }
 canvas.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
 canvas.addEventListener('mousedown', ()=>{ mouse.down=true; });
@@ -955,7 +1518,7 @@ function keyPressed(code){ // edge trigger
   return false;
 }
 function updateKeyEdges(){
-  ['KeyQ','KeyE','Space','KeyR','Digit1','Digit2','Digit3','Digit4'].forEach(c=>{ keys['__prev_'+c]=keys[c]; });
+  ['KeyQ','KeyE','Space','KeyR','Digit1','Digit2','Digit3','Digit4','ShiftLeft','ShiftRight'].forEach(c=>{ keys['__prev_'+c]=keys[c]; });
 }
 
 /* ============================================================
@@ -968,8 +1531,12 @@ const PACTS = [
   { id:'hardMode', name:'Pacto del Enjambre', desc:'+30% vida/daño de enemigos, pero +15% de oro', icon:'⚔' },
   { id:'noHeal', name:'Pacto de Sangre Seca', desc:'Sin regeneración pasiva ni robo de vida, pero +20% daño', icon:'☠' },
   { id:'glassRun', name:'Pacto Frágil', desc:'-25% de tu vida máxima inicial, pero +25% de velocidad', icon:'💨' },
+  { id:'heavyMode', name:'Pacto de Plomo', desc:'-15% de velocidad, pero +25% de vida máxima inicial', icon:'⛓' },
+  { id:'vultureMode', name:'Pacto del Buitre', desc:'+25% de todo el oro que consigas, pero no aparece el mercader errante', icon:'🦅' },
 ];
 let selectedPacts = {};
+let selectedUltimate = progress.selectedUltimate || null; // id of the one ULTIMATE_ABILITIES entry chosen to bring into the run (see buildUltimates)
+let selectedShiftAbility = progress.selectedShiftAbility || null; // id of the one SHIFT_ABILITIES entry chosen (see buildShiftAbilities)
 function buildPacts(){
   const row = $('pacts-row');
   if(!row) return;
@@ -993,7 +1560,42 @@ const HOME_UPGRADES = [
   { id:'hp', name:'Vitalidad', desc:'+6 HP máx inicial', icon:'♥', baseCost:20 },
   { id:'gold', name:'Fortuna', desc:'+5% de oro (aditivo)', icon:'◆', baseCost:25 },
   { id:'dmg', name:'Instinto', desc:'+2% daño inicial', icon:'⚔', baseCost:30 },
+  { id:'potion', name:'Alforja del Peregrino', desc:'+1 poción de vida al empezar cada run', icon:'🧪', baseCost:35 },
+  { id:'discount', name:'Favor del Mercader', desc:'-4% costo de cofres y del mercader errante (aditivo, hasta 50%)', icon:'💰', baseCost:28 },
 ];
+// Aditive discount from the "Favor del Mercader" upgrade, applied to chest and merchant costs.
+// Floored at 50% off so it stays a meaningful sink instead of ever making things free.
+function essenceDiscountMult(){
+  const d = progress.homeUpgrades.discount||0;
+  return Math.max(0.5, 1 - 0.04*d);
+}
+// ---------- cosmetic skins: purchased once with essence, then usable on any unlocked hero ----------
+// Skins only recolor the glow/ring/icon tint (p.def.accent) when drawing the player — purely
+// cosmetic, no stat effect. Owning a palette is account-wide; which palette is worn is chosen
+// per-hero via progress.selectedSkins[heroId].
+const SKIN_PALETTES = [
+  { id:'ember', name:'Brasa', color:'#ff6a3d', cost:40 },
+  { id:'frost', name:'Escarcha', color:'#7fd8ff', cost:40 },
+  { id:'void', name:'Vacío', color:'#a44fd9', cost:50 },
+  { id:'gold', name:'Áureo', color:'#ffd54a', cost:60 },
+  { id:'jade', name:'Jade', color:'#4fd98a', cost:50 },
+];
+function buySkin(id){
+  if(progress.skins[id]) return;
+  const sk = SKIN_PALETTES.find(s=>s.id===id);
+  if(!sk || progress.essence<sk.cost) return;
+  progress.essence -= sk.cost;
+  progress.skins[id] = true;
+  saveProgress();
+  buildHomeAltar();
+  buildRoster();
+}
+function selectHeroSkin(heroId, skinId){
+  if(skinId && !progress.skins[skinId]) return; // must own it (or skinId is null/'' for default)
+  progress.selectedSkins[heroId] = skinId || null;
+  saveProgress();
+  buildRoster();
+}
 function homeUpgradeCost(id){
   const count = progress.homeUpgrades[id]||0;
   const def = HOME_UPGRADES.find(u=>u.id===id);
@@ -1026,6 +1628,22 @@ function buildHomeAltar(){
   row.querySelectorAll('button[data-upgrade]').forEach(btn=>{
     btn.addEventListener('click', ()=> buyHomeUpgrade(btn.dataset.upgrade));
   });
+  const skinRow = $('skins-row');
+  if(skinRow){
+    skinRow.innerHTML = SKIN_PALETTES.map(sk=>{
+      const owned = !!progress.skins[sk.id];
+      const affordable = !owned && progress.essence>=sk.cost;
+      return `<div class="ult-card">
+        <div class="ic" style="color:${sk.color}">◆</div>
+        <div class="nm">${sk.name}</div>
+        <div class="ds">${owned?'Ya lo tenés — elegilo desde la ficha de cada héroe':'Paleta cosmética, no cambia stats'}</div>
+        <button class="btn ghost" style="margin-top:8px; padding:6px 14px; font-size:11px;" ${owned?'disabled':(affordable?'':'disabled')} data-skin="${sk.id}">${owned?'Adquirida':(sk.cost+' esencia')}</button>
+      </div>`;
+    }).join('');
+    skinRow.querySelectorAll('button[data-skin]').forEach(btn=>{
+      btn.addEventListener('click', ()=> buySkin(btn.dataset.skin));
+    });
+  }
 }
 let paused = false;
 let inventoryOpen = false;
@@ -1034,35 +1652,48 @@ let animId = null;
 
 function freshPlayerStats(heroDef){
   const ultCooldowns = {};
-  progress.unlockedAbilities.forEach(id=>{ ultCooldowns[id]=0; });
-  const hpMult = selectedPacts.glassRun ? 0.75 : 1;
+  // only one Habilidad Prohibida is active per run (see selectUltimate) — unlocking more just
+  // widens the choice for next time, it no longer means "use whichever is off cooldown"
+  const activeUlt = (selectedUltimate && progress.unlockedAbilities.includes(selectedUltimate)) ? selectedUltimate : null;
+  if(activeUlt) ultCooldowns[activeUlt] = 0;
+  const shiftCooldowns = {};
+  const activeShift = (selectedShiftAbility && progress.unlockedShiftAbilities.includes(selectedShiftAbility)) ? selectedShiftAbility : null;
+  if(activeShift) shiftCooldowns[activeShift] = 0;
+  const hpMult = (selectedPacts.glassRun ? 0.75 : 1) * (selectedPacts.heavyMode ? 1.25 : 1);
   const startHp = heroDef.hp*hpMult;
   const p = {
     def:heroDef,
     x:0,y:0, radius:18, facing:0,
     hp:startHp, maxHp:startHp,
-    speedMult: selectedPacts.glassRun ? 1.25 : 1,
+    speedMult: (selectedPacts.glassRun ? 1.25 : 1) * (selectedPacts.heavyMode ? 0.85 : 1),
     speedFlat: 0, // flat speed bonuses from items — additive, doesn't compound like speedMult does
     dmgMult: selectedPacts.noHeal ? 1.2 : 1,
     cdMult:1, armor:0, critChance:0.05, lifesteal:0, regen:0, shield:0,
     curseDmgTakenMult:1, goldMult:1, slowTimer:0, slowFactor:1,
-    atkTimer:0, qTimer:0, eTimer:0, ultCooldowns,
+    atkTimer:0, qTimer:0, eTimer:0, ultCooldowns, activeUltimate:activeUlt,
+    shiftCooldowns, activeShiftAbility:activeShift,
     invuln:0, // brief i-frames
-    effects:{ warcry:0, blink:0, shadow:0, shadowCrit:false, wall:0 },
-    items:[], families:{}, synergiesUnlocked:{}, relics:{}, phoenixUsed:false,
+    effects:{ warcry:0, blink:0, shadow:0, shadowCrit:false, wall:0, mirrorShield:0, mantoLuz:0 },
+    items:[], families:{}, synergiesUnlocked:{}, relics:{}, phoenixUsed:false, dawnFeatherUsed:false,
     stance:'melee', // hybrid class only
     combo:0, comboMult:1, comboTimer:0, timeSinceHit:999, witherTimer:0,
     potions:{hp:0,def:0,dmg:0,spd:0}, potionEffects:{def:0,dmg:0,spd:0},
     facingX:1, facingY:0,
     charLevel:1, // starts at 1 each run, rises as the player descends (see levelUpCharacterTo)
     iceSlideTimer:0, slideVX:0, slideVY:0, freezeMeter:0, frozenTimer:0, frozenBurnTick:0,
+    spinTimer:0, spinTick:0,
   };
   const hpUp = progress.homeUpgrades.hp||0;
   const goldUp = progress.homeUpgrades.gold||0;
   const dmgUp = progress.homeUpgrades.dmg||0;
+  const potionUp = progress.homeUpgrades.potion||0;
   if(hpUp){ p.maxHp += 8*hpUp; p.hp += 8*hpUp; }
   if(goldUp){ p.goldMult += 0.05*goldUp; }
   if(dmgUp){ p.dmgMult *= Math.pow(1.03, dmgUp); }
+  if(potionUp){ p.potions.hp += potionUp; }
+  const skinId = progress.selectedSkins[heroDef.id];
+  const skin = skinId && progress.skins[skinId] ? SKIN_PALETTES.find(s=>s.id===skinId) : null;
+  p.skinAccent = skin ? skin.color : null;
   return p;
 }
 
@@ -1117,6 +1748,11 @@ function syncCharacterLevel(p, stageIndex){
 }
 
 function newGame(){
+  // defensive reset — otherwise if the previous run ended mid-boss-fight (player died to the
+  // boss), the HP bar's "show" flag never got cleared and it reappears showing stale HP the
+  // moment this new run's HUD becomes visible, before any boss has actually spawned
+  const bossHpWrap = $('boss-hp-wrap');
+  if(bossHpWrap) bossHpWrap.classList.remove('show');
   return {
     stageIndex:0,
     currentStage: stageAt(0),
@@ -1134,6 +1770,7 @@ function newGame(){
     time:0,
     pacts: {...selectedPacts}, pendingRoute:null, routeGoldMult:1, routeEliteBoost:false, routeSpecialBuff:false,
     stats:{ bossesThisRun:0, stageReached:0, noHitBoss:false, bossTookDamage:false },
+    ascenso:false, ascensoFloor:0, ascensoLight:0, ascensoLootOptions:[], ascensoLootPicked:[],
   };
 }
 
@@ -1147,11 +1784,20 @@ function buildRoster(){
     const isLocked = h.locked && !progress.unlocked[h.id] && !devMode;
     const card = document.createElement('div');
     card.className='hero-card'+(isLocked?' locked':'');
+    card.dataset.heroId = h.id;
     card.style.setProperty('--accent-c', isLocked ? '#4a4256' : h.accent);
     card.style.setProperty('--glow-c', isLocked ? 'rgba(74,66,86,0.25)' : h.glow);
     if(isLocked){
       const ach = ACHIEVEMENTS.find(a=>a.unlocks===h.id);
       card.style.opacity='0.55'; card.style.cursor='not-allowed';
+      const best = progress.achievementProgress[ach.id]||0;
+      const progressBar = ach.target ? `
+        <div style="margin-top:7px;">
+          <div style="height:5px; border-radius:3px; background:#2a2436; overflow:hidden;">
+            <div style="height:100%; width:${clamp(best/ach.target*100,0,100)}%; background:var(--bone-dim);"></div>
+          </div>
+          <div style="margin-top:3px; font-size:10px; color:var(--bone-dim);">${best}/${ach.target}</div>
+        </div>` : '';
       card.innerHTML = `
         <div class="rune-circle" style="filter:grayscale(1);">🔒</div>
         <div class="hero-name">???</div>
@@ -1159,9 +1805,22 @@ function buildRoster(){
         <div class="hero-abilities" style="text-align:center; border-top:1px solid var(--line); padding-top:10px;">
           <div style="color:var(--bone-dim);">Logro: <b style="color:var(--bone);">${ach.name}</b></div>
           <div style="margin-top:4px; font-size:11px;">${ach.desc}</div>
+          ${progressBar}
         </div>
       `;
     } else {
+      const ownedSkins = SKIN_PALETTES.filter(s=>progress.skins[s.id]);
+      const currentSkin = progress.selectedSkins[h.id] || null;
+      const swatchesHTML = ownedSkins.length ? `
+        <div class="hero-abilities" style="border-top:1px solid var(--line); padding-top:8px; margin-top:8px;">
+          <div style="font-size:10px; color:var(--bone-dim); margin-bottom:5px;">SKIN</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <div class="skin-swatch${!currentSkin?' selected':''}" data-hero="${h.id}" data-skin="" title="Por defecto"
+              style="width:18px; height:18px; border-radius:50%; cursor:pointer; background:${h.accent}; border:2px solid ${!currentSkin?'#fff':'transparent'};"></div>
+            ${ownedSkins.map(sk=>`<div class="skin-swatch${currentSkin===sk.id?' selected':''}" data-hero="${h.id}" data-skin="${sk.id}" title="${sk.name}"
+              style="width:18px; height:18px; border-radius:50%; cursor:pointer; background:${sk.color}; border:2px solid ${currentSkin===sk.id?'#fff':'transparent'};"></div>`).join('')}
+          </div>
+        </div>` : '';
       card.innerHTML = `
         <div class="rune-circle">${h.icon}</div>
         <div class="hero-name">${h.name}</div>
@@ -1174,7 +1833,14 @@ function buildRoster(){
           <div><span class="k">Q</span>${h.q.name} — ${h.q.desc}</div>
           <div style="margin-top:5px;"><span class="k">E</span>${h.e.name} — ${h.e.desc}</div>
         </div>
+        ${swatchesHTML}
       `;
+      card.querySelectorAll('.skin-swatch').forEach(sw=>{
+        sw.addEventListener('click', (ev)=>{
+          ev.stopPropagation(); // don't also trigger the card's "select this hero" click
+          selectHeroSkin(sw.dataset.hero, sw.dataset.skin);
+        });
+      });
       card.addEventListener('click', ()=>{
         document.querySelectorAll('.hero-card').forEach(c=>c.classList.remove('selected'));
         card.classList.add('selected');
@@ -1184,19 +1850,71 @@ function buildRoster(){
     }
     roster.appendChild(card);
   });
+  if(selectedHero){
+    const match = [...roster.children].find(c=>c.dataset.heroId===selectedHero.id);
+    if(match) match.classList.add('selected');
+  }
 }
 
+function selectUltimate(id){
+  if(!progress.unlockedAbilities.includes(id)) return;
+  selectedUltimate = (selectedUltimate===id) ? null : id; // click again to deselect (go into the run with no R)
+  progress.selectedUltimate = selectedUltimate;
+  saveProgress();
+  buildUltimates();
+}
+function selectShiftAbility(id){
+  if(!progress.unlockedShiftAbilities.includes(id)) return;
+  selectedShiftAbility = (selectedShiftAbility===id) ? null : id;
+  progress.selectedShiftAbility = selectedShiftAbility;
+  saveProgress();
+  buildShiftAbilities();
+}
+function buildShiftAbilities(){
+  const row = $('shift-abilities-row');
+  if(!row) return;
+  if(!selectedShiftAbility && progress.unlockedShiftAbilities.length){
+    selectedShiftAbility = progress.unlockedShiftAbilities[0];
+    progress.selectedShiftAbility = selectedShiftAbility;
+    saveProgress();
+  }
+  row.innerHTML = SHIFT_ABILITIES.map(a=>{
+    const unlocked = progress.unlockedShiftAbilities.includes(a.id);
+    const chosen = unlocked && selectedShiftAbility===a.id;
+    return `<div class="ult-card${unlocked?'':' locked'}${chosen?' selected':''}" ${unlocked?`data-shift="${a.id}" style="cursor:pointer;"`:''}>
+        <div class="ic" style="color:${unlocked?a.color:'var(--bone-dim)'}">${unlocked?a.icon:'🔒'}</div>
+        <div class="nm">${unlocked?a.name:'???'}</div>
+        <div class="ds">${unlocked?a.desc:'Se consigue venciendo a El Sol, en lo alto de Ascenso'}</div>
+        ${unlocked?`<div style="margin-top:6px; font-size:10px; color:${chosen?'var(--gold,#ffcb47)':'var(--bone-dim)'};">${chosen?'✓ Equipada para la próxima run':'Tocar para equipar'}</div>`:''}
+      </div>`;
+  }).join('');
+  row.querySelectorAll('[data-shift]').forEach(card=>{
+    card.addEventListener('click', ()=> selectShiftAbility(card.dataset.shift));
+  });
+}
 function buildUltimates(){
   const row = $('ultimates-row');
   if(!row) return;
+  // default to the first unlocked ability the first time this ever renders with nothing chosen,
+  // so existing saves don't suddenly show up with no R equipped
+  if(!selectedUltimate && progress.unlockedAbilities.length){
+    selectedUltimate = progress.unlockedAbilities[0];
+    progress.selectedUltimate = selectedUltimate;
+    saveProgress();
+  }
   row.innerHTML = ULTIMATE_ABILITIES.map(a=>{
     const unlocked = progress.unlockedAbilities.includes(a.id);
-    return `<div class="ult-card${unlocked?'':' locked'}">
+    const chosen = unlocked && selectedUltimate===a.id;
+    return `<div class="ult-card${unlocked?'':' locked'}${chosen?' selected':''}" ${unlocked?`data-ult="${a.id}" style="cursor:pointer;"`:''}>
         <div class="ic" style="color:${unlocked?a.color:'var(--bone-dim)'}">${unlocked?a.icon:'🔒'}</div>
         <div class="nm">${unlocked?a.name:'???'}</div>
         <div class="ds">${unlocked?a.desc:'Cae raramente (5%) al derrotar a un jefe'}</div>
+        ${unlocked?`<div style="margin-top:6px; font-size:10px; color:${chosen?'var(--gold,#ffcb47)':'var(--bone-dim)'};">${chosen?'✓ Equipada para la próxima run':'Tocar para equipar'}</div>`:''}
       </div>`;
   }).join('');
+  row.querySelectorAll('[data-ult]').forEach(card=>{
+    card.addEventListener('click', ()=> selectUltimate(card.dataset.ult));
+  });
 }
 const FAMILY_COLOR_VAR = { ofensiva:'--ember', vital:'--blood', mistica:'--arcane', veloz:'--toxic' };
 function itemFamilyOf(id){
@@ -1239,11 +1957,34 @@ function buildCompendium(){
 
   $('compendium').innerHTML = `<div class="family-row">${familiesHTML}</div>` + sectionsHTML;
 }
+
+function buildRunHistory(){
+  const el = $('run-history-list');
+  if(!el) return;
+  if(!progress.runHistory.length){
+    el.innerHTML = '<div class="inv-empty">Todavía no completaste ninguna run. Cuando mueras o llegues al final, tu historial va a aparecer acá.</div>';
+    return;
+  }
+  el.innerHTML = progress.runHistory.map(r=>{
+    const outcomeColor = r.outcome==='victory' ? 'var(--gold, #ffcb47)' : 'var(--blood, #e8434f)';
+    const outcomeLabel = r.outcome==='victory' ? '🏆 Victoria' : '💀 ' + r.cause;
+    return `<div class="merchant-item">
+      <div class="ic" style="color:${outcomeColor}">${r.outcome==='victory'?'🏆':'💀'}</div>
+      <div class="body">
+        <div class="nm">${r.hero} — Piso ${r.floor}/${TOWER_MAX_FLOOR}</div>
+        <div class="ds">${outcomeLabel} · ${formatRunTime(r.time)} · ◆${r.gold} oro · ${r.kills} bajas · ${r.bosses} jefes</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 buildRoster();
 buildCompendium();
 buildUltimates();
 buildHomeAltar();
 buildPacts();
+buildRunHistory();
+buildShiftAbilities();
 
 // menu tab switching — one section visible at a time (Personajes / Habilidades / Altar / Pactos)
 document.querySelectorAll('.menu-tab').forEach(btn=>{
@@ -1279,6 +2020,15 @@ $('btn-next-stage').addEventListener('click', ()=>{
 });
 
 $('btn-victory-restart').addEventListener('click', ()=>{ resetToMenu(); });
+$('btn-ascend').addEventListener('click', ()=>{ startAscensoMode(); });
+$('btn-enter-ascenso').addEventListener('click', ()=>{
+  hideScreen('screen-ascenso-altar');
+  $('hud').classList.remove('hidden');
+  game.phase = 'ascensoBossIntro';
+  game.bossCountdown = 3;
+  startLoop();
+});
+$('btn-ascenso-loot-confirm').addEventListener('click', ()=>{ confirmAscensoLoot(); });
 $('btn-retry').addEventListener('click', ()=>{
   game = newGame();
   hideScreen('screen-gameover');
@@ -1308,6 +2058,8 @@ function resetToMenu(){
   buildUltimates();
   buildHomeAltar();
   buildPacts();
+  buildRunHistory();
+buildShiftAbilities();
   refreshContinueButton();
 }
 
@@ -1360,6 +2112,8 @@ function startStage(i){
   game.player.x = b.x + b.w/2;
   game.player.y = b.y + b.h/2;
   game.player.hp = game.player.maxHp; // full heal on every floor transition, including floor 1
+  game.player._reactiveShieldUsedThisFloor = false;
+  game.player._ghostStepUsed = {};
   game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[];
   game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.sacrificeAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
   game.phase='combat';
@@ -1397,6 +2151,7 @@ function updatePhaseNote(){
     bossIntro:'El jefe está despertando...',
     boss:'¡Derrota al jefe!',
     portal:'Entra al portal para continuar',
+    ascensoBossIntro:'El jefe está despertando...',
   };
   $('hud-phase-note').textContent = notes[game.phase] || '';
 }
@@ -1439,6 +2194,7 @@ function spawnFromEdge(kind){
 }
 
 function beginShoppingPhase(){
+  sweepLoot();
   game.phase='shopping';
   updatePhaseNote();
   const b = arenaBounds();
@@ -1452,11 +2208,11 @@ function beginShoppingPhase(){
   game.chests = layout.map(p=>{
     const t = CHEST_TIERS[p.tier];
     return { x:p.x, y:p.y, radius: p.tier==='epic'?24:(p.tier==='rare'?21:18), tier:p.tier,
-      cost: Math.round(s.chestCost*t.costMult), opened:false, bob:Math.random()*10, sparkTimer:Math.random()*0.6 };
+      cost: Math.round(s.chestCost*t.costMult*essenceDiscountMult()), opened:false, bob:Math.random()*10, sparkTimer:Math.random()*0.6 };
   });
   game.altar = { x:b.x+b.w/2, y:b.y+b.h*0.22, radius:30, active:true, pulse:0 };
   game.sacrificeAltar = { x:b.x+b.w*0.10, y:b.y+b.h*0.48, radius:24, used:false, pulse:0 };
-  if(isMerchantFloor(game.stageIndex)){
+  if(isMerchantFloor(game.stageIndex) && !game.pacts.vultureMode){
     game.merchant = { x:b.x+b.w*0.90, y:b.y+b.h*0.48, radius:26, offers: rollMerchantOffers(game.stageIndex), pulse:0 };
     spawnToast(`Un mercader errante ofrece 3 objetos a elección.`);
   }
@@ -1522,13 +2278,16 @@ function beginBossPhase(){
   shake(6);
 }
 
-function onStageClear(){
-  // sweep up anything still lying on the floor — gold, potions, relics — so nothing is lost
-  // just because the player didn't walk over it before heading to the portal
+// Sweeps up anything still lying on the floor — gold, relics, un-opened potion-chest rewards —
+// so nothing is lost if the player didn't walk over it. Previously this only ran in onStageClear()
+// (after the boss died), so gold/relics dropped by the *regular* enemy wave sat on the ground,
+// unswept, for the whole shopping/boss phase — easy to miss and looked like "auto-pickup isn't
+// working". Now it also runs the moment the common-enemy wave finishes (see beginShoppingPhase).
+function sweepLoot(){
   if(game.goldOrbs && game.goldOrbs.length){
     let swept = 0;
     const p = game.player;
-    game.goldOrbs.forEach(g=>{ swept += Math.round(g.value * p.goldMult * (game.pacts.hardMode ? 1.15 : 1) * comboFactor(p) * game.routeGoldMult); });
+    game.goldOrbs.forEach(g=>{ swept += Math.round(g.value * p.goldMult * (game.pacts.hardMode ? 1.15 : 1) * (game.pacts.vultureMode ? 1.25 : 1) * comboFactor(p) * game.routeGoldMult); });
     if(swept>0){ game.gold += swept; spawnToast(`💰 Recogiste ${swept} de oro que quedó en el piso`); }
     game.goldOrbs = [];
   }
@@ -1549,6 +2308,11 @@ function onStageClear(){
     });
     game.relicPickups = [];
   }
+}
+
+function onStageClear(){
+  // sweep up anything still lying on the floor from the boss fight itself
+  sweepLoot();
   game.phase='clear';
   closeInventory();
   $('boss-hp-wrap').classList.remove('show');
@@ -1561,11 +2325,45 @@ function onStageClear(){
   showScreen('screen-clear');
 }
 
+const RUN_HISTORY_MAX = 20;
+function formatRunTime(seconds){
+  const m = Math.floor(seconds/60), s = Math.floor(seconds%60);
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+// Records a finished run (victory or death) into progress.runHistory, newest first, capped at
+// RUN_HISTORY_MAX entries — shown in the Estadísticas tab of the menu.
+function recordRunHistory(outcome){
+  if(!game || !game.player) return;
+  let cause = 'Victoria';
+  if(outcome==='death'){
+    if(game.phase==='boss' && game.boss){
+      cause = `Derrotado por ${game.boss.def.name}`;
+    } else {
+      cause = `Derrotado en ${game.currentStage ? game.currentStage.name : 'la torre'}`;
+    }
+  }
+  progress.runHistory.unshift({
+    hero: game.player.def.name,
+    heroId: game.player.def.id,
+    floor: game.stageIndex+1,
+    outcome,
+    cause,
+    time: game.time,
+    gold: game.gold,
+    kills: game.kills,
+    bosses: game.stats.bossesThisRun,
+    at: Date.now(),
+  });
+  if(progress.runHistory.length > RUN_HISTORY_MAX) progress.runHistory.length = RUN_HISTORY_MAX;
+  saveProgress();
+}
+
 function finishVictory(){
   stopLoop();
   $('hud').classList.add('hidden');
   progress.bestStage = Math.max(progress.bestStage, TOWER_MAX_FLOOR);
   saveProgress();
+  recordRunHistory('victory');
   $('victory-summary').innerHTML = `
     <div id="run-summary">
       Personaje: <b>${game.player.def.name}</b><br>
@@ -1574,6 +2372,283 @@ function finishVictory(){
       Oro final: <b>${game.gold}</b><br>
       Objetos obtenidos: <b>${game.player.items.length}</b>
     </div>`;
+  $('btn-ascend').classList.remove('hidden'); // only Descenso's own floor-100 clear offers this
+  showScreen('screen-victory');
+}
+
+/* ============================================================
+   ASCENSO — the tower above floor 100. Same save, same run, straight continuation.
+   No common-enemy waves: every floor is Altar de Fe -> boss-only fight -> loot table
+   (5 items, pick 2) -> portal -> next floor. The arena brightens from pure darkness
+   (piso 1) to full light (piso 100, El Sol). See the continuation doc for the full
+   design and the floor-by-floor content backlog (only piso 1 and piso 100 are built
+   so far — everything between is a documented placeholder).
+   ============================================================ */
+const ASCENSO_MAX_FLOOR = 100;
+// index 0 = piso 1 ... index 99 = piso 100 (El Sol). null = not yet built — see the
+// continuation doc for the backlog of the other 98 floors.
+const ASCENSO_FLOORS = new Array(ASCENSO_MAX_FLOOR).fill(null);
+ASCENSO_FLOORS[0] = 'shadowLarva';
+ASCENSO_FLOORS[1] = 'hollowEcho';
+ASCENSO_FLOORS[2] = 'crackWeaver';
+ASCENSO_FLOORS[3] = 'muteGuardian';
+ASCENSO_FLOORS[4] = 'echoDevourer';
+ASCENSO_FLOORS[5] = 'ashSentinel';
+ASCENSO_FLOORS[6] = 'crackWhisper';
+ASCENSO_FLOORS[7] = 'shadowThorn';
+ASCENSO_FLOORS[8] = 'silentWarden';
+ASCENSO_FLOORS[9] = 'ashSwarm';
+ASCENSO_FLOORS[10] = 'fissureHerald';
+ASCENSO_FLOORS[11] = 'drownedScream';
+ASCENSO_FLOORS[12] = 'duskWeave';
+ASCENSO_FLOORS[13] = 'facelessGuard';
+ASCENSO_FLOORS[14] = 'darkVine';
+ASCENSO_FLOORS[15] = 'twinWhisper';
+ASCENSO_FLOORS[16] = 'brokenShard';
+ASCENSO_FLOORS[17] = 'ashCustodian';
+ASCENSO_FLOORS[18] = 'namelessLament';
+ASCENSO_FLOORS[19] = 'fissureHeart';
+ASCENSO_FLOORS[20] = 'thresholdEchoes';
+ASCENSO_FLOORS[21] = 'hollowChoir';
+ASCENSO_FLOORS[22] = 'duskMarauder';
+ASCENSO_FLOORS[23] = 'graniteWarden';
+ASCENSO_FLOORS[24] = 'witheredBloom';
+ASCENSO_FLOORS[25] = 'crownOfEmbers';
+ASCENSO_FLOORS[26] = 'wanderingAsh';
+ASCENSO_FLOORS[27] = 'achingEmber';
+ASCENSO_FLOORS[28] = 'paleFlame';
+ASCENSO_FLOORS[29] = 'emberWarden';
+ASCENSO_FLOORS[30] = 'emberSwarm';
+ASCENSO_FLOORS[31] = 'dimmedMist';
+ASCENSO_FLOORS[32] = 'dimmedWarden';
+ASCENSO_FLOORS[33] = 'dimmedThorn';
+ASCENSO_FLOORS[34] = 'dimmedWhisper';
+ASCENSO_FLOORS[35] = 'dimmedHeart';
+ASCENSO_FLOORS[36] = 'wanderingDust';
+ASCENSO_FLOORS[37] = 'ashFissure';
+ASCENSO_FLOORS[38] = 'hollowReflection';
+ASCENSO_FLOORS[39] = 'stoneWhisper';
+ASCENSO_FLOORS[40] = 'dustHeart';
+ASCENSO_FLOORS[41] = 'dimmedGleam';
+ASCENSO_FLOORS[42] = 'stoneWarden';
+ASCENSO_FLOORS[43] = 'lightThorn';
+ASCENSO_FLOORS[44] = 'greyEchoes';
+ASCENSO_FLOORS[45] = 'ashLightGuardian';
+ASCENSO_FLOORS[46] = 'faintVeil';
+ASCENSO_FLOORS[47] = 'edgeGuardian';
+ASCENSO_FLOORS[48] = 'dawnThorn';
+ASCENSO_FLOORS[49] = 'edgeHeart';
+ASCENSO_FLOORS[50] = 'wanderingDawn';
+ASCENSO_FLOORS[51] = 'dawnGuardian';
+ASCENSO_FLOORS[52] = 'goldenEcho';
+ASCENSO_FLOORS[53] = 'goldenThorn';
+ASCENSO_FLOORS[54] = 'dawnWhisper';
+ASCENSO_FLOORS[55] = 'brightHollow';
+ASCENSO_FLOORS[56] = 'goldenSwarm';
+ASCENSO_FLOORS[57] = 'radiantWarden';
+ASCENSO_FLOORS[58] = 'radiantThorn';
+ASCENSO_FLOORS[59] = 'sunHerald';
+ASCENSO_FLOORS[60] = 'goldenSentinel';
+ASCENSO_FLOORS[61] = 'solarWarden';
+ASCENSO_FLOORS[62] = 'solarWhisper';
+ASCENSO_FLOORS[63] = 'solarEcho';
+ASCENSO_FLOORS[64] = 'blazeSwarm';
+ASCENSO_FLOORS[65] = 'solarGuardian';
+ASCENSO_FLOORS[66] = 'flareWarden';
+ASCENSO_FLOORS[67] = 'flareThorn';
+ASCENSO_FLOORS[68] = 'coronaWhisper';
+ASCENSO_FLOORS[69] = 'coronaHeart';
+ASCENSO_FLOORS[70] = 'flareSwarm';
+ASCENSO_FLOORS[71] = 'zenithWarden';
+ASCENSO_FLOORS[72] = 'zenithThorn';
+ASCENSO_FLOORS[73] = 'zenithWhisper';
+ASCENSO_FLOORS[74] = 'zenithEcho';
+ASCENSO_FLOORS[75] = 'zenithGuardian';
+ASCENSO_FLOORS[76] = 'blindingWarden';
+ASCENSO_FLOORS[77] = 'blindingThorn';
+ASCENSO_FLOORS[78] = 'blindingWhisper';
+ASCENSO_FLOORS[79] = 'blindingHeart';
+ASCENSO_FLOORS[80] = 'blindingSwarm';
+ASCENSO_FLOORS[81] = 'ascendantWarden';
+ASCENSO_FLOORS[82] = 'ascendantThorn';
+ASCENSO_FLOORS[83] = 'ascendantWhisper';
+ASCENSO_FLOORS[84] = 'ascendantEcho';
+ASCENSO_FLOORS[85] = 'ascendantGuardian';
+ASCENSO_FLOORS[86] = 'summitWarden';
+ASCENSO_FLOORS[87] = 'summitThorn';
+ASCENSO_FLOORS[88] = 'summitWhisper';
+ASCENSO_FLOORS[89] = 'summitHeart';
+ASCENSO_FLOORS[90] = 'summitSwarm';
+ASCENSO_FLOORS[91] = 'portalWarden';
+ASCENSO_FLOORS[92] = 'portalThorn';
+ASCENSO_FLOORS[93] = 'portalWhisper';
+ASCENSO_FLOORS[94] = 'portalEcho';
+ASCENSO_FLOORS[95] = 'portalGuardian';
+ASCENSO_FLOORS[96] = 'lastWarden';
+ASCENSO_FLOORS[97] = 'lastThorn';
+ASCENSO_FLOORS[98] = 'sunPrecursor';
+ASCENSO_FLOORS[ASCENSO_MAX_FLOOR-1] = 'theSun';
+
+function startAscensoMode(){
+  game.ascenso = true;
+  game.ascensoFloor = 0;
+  hideScreen('screen-victory');
+  enterAscensoFloor(0);
+}
+
+function enterAscensoFloor(i){
+  game.ascensoFloor = i;
+  game.ascensoLight = ASCENSO_MAX_FLOOR>1 ? i/(ASCENSO_MAX_FLOOR-1) : 0;
+  const bossKind = ASCENSO_FLOORS[i];
+  const b = arenaBounds();
+  game.arenaDecor = null; // Ascenso floors are deliberately stark — no zone decor, just the light
+  game.player.x = b.x + b.w/2;
+  game.player.y = b.y + b.h/2;
+  game.player.hp = game.player.maxHp;
+  game.player._reactiveShieldUsedThisFloor = false;
+  game.player._ghostStepUsed = {};
+  game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[];
+  game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.sacrificeAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
+  const def = bossKind ? BOSS_DEFS[bossKind] : null;
+  game.currentStage = { key:'ascenso', name: def ? def.name : 'Piso en construcción', floor:i+1 };
+  $('hud-stage-eyebrow').textContent = `Piso ${i+1} / ${ASCENSO_MAX_FLOOR} · Ascenso`;
+  $('hud-stage-name').textContent = def ? def.name : 'Piso en construcción';
+  game.phase = 'ascensoAltar';
+  $('ascenso-eyebrow').textContent = `Altar de Fe · Piso ${i+1} / ${ASCENSO_MAX_FLOOR}`;
+  if(def){
+    $('ascenso-title').textContent = def.name;
+    $('ascenso-desc').textContent = def.title;
+    $('btn-enter-ascenso').classList.remove('hidden');
+    $('ascenso-construction').classList.add('hidden');
+  } else {
+    $('ascenso-title').textContent = 'El llamado se apaga aquí';
+    $('ascenso-desc').textContent = '';
+    $('btn-enter-ascenso').classList.add('hidden');
+    $('ascenso-construction').classList.remove('hidden');
+  }
+  showScreen('screen-ascenso-altar');
+}
+
+function beginAscensoBossPhase(){
+  game.phase='boss';
+  updatePhaseNote();
+  const bossKind = ASCENSO_FLOORS[game.ascensoFloor];
+  const def = BOSS_DEFS[bossKind];
+  const b = arenaBounds();
+  const hp = def.hp;
+  const dmg = Math.round(def.dmg*0.72); // same per-hit damage-reduction factor Descenso's regular bosses use
+  game.boss = {
+    kind:bossKind, def, x:b.x+b.w/2, y:b.y+b.h*0.3, hp, maxHp:hp, dmg, radius:def.radius,
+    attackTimer:1.4, phase:1, telegraph:null, contactTimer:0, hitFlash:0, spawnGrace:1.1, hover:false, petalTimer:0,
+    twin:null, strafeDir: Math.random()<0.5?1:-1, isGuardian:false,
+  };
+  $('boss-hp-wrap').classList.add('show');
+  $('boss-name').textContent = def.name;
+  spawnToast(def.title);
+  game.player.invuln = Math.max(game.player.invuln, 1.1);
+  game.stats.bossTookDamage = false;
+  shake(6);
+}
+
+function onAscensoBossDeath(){
+  const boss = game.boss;
+  if(game.player.relics.effect_doubleHeart){ game.player.lifestealBurstTimer = 8; spawnToast('❤️‍🔥 Corazón Doble: robo de vida potenciado'); }
+  addParticles(boss.x, boss.y, boss.def.color, 40, 260, 0.7);
+  shake(14);
+  game.boss = null;
+  $('boss-hp-wrap').classList.remove('show');
+  spawnToast(`¡${boss.def.name} derrotado!`);
+  game.stats.bossesThisRun++;
+  if(!game.stats.bossTookDamage) game.stats.noHitBoss = true;
+  checkAchievements();
+  game.phase = 'ascensoLoot';
+  openAscensoLootTable();
+}
+
+// Rolls 5 items from the same pools Descenso uses (common/rare/epic + relics) — no new item
+// content needed, just a different way of handing them out: pick 2 of 5, no gold cost.
+function rollAscensoLootOptions(){
+  const pool = [...ITEM_POOL.common, ...ITEM_POOL.rare, ...ITEM_POOL.epic, ...RELICS];
+  const shuffled = [...pool].sort(()=>Math.random()-0.5);
+  return shuffled.slice(0,5);
+}
+function openAscensoLootTable(){
+  game.ascensoLootOptions = rollAscensoLootOptions();
+  game.ascensoLootPicked = [];
+  renderAscensoLootTable();
+  showScreen('screen-ascenso-loot');
+}
+function renderAscensoLootTable(){
+  const row = $('ascenso-loot-row');
+  if(!row) return;
+  const picked = game.ascensoLootPicked;
+  row.innerHTML = game.ascensoLootOptions.map((it,idx)=>{
+    const isPicked = picked.includes(idx);
+    const disabled = !isPicked && picked.length>=2;
+    return `<div class="ult-card${isPicked?' selected':''}" ${disabled?'':`data-loot="${idx}" style="cursor:pointer;"`}>
+      <div class="ic">${it.icon}</div>
+      <div class="nm">${it.name}</div>
+      <div class="ds">${it.desc}</div>
+    </div>`;
+  }).join('');
+  row.querySelectorAll('[data-loot]').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const idx = parseInt(card.getAttribute('data-loot'));
+      const i2 = picked.indexOf(idx);
+      if(i2>=0) picked.splice(i2,1);
+      else if(picked.length<2) picked.push(idx);
+      renderAscensoLootTable();
+      $('btn-ascenso-loot-confirm').disabled = picked.length!==2;
+    });
+  });
+  $('btn-ascenso-loot-confirm').disabled = picked.length!==2;
+}
+function confirmAscensoLoot(){
+  const p = game.player;
+  game.ascensoLootPicked.forEach(idx=>{
+    const it = game.ascensoLootOptions[idx];
+    it.apply(p);
+    p.items.push({ id:it.id, name:it.name, icon:it.icon, desc:it.desc });
+  });
+  checkSynergies(p);
+  hideScreen('screen-ascenso-loot');
+  const b = arenaBounds();
+  game.portal = { x:b.x+b.w/2, y:b.y+b.h*0.3, radius:34, pulse:0 };
+  game.phase = 'portal';
+}
+
+function onAscensoStageClear(){
+  stopLoop();
+  $('boss-hp-wrap').classList.remove('show');
+  game.ascensoFloor++;
+  if(game.ascensoFloor >= ASCENSO_MAX_FLOOR){
+    finishAscensoVictory();
+    return;
+  }
+  $('hud').classList.add('hidden');
+  enterAscensoFloor(game.ascensoFloor);
+}
+
+function finishAscensoVictory(){
+  $('hud').classList.add('hidden');
+  progress.bestStage = Math.max(progress.bestStage, TOWER_MAX_FLOOR); // Ascenso doesn't have its own separate high-score field yet — see continuation doc
+  SHIFT_ABILITIES.forEach(a=>{
+    if(!progress.unlockedShiftAbilities.includes(a.id)){
+      progress.unlockedShiftAbilities.push(a.id);
+      spawnToast(`☀ Habilidad de Luz desbloqueada: ${a.name}`);
+    }
+  });
+  saveProgress();
+  recordRunHistory('victory');
+  $('victory-summary').innerHTML = `
+    <div id="run-summary">
+      Personaje: <b>${game.player.def.name}</b><br>
+      <b>Ascendiste hasta El Sol y volviste</b><br>
+      Enemigos eliminados: <b>${game.kills}</b><br>
+      Oro final: <b>${game.gold}</b><br>
+      Objetos obtenidos: <b>${game.player.items.length}</b>
+    </div>`;
+  $('btn-ascend').classList.add('hidden'); // already ascended — nothing more to offer here yet
   showScreen('screen-victory');
 }
 
@@ -1581,10 +2656,13 @@ function onPlayerDeath(){
   stopLoop();
   closeInventory();
   $('hud').classList.add('hidden');
+  $('boss-hp-wrap').classList.remove('show'); // otherwise it's still flagged "show" and reappears
+                                               // stale (last boss's HP) the moment the next run starts
   const essenceGained = Math.round(game.stats.stageReached*1.5 + game.kills*0.12 + game.stats.bossesThisRun*4);
   progress.essence += essenceGained;
   progress.bestStage = Math.max(progress.bestStage, game.stats.stageReached);
   saveProgress();
+  recordRunHistory('death');
   $('gameover-summary').innerHTML = `
     <div id="run-summary">
       Piso alcanzado: <b>${game.currentStage.name}</b> (#${game.stageIndex+1} / ${TOWER_MAX_FLOOR})<br>
@@ -1656,6 +2734,13 @@ function buildMerchantPanel(){
       buyMerchantOffer(idx);
     });
   });
+  const rerollEl = $('merchant-reroll');
+  if(rerollEl){
+    const rerollCost = merchantRerollCost(game.stageIndex, m.rerollCount||0);
+    const canReroll = !m.chosen && game.gold>=rerollCost;
+    rerollEl.textContent = `🔄 Tirar de nuevo — ${rerollCost} ◆`;
+    rerollEl.disabled = !canReroll;
+  }
 }
 function buyMerchantOffer(idx){
   const m = game.merchant;
@@ -1675,6 +2760,7 @@ function buyMerchantOffer(idx){
   buildMerchantPanel();
 }
 $('merchant-close') && $('merchant-close').addEventListener('click', closeMerchant);
+$('merchant-reroll') && $('merchant-reroll').addEventListener('click', rerollMerchantOffers);
 
 function buildInventoryPanel(){
   const p = game.player;
@@ -1727,7 +2813,7 @@ function loop(t){
   if(stopRequested) return;
   const dt = Math.min(0.033, (t-lastT)/1000);
   lastT=t;
-  if(!paused && !inventoryOpen && !merchantOpen && game && (game.phase==='combat'||game.phase==='shopping'||game.phase==='bossIntro'||game.phase==='boss'||game.phase==='portal')){
+  if(!paused && !inventoryOpen && !merchantOpen && game && (game.phase==='combat'||game.phase==='shopping'||game.phase==='bossIntro'||game.phase==='boss'||game.phase==='portal'||game.phase==='ascensoBossIntro')){
     update(dt);
   }
   if(stopRequested) return;
@@ -1776,6 +2862,10 @@ function update(dt){
     game.bossCountdown -= dt;
     if(game.bossCountdown<=0){ beginBossPhase(); }
   }
+  if(game.phase==='ascensoBossIntro'){
+    game.bossCountdown -= dt;
+    if(game.bossCountdown<=0){ beginAscensoBossPhase(); }
+  }
 
   // --- spawn queue ---
   if(game.phase==='combat'){
@@ -1793,10 +2883,19 @@ function update(dt){
   p.atkTimer = Math.max(0,p.atkTimer-dt);
   p.qTimer = Math.max(0,p.qTimer-dt);
   p.eTimer = Math.max(0,p.eTimer-dt);
+  // Paso de Sombra: catch the exact frame invulnerability (i-frames) ends to grant a brief burst
+  const _wasInvuln = p.invuln>0;
   p.invuln = Math.max(0,p.invuln-dt);
+  if(_wasInvuln && p.invuln<=0 && p.relics.effect_shadowStep){
+    p.speedBurstTimer = 1.0;
+  }
+  p.speedBurstTimer = Math.max(0,(p.speedBurstTimer||0)-dt);
+  p.lifestealBurstTimer = Math.max(0,(p.lifestealBurstTimer||0)-dt);
   p.effects.warcry = Math.max(0,p.effects.warcry-dt);
   p.effects.shadow = Math.max(0,p.effects.shadow-dt);
   p.effects.wall = Math.max(0,p.effects.wall-dt);
+  p.effects.mirrorShield = Math.max(0,p.effects.mirrorShield-dt);
+  p.effects.mantoLuz = Math.max(0,(p.effects.mantoLuz||0)-dt);
   p.potionEffects.def = Math.max(0,p.potionEffects.def-dt);
   p.potionEffects.dmg = Math.max(0,p.potionEffects.dmg-dt);
   p.potionEffects.spd = Math.max(0,p.potionEffects.spd-dt);
@@ -1823,6 +2922,24 @@ function update(dt){
   p.timeSinceHit += dt;
   if(!game.pacts.noHeal && p.timeSinceHit>=5 && p.hp<p.maxHp) p.hp = Math.min(p.maxHp, p.hp + (p.witherTimer>0?0.5:1)*dt);
   Object.keys(p.ultCooldowns).forEach(id=>{ p.ultCooldowns[id] = Math.max(0, p.ultCooldowns[id]-dt); });
+  Object.keys(p.shiftCooldowns).forEach(id=>{ p.shiftCooldowns[id] = Math.max(0, p.shiftCooldowns[id]-dt); });
+
+  // --- Giro Salvaje channel tick (Grum/berserker's Q) ---
+  if(p.spinTimer>0){
+    p.spinTimer = Math.max(0, p.spinTimer-dt);
+    p.spinTick = (p.spinTick||0)-dt;
+    if(p.spinTick<=0){
+      p.spinTick = 0.3; // 10 ticks over the 3s channel
+      const hpFrac = clamp(p.hp/p.maxHp,0,1);
+      const mult = 1.2 + (1-hpFrac)*1.3; // up to +130% more damage the lower your own HP is
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y) < 115) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult*0.4), 'q');
+      });
+      addParticles(p.x,p.y,'#ff3d3d',12,170,0.28);
+      spawnShockwave(p.x,p.y,'#ff3d3d',115,0.25);
+      shake(2.5);
+    }
+  }
 
   // --- movement ---
   let mx=0,my=0;
@@ -1832,10 +2949,14 @@ function update(dt){
   if(keys['KeyD']) mx+=1;
   let mlen = Math.hypot(mx,my);
   if(mlen>0){ mx/=mlen; my/=mlen; }
-  const speed = Math.min(MAX_PLAYER_SPEED, (p.def.speed*p.speedMult+p.speedFlat)*(p.effects.shadow>0?1.15:1)*(p.potionEffects.spd>0?1.30:1)*(p.slowTimer>0?p.slowFactor:1));
+  const speed = Math.min(MAX_PLAYER_SPEED, (p.def.speed*p.speedMult+p.speedFlat)*(p.effects.shadow>0?1.15:1)*((p.effects.mantoLuz||0)>0?1.40:1)*(p.potionEffects.spd>0?1.30:1)*(p.slowTimer>0?p.slowFactor:1)*((p.speedBurstTimer||0)>0?1.2:1));
   if(p.invertTimer>0){ mx=-mx; my=-my; } // mirrorGaze: your own reflection turns your movement against you
   if(p.frozenTimer>0){
     // Cero Absoluto: locked in a block of ice — no movement input gets through until it breaks
+    mx=0; my=0;
+  }
+  if(p.spinTimer>0){
+    // Giro Salvaje: rooted in place for the whole 3s channel, spinning where you stand
     mx=0; my=0;
   }
   if(p.iceSlideTimer>0){
@@ -1867,12 +2988,33 @@ function update(dt){
   if(mouse.down && p.atkTimer<=0){
     doBasicAttack();
     p.atkTimer = Math.max(MIN_ATK_CD, currentAtk(p).cd * effectiveCdMult(p) * (p.chillTimer>0 ? p.chillFactor : 1));
+    // Runa de Repetición: a chance the attack you just landed doesn't cost you the cooldown at all
+    if(p.relics.effect_repeatRune && Math.random()<0.10){ p.atkTimer = 0; }
   }
 
   // --- abilities ---
-  if(keyPressed('KeyQ') && p.qTimer<=0 && !(p.qLockTimer>0)){ doAbilityQ(); }
-  if(keyPressed('KeyE') && p.eTimer<=0 && !(p.eLockTimer>0)){ doAbilityE(); }
+  if(keyPressed('KeyQ') && p.qTimer<=0 && !(p.qLockTimer>0)){
+    doAbilityQ();
+    // Onda de Impacto: every Q also releases a small area burst centered on the player
+    if(p.relics.effect_impactWave){
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y) < 130) dealDamageToTarget(t, computeDamage(9), 'q');
+      });
+      addParticles(p.x,p.y,'#ff6a3d',14,160,0.3);
+    }
+  }
+  if(keyPressed('KeyE') && p.eTimer<=0 && !(p.eLockTimer>0)){
+    doAbilityE();
+    // Estela de Fuego: every E also sears nearby enemies with a burst of fire
+    if(p.relics.effect_fireEmbers){
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y) < 120) dealDamageToTarget(t, computeDamage(7), 'e');
+      });
+      addParticles(p.x,p.y,'#ff8a3d',12,150,0.3);
+    }
+  }
   if(keyPressed('KeyR')) doUltimate();
+  if(keyPressed('ShiftLeft') || keyPressed('ShiftRight')) doShiftAbility();
   if(keyPressed('Digit1')) usePotion('hp');
   if(keyPressed('Digit2')) usePotion('def');
   if(keyPressed('Digit3')) usePotion('dmg');
@@ -1924,6 +3066,13 @@ function update(dt){
       spawnToast('🔥 La Pluma de Fénix te trae de vuelta');
       addParticles(p.x,p.y,'#ff8a3d',34,220,0.6);
       shake(10);
+    } else if(p.relics.relic_dawnFeather && !p.dawnFeatherUsed){
+      p.dawnFeatherUsed = true;
+      p.hp = p.maxHp*0.3;
+      p.invuln = 1.5;
+      spawnToast('🌅 La Pluma de Alba te trae de vuelta, débil pero viva');
+      addParticles(p.x,p.y,'#ffd97a',30,210,0.55);
+      shake(10);
     } else {
       onPlayerDeath();
     }
@@ -1937,6 +3086,11 @@ function currentAtk(p){
 
 function doBasicAttack(){
   const p = game.player;
+  // Reliquia del Eco: every 10th basic attack you throw out refunds Q's cooldown entirely
+  if(p.relics.effect_echoRelic){
+    p._echoRelicCount = (p._echoRelicCount||0)+1;
+    if(p._echoRelicCount>=10){ p._echoRelicCount=0; p.qTimer=0; addParticles(p.x,p.y,'#8ec9ff',10,140,0.25); }
+  }
   const atk = currentAtk(p);
   if(atk.kind==='melee'){
     // hit all enemies (and boss) within range+arc
@@ -1975,19 +3129,34 @@ function updateCamera(){
   game.camera.x = cx; game.camera.y = cy;
 }
 
-function comboFactor(p){ return 1 + Math.min(p.combo,50)*0.004; }
+function comboFactor(p){ return 1 + Math.min(p.combo,50)*(p.relics.effect_comboPact?0.008:0.004); }
 
 function computeDamage(base){
   const p = game.player;
-  if(devMode) return { value: 999999, crit:true }; // dev mode: one-shots everything
+  if(devMode) return { value: 999999, crit:true, superCrit:false }; // dev mode: one-shots everything
   let dmg = base*p.dmgMult*comboFactor(p);
   if(p.weakenTimer>0) dmg *= p.weakenFactor;
   if(p.effects.warcry>0) dmg*=1.35;
   if(p.potionEffects.dmg>0) dmg*=1.25;
   if(p.def.id==='vidrio' && p.hp < p.maxHp*0.5) dmg*=1.4;
-  let crit=false;
-  if(Math.random()<p.critChance || p.effects.shadowCrit){ dmg*=1.8; crit=true; p.effects.shadowCrit=false; }
-  return { value:dmg, crit };
+  let crit=false, superCrit=false;
+  // Crit chance is only meaningful up to 100% for the normal roll — anything past that used to
+  // just be wasted. Now the overflow becomes a separate "súper crítico" chance: once you're at
+  // 100% normal crit (guaranteed), every extra point of crit chance is instead a chance for that
+  // guaranteed crit to be upgraded into a much bigger one (double the usual crit bonus).
+  const normalCritChance = Math.min(p.critChance, 1);
+  const superCritChance = Math.max(0, p.critChance - 1);
+  if(Math.random()<normalCritChance || p.effects.shadowCrit){
+    crit=true;
+    p.effects.shadowCrit=false;
+    if(superCritChance>0 && Math.random()<superCritChance){
+      superCrit = true;
+      dmg *= 1+ (0.8*2); // súper crítico: el doble del bonus de daño de un crítico normal (+160% en vez de +80%)
+    } else {
+      dmg *= 1.8;
+    }
+  }
+  return { value:dmg, crit, superCrit };
 }
 
 function bossTargets(){
@@ -1999,6 +3168,46 @@ function bossTargets(){
     if(game.boss.movers && game.boss.movers.length) arr.push(...game.boss.movers.filter(m=>m.alive && m.breakable && !(m.spawnDelay>0)));
   }
   return arr;
+}
+
+// El Sol's Colapso Total (piso 100, Ascenso): unlike abyssLord's Autodestrucción Implacable, the
+// Sun stays fully damageable during the channel — this is a "concentrate your damage" check, not
+// a "break the cores" one. Deal enough damage to the exposed core within the window and the
+// supernova fizzles; fail (and aren't invulnerable when it detonates) and it hits hard.
+function startSunSupernova(boss){
+  const bnds = arenaBounds();
+  boss.x = clamp(bnds.x+bnds.w/2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+  boss.y = clamp(bnds.y+bnds.h/2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+  boss.supernovaActive = true;
+  boss.supernovaTimer = 5.0;
+  boss.supernovaMaxTimer = 5.0;
+  boss.supernovaHpStart = boss.hp;
+  boss.supernovaThreshold = Math.max(1, Math.round(boss.maxHp*0.09));
+  spawnToast('¡El Sol colapsa sobre sí mismo! Concentrá el daño en el núcleo — 5 segundos antes de la Supernova');
+  addParticles(boss.x,boss.y,'#ffffff',30,220,0.5);
+  shake(10);
+}
+
+function finishSunSupernova(boss, success){
+  boss.supernovaActive = false;
+  boss.telegraph = null;
+  if(success){
+    boss.stunTimer = 2.5;
+    boss.attackTimer = 2.8; // resumes acting right as the stun wears off
+    spawnToast('¡El núcleo cede! El Sol queda expuesto — es tu oportunidad');
+    addParticles(boss.x,boss.y,'#ffffff',36,250,0.55);
+    shake(10);
+  } else {
+    spawnToast('¡La Supernova detona!');
+    addParticles(boss.x,boss.y,'#ff2fd6',50,290,0.6);
+    shake(20);
+    if(game.player.invuln<=0){
+      hitPlayer(game.player.maxHp*0.7);
+    } else {
+      spawnToast('¡Tu invulnerabilidad te salvó de la Supernova!');
+    }
+    boss.attackTimer = 1.4;
+  }
 }
 
 function startAbyssEnrage(boss){
@@ -2063,7 +3272,23 @@ function dealDamageToTarget(t, dmgObj, source){
     if(t.armorHp<=0 && val<=0) return; // the armor held the whole hit
   }
   if(val<=0) return;
+  // Marca de Caza: the first hit landed on any given target hits noticeably harder
+  if(game.player.relics.effect_huntersMark && !t.huntersMarkUsed){
+    t.huntersMarkUsed = true;
+    val *= 1.3;
+  }
   t.hp -= val;
+  // Sello del Vacío / Núcleo Gélido: a chance to stun or slow whatever you just hit — kept off
+  // the boss itself (same guard as Filo Ejecutor) so it can't trivialize a guardian fight
+  const canAfflict = t!==game.boss && !(game.boss && game.boss.twin===t);
+  if(canAfflict && game.player.relics.effect_voidSeal && Math.random()<0.20){
+    t.stunTimer = Math.max(t.stunTimer||0, 0.6);
+    addParticles(t.x,t.y,'#a070c0',8,120,0.25);
+  }
+  if(canAfflict && game.player.relics.effect_frostCore && Math.random()<0.15){
+    t.slowTimer = Math.max(t.slowTimer||0, 1.4);
+    addParticles(t.x,t.y,'#8ec9ff',8,120,0.25);
+  }
   // El Señor del Abismo can't be burst past his supernova trigger — a big enough hit gets clamped
   // right at the threshold instead of skipping the enrage phase entirely
   if(t===game.boss && t.kind==='abyssLord' && !t.enrageTriggered){
@@ -2075,10 +3300,18 @@ function dealDamageToTarget(t, dmgObj, source){
     t.hp = 0;
     addParticles(t.x,t.y,'#ff3d3d',10,160,0.3);
   }
-  addDamageText(t.x, t.y-t.radius-6, val, dmgObj.crit?'#ffcb47':'#fff', dmgObj.crit);
-  addParticles(t.x, t.y, dmgObj.crit?'#ffcb47':'#ffffff', dmgObj.crit?9:4, dmgObj.crit?170:100, dmgObj.crit?0.28:0.18);
-  if(!game.pacts.noHeal && game.player.lifesteal>0){ game.player.hp = Math.min(game.player.maxHp, game.player.hp + val*Math.min(0.10,game.player.lifesteal)*(game.player.witherTimer>0?0.5:1)); }
-  if(source!=='chain'){ game.player.combo++; game.player.comboTimer = 4; }
+  addDamageText(t.x, t.y-t.radius-6, val, dmgObj.superCrit?'#ff4dd8':(dmgObj.crit?'#ffcb47':'#fff'), dmgObj.crit);
+  addParticles(t.x, t.y, dmgObj.superCrit?'#ff4dd8':(dmgObj.crit?'#ffcb47':'#ffffff'), dmgObj.superCrit?14:(dmgObj.crit?9:4), dmgObj.superCrit?210:(dmgObj.crit?170:100), dmgObj.superCrit?0.34:(dmgObj.crit?0.28:0.18));
+  if(dmgObj.superCrit) shake(3);
+  // Núcleo Inestable: critical hits have a chance to detonate on top of their normal damage
+  if(dmgObj.crit && game.player.relics.effect_unstableCore && Math.random()<0.15){
+    explodeAt(t.x,t.y,95,computeDamage(12));
+  }
+  if(!game.pacts.noHeal && game.player.lifesteal>0){ game.player.hp = Math.min(game.player.maxHp, game.player.hp + val*Math.min((game.player.lifestealBurstTimer>0?0.20:0.10),game.player.lifesteal)*(game.player.witherTimer>0?0.5:1)); }
+  if(source!=='chain'){
+    game.player.combo++;
+    game.player.comboTimer = 4 + (game.player.relics.effect_persistenceSeal ? 0.3 : 0);
+  }
   if(source!=='chain' && game.player.relics.relic_storm && Math.random()<0.15){
     const others = [...game.enemies, ...bossTargets()].filter(o=>o!==t && dist(o.x,o.y,t.x,t.y)<150);
     if(others.length){
@@ -2090,6 +3323,7 @@ function dealDamageToTarget(t, dmgObj, source){
   if(t.hp<=0){
     if(t===game.boss){
       if(game.boss.kind==='twinBoss' && game.boss.twin && game.boss.twin.alive){ onTwinComponentDeath(true); }
+      else if(game.ascenso){ onAscensoBossDeath(); }
       else { onBossDeath(); }
     } else if(game.boss && game.boss.twin && t===game.boss.twin){
       onTwinComponentDeath(false);
@@ -2128,11 +3362,31 @@ function onTwinComponentDeath(deadIsPrimary){
   }
 }
 
+// Espina de Escarcha: enemies that land a melee/contact hit on you get slowed for it
+function applyContactSlowIfEquipped(en){
+  if(game.player.relics.effect_frostSpine){
+    en.slowTimer = Math.max(en.slowTimer||0, 1.0);
+    addParticles(en.x,en.y,'#8ec9ff',6,110,0.2);
+  }
+}
+
 function killEnemy(t){
   const idx = game.enemies.indexOf(t);
   if(idx>=0) game.enemies.splice(idx,1);
   game.kills++;
   addParticles(t.x,t.y,(t.def&&t.def.color)||'#ffffff',t.isElite?18:10,t.isElite?220:180,0.4);
+  // Grito de Batalla: three kills within 2 seconds triggers a real damage buff (reuses the same
+  // Grito de Guerra effect a couple of heroes already grant through their own abilities)
+  if(game.player.relics.effect_warcryStreak){
+    const p = game.player;
+    p._recentKillTimes = (p._recentKillTimes||[]).filter(ts=>performance.now()-ts<2000);
+    p._recentKillTimes.push(performance.now());
+    if(p._recentKillTimes.length>=3){
+      p.effects.warcry = Math.max(p.effects.warcry||0, 4);
+      p._recentKillTimes = [];
+      spawnToast('¡Grito de Batalla! +35% daño por unos segundos');
+    }
+  }
   // Núcleo Volátil: a chance for a defeated enemy to detonate, damaging whatever's nearby
   if(game.player.relics.effect_deathburst && Math.random()<0.25){
     explodeAt(t.x,t.y,90,computeDamage(10));
@@ -2144,7 +3398,7 @@ function killEnemy(t){
     if(dist(t.x,t.y,p.x,p.y) < t.def.explodeRadius+p.radius) hitPlayer(t.def.explodeDmg);
   }
   if(!t.isBossMinion){
-    const g = Math.round(rand(t.goldMin!==undefined?t.goldMin:(t.def?t.def.gold[0]:1), t.goldMax!==undefined?t.goldMax:(t.def?t.def.gold[1]:2)));
+    const g = Math.round(rand(t.goldMin!==undefined?t.goldMin:(t.def && t.def.gold ? t.def.gold[0] : 1), t.goldMax!==undefined?t.goldMax:(t.def && t.def.gold ? t.def.gold[1] : 2)));
     const GOLD_ORB_CAP = 40; // once the floor's this cluttered, fold new drops into the nearest orb instead of adding more
     if(game.goldOrbs.length >= GOLD_ORB_CAP){
       let nearest=null, nd=Infinity;
@@ -2160,6 +3414,7 @@ function killEnemy(t){
 
 function onBossDeath(){
   const boss = game.boss;
+  if(game.player.relics.effect_doubleHeart){ game.player.lifestealBurstTimer = 8; spawnToast('❤️‍🔥 Corazón Doble: robo de vida potenciado'); }
   addParticles(boss.x, boss.y, boss.def.color, 40, 260, 0.7);
   shake(14);
   const g = 20 + game.stageIndex*10;
@@ -2292,17 +3547,24 @@ function doAbilityQ(){
   } else if(id==='monje'){
     const steps=4;
     const b = arenaBounds();
+    // Targets already struck this flurry. Once a target is "engaged" it keeps taking hits every
+    // remaining step even if the forward dash carries the player past it and it ends up technically
+    // behind the frozen facing angle — this was the bug: a close target only fell inside the cone
+    // for the steps *before* you passed it, so it only ever took ~2 of the 4 hits instead of all 4.
     const hitSet = new Set();
     for(let i=0;i<steps;i++){
       p.x = clamp(p.x+p.facingX*14, b.x+p.radius, b.x+b.w-p.radius);
       p.y = clamp(p.y+p.facingY*14, b.y+p.radius, b.y+b.h-p.radius);
       [...game.enemies, ...bossTargets()].forEach(t=>{
         const d = dist(p.x,p.y,t.x,t.y);
-        if(d<=76+t.radius){
+        if(d>76+t.radius) return;
+        if(!hitSet.has(t)){
           const ang = Math.atan2(t.y-p.y,t.x-p.x);
           let diff = Math.abs(ang-p.facing); if(diff>Math.PI) diff=Math.PI*2-diff;
-          if(diff <= (65*Math.PI/180)) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.9), 'q');
+          if(diff > (65*Math.PI/180)) return; // not engaged yet and outside the cone — skip for now
+          hitSet.add(t);
         }
+        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.9), 'q');
       });
       addParticles(p.x,p.y,p.def.accent,6,120,0.15);
     }
@@ -2332,14 +3594,13 @@ function doAbilityQ(){
     }
     addParticles(p.x,p.y,'#6ad8ff',10,140,0.2);
   } else if(id==='berserker'){
-    const hpFrac = clamp(p.hp/p.maxHp,0,1);
-    const mult = 1.2 + (1-hpFrac)*1.3; // up to +130% more damage the lower your own HP is
-    [...game.enemies, ...bossTargets()].forEach(t=>{
-      if(dist(p.x,p.y,t.x,t.y) < 115) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult), 'q');
-    });
-    addParticles(p.x,p.y,'#ff3d3d',22,200,0.4);
-    spawnShockwave(p.x,p.y,'#ff3d3d',115,0.3);
-    shake(6);
+    // was a single instant hit — now a 3s channel that roots the player (see the movement lock
+    // below) and ticks damage repeatedly, still scaling up the lower your own HP gets, recomputed
+    // live each tick since your HP can change mid-spin
+    p.spinTimer = 3;
+    p.spinTick = 0; // fires the first tick immediately next frame
+    addParticles(p.x,p.y,'#ff3d3d',18,180,0.4);
+    shake(4);
   } else if(id==='ilusionista'){
     game.pet = { x:p.x-30, y:p.y, hp:1, maxHp:1, radius:13, speed:230, dmg:Math.round(p.def.atk.dmg*1.1),
       atkTimer:0, atkCd:0.7, color:'#c9a8ff', hitFlash:0, life:10 };
@@ -2572,16 +3833,28 @@ function doAbilityE(){
 
 function doUltimate(){
   const p = game.player;
-  const ids = progress.unlockedAbilities;
-  if(!ids.length) return;
-  let best=null;
-  ids.forEach(id=>{ const cd=p.ultCooldowns[id]||0; if(!best || cd<best.cd) best={id,cd}; });
-  if(!best || best.cd>0) return;
-  const ability = ULTIMATE_ABILITIES.find(a=>a.id===best.id);
+  const id = p.activeUltimate;
+  if(!id) return;
+  const cd = p.ultCooldowns[id]||0;
+  if(cd>0) return;
+  const ability = ULTIMATE_ABILITIES.find(a=>a.id===id);
   ability.cast(p);
   // the R ultimate's cooldown ignores cdMult entirely — cooldown-reduction items/synergies
   // don't touch it, it always sits at its own base cd (floored at MIN_ULT_CD = 30s)
   p.ultCooldowns[ability.id] = Math.max(MIN_ULT_CD, ability.cd);
+  // Ojo que Todo Ve: deliberately doesn't touch R's cooldown (see note above) — instead grants a
+  // few seconds of invulnerability the instant you commit to using it
+  if(p.relics.effect_allSeeingEye){ p.invuln = Math.max(p.invuln, 3); }
+}
+function doShiftAbility(){
+  const p = game.player;
+  const id = p.activeShiftAbility;
+  if(!id) return;
+  const cd = p.shiftCooldowns[id]||0;
+  if(cd>0) return;
+  const ability = SHIFT_ABILITIES.find(a=>a.id===id);
+  ability.cast(p);
+  p.shiftCooldowns[ability.id] = ability.cd; // Shift abilities aren't floored by MIN_ULT_CD — they're meant to be more frequent utility, not a second R
 }
 
 function doInteract(){
@@ -2633,7 +3906,7 @@ function doInteract(){
     }
   } else if(game.phase==='portal'){
     if(game.portal && dist(p.x,p.y,game.portal.x,game.portal.y)<70){
-      onStageClear();
+      if(game.ascenso) onAscensoStageClear(); else onStageClear();
     }
   }
 }
@@ -2692,6 +3965,7 @@ function updateEnemies(dt){
     en.hitFlash = Math.max(0,en.hitFlash-dt);
     en.atkTimer = Math.max(0,en.atkTimer-dt);
     if(en.stunTimer>0){ en.stunTimer -= dt; return; }
+    if(en.slowTimer>0){ en.slowTimer -= dt; en.speedMult = 0.5; } else { en.speedMult = 1; }
     if(en.poisonTimer>0){ en.poisonTimer-=dt; if(Math.floor(en.poisonTimer*10)%3===0){} }
     const d = dist(en.x,en.y,p.x,p.y);
     const def = en.def;
@@ -2723,6 +3997,7 @@ function updateEnemies(dt){
         if(en.atkTimer<=0 && d<en.radius+p.radius+6){
           en.atkTimer = 0.5;
           hitPlayer(en.dmg);
+          applyContactSlowIfEquipped(en);
           addParticles(p.x,p.y,'#e8434f',8,140,0.3);
         }
         if(en.chargeTimer<=0){ en.chargeState='cooldown'; en.chargeTimer=def.chargeCd; }
@@ -2741,6 +4016,7 @@ function updateEnemies(dt){
         } else if(en.atkTimer<=0){
           en.atkTimer = def.atkCd;
           hitPlayer(en.dmg*0.6);
+          applyContactSlowIfEquipped(en);
           addParticles(p.x,p.y,'#e8434f',6,120,0.25);
         }
         if(en.chargeTimer<=0) en.chargeState='idle';
@@ -2760,6 +4036,7 @@ function updateEnemies(dt){
       } else if(en.atkTimer<=0){
         en.atkTimer = def.atkCd;
         hitPlayer(en.dmg);
+        applyContactSlowIfEquipped(en);
         addParticles(p.x,p.y,'#e8434f',8,140,0.3);
       }
     } else {
@@ -2852,15 +4129,50 @@ function hitPlayer(dmg){
     shake(3);
     return;
   }
+  // Escudo de Reacción: once per floor, dropping below 30% HP grants a shield that fully
+  // absorbs the very next hit (checked here, before the hit even lands, so it can save you)
+  if(p.relics.effect_reactiveShield && !p._reactiveShieldUsedThisFloor && p.hp/p.maxHp < 0.30){
+    p._reactiveShieldUsedThisFloor = true;
+    p.invuln = 0.4;
+    spawnToast('¡Escudo de Reacción! Absorbiste el golpe entero');
+    addParticles(p.x,p.y,'#8ec9ff',18,180,0.4);
+    shake(5);
+    return;
+  }
   const wallBonus = (p.effects.wall>0 ? 0.25 : 0) + (p.potionEffects.def>0 ? 0.30 : 0);
   const reduced = dmg*(1-Math.min(0.85,p.armor+wallBonus))*p.curseDmgTakenMult;
+  // Reflejo Instantáneo: once per run, a hit that would have killed you instead leaves you at
+  // 1 HP and grants a real window of invulnerability to recover
+  if(p.relics.effect_instantReflex && !p._instantReflexUsed && (p.hp-reduced)<=0){
+    p._instantReflexUsed = true;
+    p.hp = 1;
+    p.invuln = 1.5;
+    spawnToast('¡Reflejo Instantáneo te salvó de la muerte!');
+    addParticles(p.x,p.y,'#fff3c4',30,220,0.5);
+    shake(10);
+    return;
+  }
   p.hp -= reduced;
+  // Deuda de Sangre: each hit taken also permanently shaves a bit off your max HP
+  if(p.relics.effect_bloodDebt){
+    const shrink = p.maxHp*0.01;
+    p.maxHp = Math.max(20, p.maxHp-shrink);
+    p.hp = Math.min(p.hp, p.maxHp);
+  }
   p.combo = 0;
   p.invuln = 0.35;
   shake(4);
   // Talismán de Represalia: a chance to hit back everything nearby the instant you get hit
   if(p.relics.effect_thorns && Math.random()<0.20){
     explodeAt(p.x,p.y,110, computeDamage(14));
+  }
+  // Escudo Especular (ultimate): while active, every hit is reflected back at the nearest target
+  if(p.effects.mirrorShield>0){
+    const targets = [...game.enemies, ...bossTargets()];
+    let nearest=null, nearestD=Infinity;
+    targets.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearestD=d; nearest=t; } });
+    if(nearest) dealDamageToTarget(nearest, computeDamage(reduced*0.7), 'reflect');
+    addParticles(p.x,p.y,'#6ad8ff',10,140,0.3);
   }
 }
 
@@ -2910,6 +4222,19 @@ function updateBoss(dt){
     }
   }
 
+  if(boss.supernovaActive){
+    // El Sol's Colapso Total: a 5-second DPS-check channel. Unlike enrageActive he's NOT
+    // invulnerable here — track how much damage lands by comparing hp against the value it
+    // was when the channel started, since there's no separate core object to check instead.
+    boss.supernovaTimer -= dt;
+    const dmgSoFar = boss.supernovaHpStart - boss.hp;
+    if(dmgSoFar >= boss.supernovaThreshold){
+      finishSunSupernova(boss, true);
+    } else if(boss.supernovaTimer<=0){
+      finishSunSupernova(boss, false);
+    }
+    return; // the collapse channel completely overrides his normal movement/attack routine
+  }
   if(boss.kind==='abyssLord' && !boss.enrageTriggered && boss.hp <= boss.maxHp*0.10){
     startAbyssEnrage(boss);
   }
@@ -3253,7 +4578,11 @@ function updateBoss(dt){
         boss.x += Math.cos(ang)*boss.def.speed*0.5*dt;
         boss.y += Math.sin(ang)*boss.def.speed*0.5*dt;
       }
-      if(boss.contactTimer<=0){
+      // contact damage only when actually touching (radius overlap + a small buffer, same as
+      // every other boss attack's hitbox) — this used to fire off the flat d<=90 bucket above,
+      // which is much bigger than most bosses' actual radius, so it could hit the player from a
+      // visible gap and feel like getting hurt without touching the boss at all
+      if(boss.contactTimer<=0 && d <= boss.radius+p.radius+14){
         boss.contactTimer = boss.def.contactCd;
         hitPlayer(boss.dmg*0.6);
       }
@@ -3325,7 +4654,7 @@ function updateBoss(dt){
       if(boss.twin && boss.twin.alive && tgL.twinStartAngle!==undefined){
         checkBeam(boss.twin.x, boss.twin.y, tgL.twinStartAngle);
       }
-    } else if(boss.telegraph.type==='plasmaBeam'){
+    } else if(boss.telegraph.type==='plasmaBeam' || boss.telegraph.type==='dawnBeam' || boss.telegraph.type==='voidBeam'){
       // the beam translates straight across the arena from one edge toward the other — dodging
       // means getting to (and staying on) the side it's already passed, not a quick sidestep
       const tgB = boss.telegraph;
@@ -3352,6 +4681,51 @@ function updateBoss(dt){
           }
         }
       }
+    } else if(boss.telegraph.type==='geoSweep'){
+      // El Sol's Barrido de Plasma Geomagnético: two parallel vertical walls of magenta plasma
+      // sweep across together with a gap between them — dodge by dashing through the gap in
+      // time, or by staying ahead of the sweep on the safe far side (same 3/4 sweepLimit idea
+      // as the single-wall beam above, just doubled).
+      const tgG = boss.telegraph;
+      const elapsedG = tgG.dur - tgG.t;
+      if(elapsedG > tgG.hotAt){
+        const sweepLimit = 0.75;
+        const sweepProg = clamp((elapsedG-tgG.hotAt)/(tgG.dur-tgG.hotAt), 0, 1)*sweepLimit;
+        const centerPos = tgG.fromStart ? b.x+sweepProg*b.w : b.x+b.w-sweepProg*b.w;
+        const gapHalf = tgG.gap/2;
+        tgG.curPos = centerPos;
+        const leftWall = centerPos - gapHalf, rightWall = centerPos + gapHalf;
+        if(Math.abs(p.x-leftWall) < 26 || Math.abs(p.x-rightWall) < 26){
+          tgG.tick = (tgG.tick||0)-dt;
+          if(tgG.tick<=0){ hitPlayer(boss.dmg*0.55); tgG.tick=0.15; addParticles(p.x,p.y,'#ff2fd6',12,150,0.25); shake(3); }
+        }
+      }
+    } else if(boss.telegraph.type==='stormSpiral'){
+      // Espiral de Tormenta Estelar: a channeled spiral of magenta/cyan bolts, spinning faster
+      // and firing denser the lower El Sol's HP gets — the fight visibly escalates as it goes on
+      const tgS2 = boss.telegraph;
+      const elapsedS2 = tgS2.dur - tgS2.t;
+      if(elapsedS2 > tgS2.hotAt){
+        const hpFrac = clamp(boss.hp/boss.maxHp, 0, 1);
+        const intensity = 1 + (1-hpFrac)*0.9; // up to ~1.9x faster/denser at low HP
+        tgS2.spiralAngle += dt*2.6*intensity;
+        tgS2.spiralTick -= dt;
+        if(tgS2.spiralTick<=0){
+          tgS2.spiralTick = 0.13/intensity;
+          const arms=5;
+          const speedS2=110*intensity;
+          for(let i=0;i<arms;i++){
+            const ang = tgS2.spiralAngle + (i/arms)*Math.PI*2;
+            const travelS2 = rayToBounds(boss.x,boss.y,ang,b);
+            const col = i%2===0 ? '#ff2fd6' : '#33e5ff';
+            spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*speedS2, vy:Math.sin(ang)*speedS2,
+              dmg:boss.dmg*0.26, radius:6, owner:'enemy', color:col, life:travelS2/speedS2+0.5, shape:'wisp' });
+          }
+        }
+      }
+    } else if(boss.telegraph.type==='eruptionConvergence'){
+      // just a bright channel visual while he "canaliza energía, poniéndose blanco brillante" —
+      // the actual 6-point convergence fires all at once in resolveBossAttack when this ends
     } else if(boss.telegraph.type==='solarSporeSpiral'){
       const tgS = boss.telegraph;
       const elapsedS = tgS.dur - tgS.t;
@@ -3906,11 +5280,323 @@ const ATTACK_NAMES = {
   gravityFlip: 'Giro de Masa',
   voidCrackCollapse: 'Grieta del Vacío',
   eventHorizonPulse: 'Onda de Evento de Horizonte',
+  // Ascenso — Piso 1 (Larva de Sombra) y Piso 100 (El Sol)
+  voidClaw: 'Zarpazo de Vacío',
+  voidPuddles: 'Charcos de Sombra',
+  shadowBurst: 'Estallido de Sombra',
+  dawnBeam: 'Haz del Alba',
+  solarFlare: 'Llamarada Solar',
+  radiantCollapse: 'Colapso Radiante',
+  zenith: 'Cenit',
+  echoSlam: 'Golpe con Eco',
+  hollowVolley: 'Ráfaga Hueca',
+  duplicantPulse: 'Pulso Duplicante',
+  crackLine: 'Línea de Grietas',
+  tendrilBloom: 'Florecer de Zarcillos',
+  weaverBurst: 'Estallido del Tejedor',
+  silentSlam: 'Golpe Silencioso',
+  mutePulse: 'Pulso Mudo',
+  whisperVolley: 'Ráfaga de Susurros',
+  devourLunge: 'Embestida Devoradora',
+  echoSwarmBurst: 'Enjambre de Ecos',
+  voidMawPuddles: 'Fauces del Vacío',
+  ashSlam: 'Golpe de Ceniza',
+  cinderRing: 'Anillo de Brasas',
+  ashStorm: 'Tormenta de Ceniza',
+  whisperDodge: 'Esquiva Susurrante',
+  crackVolley: 'Ráfaga de Grieta',
+  whisperCrawl: 'Arrastre Susurrante',
+  thornLash: 'Latigazo de Espinas',
+  thornField: 'Campo de Espinas',
+  thornBurst: 'Estallido de Espinas',
+  wardenCrush: 'Aplastón del Custodio',
+  wardenBarrier: 'Barrera del Custodio',
+  wardenVolley: 'Ráfaga del Custodio',
+  swarmDash: 'Embestida del Enjambre',
+  swarmPepper: 'Metralla del Enjambre',
+  swarmField: 'Campo del Enjambre',
+  heraldSlam: 'Golpe del Heraldo',
+  heraldLine: 'Línea del Heraldo',
+  heraldBurst: 'Estallido del Heraldo',
+  heraldCollapse: 'Colapso del Heraldo',
+  screamSlam: 'Golpe del Grito',
+  drownedVolley: 'Ráfaga Ahogada',
+  echoTrap: 'Trampa de Eco',
+  duskLash: 'Latigazo del Ocaso',
+  duskWeb: 'Red del Ocaso',
+  twilightBurst: 'Estallido Crepuscular',
+  facelessCrush: 'Aplastón sin Rostro',
+  facelessWard: 'Guarda sin Rostro',
+  facelessGaze: 'Mirada sin Rostro',
+  vineLash: 'Latigazo de Enredadera',
+  vineField: 'Campo de Enredaderas',
+  vineBurst: 'Estallido de Enredadera',
+  whisperTwinDash: 'Embestida Doble',
+  doubleVolley: 'Ráfaga Doble',
+  twinCrawl: 'Arrastre Doble',
+  shardSlam: 'Golpe de Fragmento',
+  shardRain: 'Lluvia de Fragmentos',
+  shardBurst: 'Estallido de Fragmentos',
+  custodianSlam: 'Golpe de la Custodia',
+  custodianRing: 'Anillo de la Custodia',
+  custodianVolley: 'Ráfaga de la Custodia',
+  lamentDodge: 'Esquiva del Lamento',
+  lamentCrawl: 'Arrastre del Lamento',
+  lamentWail: 'Gemido del Lamento',
+  heartSlam: 'Golpe del Corazón',
+  heartLine: 'Línea del Corazón',
+  heartBurst: 'Estallido del Corazón',
+  heartCollapse: 'Colapso del Corazón',
+  thresholdSlam: 'Golpe del Umbral',
+  thresholdField: 'Campo del Umbral',
+  voidBeam: 'Haz de Vacío',
+  choirSlam: 'Golpe del Coro',
+  choirWave: 'Oleada del Coro',
+  choirEcho: 'Eco del Coro',
+  marauderPounce: 'Salto del Merodeador',
+  marauderRake: 'Zarpazo del Merodeador',
+  marauderHail: 'Granizo del Merodeador',
+  graniteCrush: 'Aplastón de Granito',
+  graniteWall: 'Muro de Granito',
+  graniteVolley: 'Ráfaga de Granito',
+  bloomLash: 'Latigazo del Florecer',
+  bloomField: 'Campo del Florecer',
+  bloomBurst: 'Estallido del Florecer',
+  emberSlam: 'Golpe de Brasas',
+  crownAshfall: 'Ceniza de la Corona',
+  emberBurst: 'Estallido de Brasas',
+  ashDash: 'Embestida de Ceniza',
+  emberWake: 'Estela de Brasas',
+  cinderScatter: 'Dispersión de Rescoldos',
+  emberCrush: 'Aplastón Ardiente',
+  achingRing: 'Anillo Doliente',
+  emberVolley: 'Ráfaga de Brasas',
+  paleFlicker: 'Parpadeo Pálido',
+  paleWake: 'Estela Pálida',
+  paleBurst: 'Estallido Pálido',
+  wardenEmberSlam: 'Golpe del Custodio Ardiente',
+  emberWardenRing: 'Anillo del Custodio Ardiente',
+  emberWardenVolley: 'Ráfaga del Custodio Ardiente',
+  swarmEmberDash: 'Embestida del Enjambre Ardiente',
+  emberSwarmField: 'Campo del Enjambre Ardiente',
+  emberSwarmBurst: 'Estallido del Enjambre Ardiente',
+  mistSlam: 'Golpe de Bruma',
+  mistField: 'Campo de Bruma',
+  mistBurst: 'Estallido de Bruma',
+  dimmedCrush: 'Aplastón Apagado',
+  dimmedRing: 'Anillo Apagado',
+  dimmedVolley: 'Ráfaga Apagada',
+  greyThornLash: 'Latigazo Gris',
+  greyThornField: 'Campo Gris',
+  greyThornBurst: 'Estallido Gris',
+  dimWhisperDodge: 'Esquiva del Susurro Apagado',
+  dimmedCrawl: 'Reptar Apagado',
+  dimmedWhisperVolley: 'Ráfaga del Susurro Apagado',
+  heartDimSlam: 'Golpe del Corazón Apagado',
+  dimmedHeartLine: 'Línea del Corazón Apagado',
+  dimmedHeartBurst: 'Estallido del Corazón Apagado',
+  dustDash: 'Embestida de Polvo',
+  dustTrail: 'Estela de Polvo',
+  dustScatter: 'Dispersión de Polvo',
+  fissureLash: 'Latigazo de Fisura',
+  fissureField: 'Campo de Fisura',
+  fissureBurst: 'Estallido de Fisura',
+  hollowSlam: 'Golpe Hueco',
+  hollowField: 'Campo Hueco',
+  hollowBurst: 'Estallido Hueco',
+  stoneWhisperDodge: 'Esquiva del Susurro de Piedra',
+  stoneCrawl: 'Reptar de Piedra',
+  stoneVolley: 'Ráfaga de Piedra',
+  dustHeartSlam: 'Golpe del Corazón de Polvo',
+  dustHeartLine: 'Línea del Corazón de Polvo',
+  dustHeartBurst: 'Estallido del Corazón de Polvo',
+  dustHeartCollapse: 'Colapso del Corazón de Polvo',
+  gleamSlam: 'Golpe de Brillo',
+  gleamField: 'Campo de Brillo',
+  gleamBurst: 'Estallido de Brillo',
+  stoneWardenCrush: 'Aplastón del Custodio de Piedra',
+  stoneWardenRing: 'Anillo del Custodio de Piedra',
+  stoneWardenVolley: 'Ráfaga del Custodio de Piedra',
+  lightThornLash: 'Latigazo de Luz',
+  lightThornField: 'Campo de Luz',
+  lightThornBurst: 'Estallido de Luz',
+  greyEchoDash: 'Embestida de Ecos Grises',
+  greyEchoField: 'Campo de Ecos Grises',
+  greyEchoBurst: 'Estallido de Ecos Grises',
+  ashLightSlam: 'Golpe de Ceniza y Luz',
+  ashLightField: 'Campo de Ceniza y Luz',
+  ashLightBurst: 'Estallido de Ceniza y Luz',
+  veilSlam: 'Golpe del Velo',
+  veilField: 'Campo del Velo',
+  veilBurst: 'Estallido del Velo',
+  edgeGuardCrush: 'Aplastón de la Guardiana del Límite',
+  edgeGuardRing: 'Anillo de la Guardiana del Límite',
+  edgeGuardVolley: 'Ráfaga de la Guardiana del Límite',
+  dawnThornLash: 'Latigazo del Alba',
+  dawnThornField: 'Campo del Alba',
+  dawnThornBurst: 'Estallido del Alba',
+  edgeHeartSlam: 'Golpe del Corazón del Límite',
+  edgeHeartLine: 'Línea del Corazón del Límite',
+  edgeHeartBurst: 'Estallido del Corazón del Límite',
+  edgeHeartCollapse: 'Colapso del Corazón del Límite',
+  dawnDash: 'Embestida del Alba',
+  dawnTrail: 'Estela del Alba',
+  dawnScatter: 'Dispersión del Alba',
+  dawnGuardCrush: 'Aplastón de la Guardiana del Alba',
+  dawnGuardRing: 'Anillo de la Guardiana del Alba',
+  dawnGuardVolley: 'Ráfaga de la Guardiana del Alba',
+  goldenEchoDash: 'Embestida del Eco Dorado',
+  goldenEchoField: 'Campo del Eco Dorado',
+  goldenEchoBurst: 'Estallido del Eco Dorado',
+  goldenThornLash: 'Latigazo Dorado',
+  goldenThornField: 'Campo Dorado',
+  goldenThornBurst: 'Estallido Dorado',
+  dawnWhisperDodge: 'Esquiva del Susurro del Alba',
+  dawnWhisperCrawl: 'Reptar del Susurro del Alba',
+  dawnWhisperVolley: 'Ráfaga del Susurro del Alba',
+  brightSlam: 'Golpe Brillante',
+  brightField: 'Campo Brillante',
+  brightBurst: 'Estallido Brillante',
+  swarmGoldenDash: 'Embestida del Enjambre Dorado',
+  goldenSwarmField: 'Campo del Enjambre Dorado',
+  goldenSwarmBurst: 'Estallido del Enjambre Dorado',
+  radiantCrush: 'Aplastón Radiante',
+  radiantRing: 'Anillo Radiante',
+  radiantVolley: 'Ráfaga Radiante',
+  radiantThornLash: 'Latigazo Radiante',
+  radiantThornField: 'Campo Radiante',
+  radiantThornBurst: 'Estallido Radiante',
+  sunHeraldSlam: 'Golpe del Heraldo del Sol',
+  sunHeraldLine: 'Línea del Heraldo del Sol',
+  sunHeraldBurst: 'Estallido del Heraldo del Sol',
+  sunHeraldCollapse: 'Colapso del Heraldo del Sol',
+  sentinelDash: 'Embestida del Centinela Dorado',
+  sentinelTrail: 'Estela del Centinela Dorado',
+  sentinelScatter: 'Dispersión del Centinela Dorado',
+  solarWardenCrush: 'Aplastón del Custodio Solar',
+  solarWardenRing: 'Anillo del Custodio Solar',
+  solarWardenVolley: 'Ráfaga del Custodio Solar',
+  solarWhisperDodge: 'Esquiva del Susurro Solar',
+  solarWhisperCrawl: 'Reptar del Susurro Solar',
+  solarWhisperVolley: 'Ráfaga del Susurro Solar',
+  solarEchoDash: 'Embestida del Eco Solar',
+  solarEchoField: 'Campo del Eco Solar',
+  solarEchoBurst: 'Estallido del Eco Solar',
+  swarmBlazeDash: 'Embestida del Enjambre de Llamas',
+  blazeSwarmField: 'Campo del Enjambre de Llamas',
+  blazeSwarmBurst: 'Estallido del Enjambre de Llamas',
+  solarGuardSlam: 'Golpe de la Guardiana Solar',
+  solarGuardField: 'Campo de la Guardiana Solar',
+  solarGuardBurst: 'Estallido de la Guardiana Solar',
+  flareWardenCrush: 'Aplastón del Custodio de Flare',
+  flareWardenRing: 'Anillo del Custodio de Flare',
+  flareWardenVolley: 'Ráfaga del Custodio de Flare',
+  flareThornLash: 'Latigazo de Flare',
+  flareThornField: 'Campo de Flare',
+  flareThornBurst: 'Estallido de Flare',
+  coronaWhisperDodge: 'Esquiva del Susurro de Corona',
+  coronaWhisperCrawl: 'Reptar del Susurro de Corona',
+  coronaWhisperVolley: 'Ráfaga del Susurro de Corona',
+  coronaHeartSlam: 'Golpe del Corazón de Corona',
+  coronaHeartLine: 'Línea del Corazón de Corona',
+  coronaHeartBurst: 'Estallido del Corazón de Corona',
+  coronaHeartCollapse: 'Colapso del Corazón de Corona',
+  swarmFlareDash: 'Embestida del Enjambre de Flare',
+  flareSwarmField: 'Campo del Enjambre de Flare',
+  flareSwarmBurst: 'Estallido del Enjambre de Flare',
+  zenithWardenCrush: 'Aplastón del Custodio del Cenit',
+  zenithWardenRing: 'Anillo del Custodio del Cenit',
+  zenithWardenVolley: 'Ráfaga del Custodio del Cenit',
+  zenithThornLash: 'Latigazo del Cenit',
+  zenithThornField: 'Campo del Cenit',
+  zenithThornBurst: 'Estallido del Cenit',
+  zenithWhisperDodge: 'Esquiva del Susurro del Cenit',
+  zenithWhisperCrawl: 'Reptar del Susurro del Cenit',
+  zenithWhisperVolley: 'Ráfaga del Susurro del Cenit',
+  zenithEchoDash: 'Embestida del Eco del Cenit',
+  zenithEchoField: 'Campo del Eco del Cenit',
+  zenithEchoBurst: 'Estallido del Eco del Cenit',
+  zenithGuardSlam: 'Golpe de la Guardiana del Cenit',
+  zenithGuardField: 'Campo de la Guardiana del Cenit',
+  zenithGuardBurst: 'Estallido de la Guardiana del Cenit',
+  blindWardenCrush: 'Aplastón del Custodio Cegador',
+  blindWardenRing: 'Anillo del Custodio Cegador',
+  blindWardenVolley: 'Ráfaga del Custodio Cegador',
+  blindThornLash: 'Latigazo Cegador',
+  blindThornField: 'Campo Cegador',
+  blindThornBurst: 'Estallido Cegador',
+  blindWhisperDodge: 'Esquiva del Susurro Cegador',
+  blindWhisperCrawl: 'Reptar del Susurro Cegador',
+  blindWhisperVolley: 'Ráfaga del Susurro Cegador',
+  blindHeartSlam: 'Golpe del Corazón Cegador',
+  blindHeartLine: 'Línea del Corazón Cegador',
+  blindHeartBurst: 'Estallido del Corazón Cegador',
+  blindHeartCollapse: 'Colapso del Corazón Cegador',
+  swarmBlindDash: 'Embestida del Enjambre Cegador',
+  blindSwarmField: 'Campo del Enjambre Cegador',
+  blindSwarmBurst: 'Estallido del Enjambre Cegador',
+  ascWardenCrush: 'Aplastón del Custodio Ascendente',
+  ascWardenRing: 'Anillo del Custodio Ascendente',
+  ascWardenVolley: 'Ráfaga del Custodio Ascendente',
+  ascThornLash: 'Latigazo Ascendente',
+  ascThornField: 'Campo Ascendente',
+  ascThornBurst: 'Estallido Ascendente',
+  ascWhisperDodge: 'Esquiva del Susurro Ascendente',
+  ascWhisperCrawl: 'Reptar del Susurro Ascendente',
+  ascWhisperVolley: 'Ráfaga del Susurro Ascendente',
+  ascEchoDash: 'Embestida del Eco Ascendente',
+  ascEchoField: 'Campo del Eco Ascendente',
+  ascEchoBurst: 'Estallido del Eco Ascendente',
+  ascGuardSlam: 'Golpe de la Guardiana Ascendente',
+  ascGuardField: 'Campo de la Guardiana Ascendente',
+  ascGuardBurst: 'Estallido de la Guardiana Ascendente',
+  summitWardenCrush: 'Aplastón del Custodio de la Cumbre',
+  summitWardenRing: 'Anillo del Custodio de la Cumbre',
+  summitWardenVolley: 'Ráfaga del Custodio de la Cumbre',
+  summitThornLash: 'Latigazo de la Cumbre',
+  summitThornField: 'Campo de la Cumbre',
+  summitThornBurst: 'Estallido de la Cumbre',
+  summitWhisperDodge: 'Esquiva del Susurro de la Cumbre',
+  summitWhisperCrawl: 'Reptar del Susurro de la Cumbre',
+  summitWhisperVolley: 'Ráfaga del Susurro de la Cumbre',
+  summitHeartSlam: 'Golpe del Corazón de la Cumbre',
+  summitHeartLine: 'Línea del Corazón de la Cumbre',
+  summitHeartBurst: 'Estallido del Corazón de la Cumbre',
+  summitHeartCollapse: 'Colapso del Corazón de la Cumbre',
+  swarmSummitDash: 'Embestida del Enjambre de la Cumbre',
+  summitSwarmField: 'Campo del Enjambre de la Cumbre',
+  summitSwarmBurst: 'Estallido del Enjambre de la Cumbre',
+  portalWardenCrush: 'Aplastón del Custodio del Portal',
+  portalWardenRing: 'Anillo del Custodio del Portal',
+  portalWardenVolley: 'Ráfaga del Custodio del Portal',
+  portalThornLash: 'Latigazo del Portal',
+  portalThornField: 'Campo del Portal',
+  portalThornBurst: 'Estallido del Portal',
+  portalWhisperDodge: 'Esquiva del Susurro del Portal',
+  portalWhisperCrawl: 'Reptar del Susurro del Portal',
+  portalWhisperVolley: 'Ráfaga del Susurro del Portal',
+  portalEchoDash: 'Embestida del Eco del Portal',
+  portalEchoField: 'Campo del Eco del Portal',
+  portalEchoBurst: 'Estallido del Eco del Portal',
+  portalGuardSlam: 'Golpe de la Guardiana del Portal',
+  portalGuardField: 'Campo de la Guardiana del Portal',
+  portalGuardBurst: 'Estallido de la Guardiana del Portal',
+  lastWardenCrush: 'Aplastón del Último Custodio',
+  lastWardenRing: 'Anillo del Último Custodio',
+  lastWardenVolley: 'Ráfaga del Último Custodio',
+  lastThornLash: 'Latigazo de la Última Espina',
+  lastThornField: 'Campo de la Última Espina',
+  lastThornBurst: 'Estallido de la Última Espina',
+  precursorSlam: 'Golpe del Precursor del Sol',
+  precursorRing: 'Anillo del Precursor del Sol',
+  precursorLine: 'Línea del Precursor del Sol',
+  precursorBurst: 'Estallido del Precursor del Sol',
+  precursorCollapse: 'Colapso del Precursor del Sol',
 };
-const GROUND_SELF_ATTACKS = ['boneSlam','slam','fireWave','mirrorBloom','verdantSurge','mirrorShatter','reflectivePulse','soulPulse','boundSurge','frostSlam','thunderSlam','shadowSlam','royalSlam'];
-const GROUND_TARGET_ATTACKS = ['fireRain','poisonPool','meteor','boneCage','boneWall','lavaGeyser','growingMagma','iceCage','stormField','voidRift','risingSpikes','boneTrap','swampGrasp','hexTrail','emberField','moltenCore','cinderRain','bloomTrap','radiantPath','glassField','bondPulse','spiritLink','crystalPrison','avalanche','stormVortex','skySiege','voidTendrils','collapsingStar','finalJudgment','thunderStrike','boneCross','boneSpiral','graveSpikes','cryptCollapse','ribcage','deathToll','deathsDoor','deathKnell','rootSnare','quicksand','poisonBrew','swampSurge','vineLine','mireField','plagueCloud','witchesRing','infernoRing','brimstoneRain','moltenTrap','flameSurge','pyreCollapse','scorchedEarth','brimstoneSpiral','moltenWave','dewTrap','crystalBloom','thornCage','sunbeamLine','bloomRing','sunfireCross','radianceField','lightCascade','tangleRoots','mirrorMaze','shatterZone','reflectivePool','glassSpikes','doubleVision','distortionField','echoChamber','hallOfMirrors','soulTether','kinshipRing','dualBloom','sharedPain','weaveTrap','pactCircle','tetherLine','acidDeluge','venomousWeb','boundlessBeam','crystalCage','growingSpikes','glacialSpike','frostRing','iceFissure','frozenTrail','hailfall','permafrost','crystalRain','blizzardGust','thunderPatch','stormCell','lightningField','galeZone','thunderColumn','stormPocket','chainStrike','squallLine','voidPool','shadowPatch','darkRift','eclipseZone','starfallField','umbralCage','voidColumn','nullGround','thronePatch','judgmentZone','soulField','dominionCircle','regalSpikes','sovereignGround','crownfireField','royalGround'];
-const DASH_ATTACKS = ['charge','blinkStrike','prismDash','echoDash'];
-const BURST_ATTACKS = ['radialBurst','radiantNova','butterflyBurst','rainbowLine','spiralBloom','petalRing','mirrorSplit','phantomBarrage','twinPulse','crossFire','boneShards','frostNova','stormBolt','boneVolley','toxicSpores','boneArmor','witchesBlessing','summon','mudSlow','cinderBurst','thornVolley','healingBloom','lightTwins','flameWhip','eyeLaser','cursedFlameBreath','mirrorDecoy','fracturedBurst','boundStrike','illusionSwap','twinStrike','mirrorGaze','bondedShield','iceLance','boltRunner','soulBarrage','frostBreath','darkPulse','crownfire','numbingChill','staticField','starlightDrain','royalDecree','umbraStep','throneSlam','skullBarrage','boneShrapnel','skeletalSwarm','skullStorm','boneWhip','deathRattle','hauntingWail','graveyardShift','deathMark','tombstoneSlam','gravebind','boneChain','cryptWhisper','rattlingBones','bogBurst','leechSwarm','witchesCurse','numbTonic','witchsEye','cauldronBubble','willOWisp','venomLash','shadowBrew','batSwarm','curseBind','witchsMark','spectralHex','gooBurst','lavaSpurt','cinderSwarm','demonRoar','ashCloud','infernalBond','sulfurBreath','demonEye','infernalChains','flameWreath','hellgate','cinderVolley','demonicHowl','infernalCrown','petalStorm','vineWhip','prismShard','nectarSwarm','gildedThorns','glowWisp','sunfireLance','lightPollen','witheringPetals','petalVeil','gardenGuardians','shatterVolley','reflectedBarrage','prismaticShards','mirageSwarm','silverStrike','phantomChaser','reflectedLance','hauntingReflection','disorientingGaze','shatteredFocus','silveredSkin','mirroredEcho','twinVolley','soulShards','pairedBolts','spiritBurst','boundArrows','spiritChaser','soulLance','kinseeker','sharedWound','soulSap','boundCurse','sharedBlessing','twinSpirits','frostShards','glacialVolley','iceShrapnel','crystalBarrage','polarWind','snowSquall','frostWisp','iceStalker','frostbite','brittleChill','glacialGrip','glacialWard','boltSpray','thunderClap','chargedBurst','windSlash','stormShards','arcVolley','stormChaser','thunderEye','staticShock','galeForce','overcharge','stormShield','shadowShards','voidBurst','darkVolley','eclipseSpray','starfallShards','umbralArc','voidWisp','shadowStalker','voidGrasp','starDrain','nullTouch','voidShroud','crownShards','royalVolley','soulBurst','radiantBlast','scepterShards','dominionSpray','soulChaser','wraithMark','royalCurse','soulDrain','crownBind','royalAegis'];
+const GROUND_SELF_ATTACKS = ['boneSlam','slam','fireWave','mirrorBloom','verdantSurge','mirrorShatter','reflectivePulse','soulPulse','boundSurge','frostSlam','thunderSlam','shadowSlam','royalSlam','voidClaw','echoSlam','silentSlam','ashSlam','thornLash','wardenCrush','heraldSlam','screamSlam','duskLash','facelessCrush','vineLash','shardSlam','custodianSlam','heartSlam','thresholdSlam','choirSlam','marauderRake','graniteCrush','bloomLash','emberSlam','emberCrush','paleFlicker','wardenEmberSlam','mistSlam','dimmedCrush','heartDimSlam','greyThornLash','hollowSlam','dustHeartSlam','fissureLash','gleamSlam','ashLightSlam','stoneWardenCrush','lightThornLash','veilSlam','edgeGuardCrush','edgeHeartSlam','dawnThornLash','dawnGuardCrush','goldenThornLash','brightSlam','radiantCrush','radiantThornLash','sunHeraldSlam','solarWardenCrush','solarGuardSlam','flareWardenCrush','flareThornLash','coronaHeartSlam','zenithWardenCrush','zenithThornLash','zenithGuardSlam','blindWardenCrush','blindThornLash','blindHeartSlam','ascWardenCrush','ascThornLash','ascGuardSlam','summitWardenCrush','summitThornLash','summitHeartSlam','portalWardenCrush','portalThornLash','portalGuardSlam','lastWardenCrush','lastThornLash','precursorSlam'];
+const GROUND_TARGET_ATTACKS = ['fireRain','poisonPool','meteor','boneCage','boneWall','lavaGeyser','growingMagma','iceCage','stormField','voidRift','risingSpikes','boneTrap','swampGrasp','hexTrail','emberField','moltenCore','cinderRain','bloomTrap','radiantPath','glassField','bondPulse','spiritLink','crystalPrison','avalanche','stormVortex','skySiege','voidTendrils','collapsingStar','finalJudgment','thunderStrike','boneCross','boneSpiral','graveSpikes','cryptCollapse','ribcage','deathToll','deathsDoor','deathKnell','rootSnare','quicksand','poisonBrew','swampSurge','vineLine','mireField','plagueCloud','witchesRing','infernoRing','brimstoneRain','moltenTrap','flameSurge','pyreCollapse','scorchedEarth','brimstoneSpiral','moltenWave','dewTrap','crystalBloom','thornCage','sunbeamLine','bloomRing','sunfireCross','radianceField','lightCascade','tangleRoots','mirrorMaze','shatterZone','reflectivePool','glassSpikes','doubleVision','distortionField','echoChamber','hallOfMirrors','soulTether','kinshipRing','dualBloom','sharedPain','weaveTrap','pactCircle','tetherLine','acidDeluge','venomousWeb','boundlessBeam','crystalCage','growingSpikes','glacialSpike','frostRing','iceFissure','frozenTrail','hailfall','permafrost','crystalRain','blizzardGust','thunderPatch','stormCell','lightningField','galeZone','thunderColumn','stormPocket','chainStrike','squallLine','voidPool','shadowPatch','darkRift','eclipseZone','starfallField','umbralCage','voidColumn','nullGround','thronePatch','judgmentZone','soulField','dominionCircle','regalSpikes','sovereignGround','crownfireField','royalGround','voidPuddles','radiantCollapse','zenith','duplicantPulse','crackLine','tendrilBloom','mutePulse','voidMawPuddles','cinderRing','ashStorm','whisperCrawl','thornField','wardenBarrier','swarmField','heraldLine','heraldCollapse','echoTrap','duskWeb','facelessWard','vineField','twinCrawl','shardRain','custodianRing','lamentCrawl','heartLine','heartCollapse','thresholdField','choirEcho','graniteWall','bloomField','crownAshfall','emberWake','achingRing','paleWake','emberWardenRing','emberSwarmField','mistField','dimmedRing','greyThornField','dimmedCrawl','dimmedHeartLine','dustTrail','fissureField','hollowField','stoneCrawl','dustHeartLine','dustHeartCollapse','gleamField','stoneWardenRing','lightThornField','greyEchoField','ashLightField','veilField','edgeGuardRing','dawnThornField','edgeHeartLine','edgeHeartCollapse','dawnTrail','dawnGuardRing','goldenEchoField','goldenThornField','dawnWhisperCrawl','brightField','goldenSwarmField','radiantRing','radiantThornField','sunHeraldLine','sunHeraldCollapse','sentinelTrail','solarWardenRing','solarWhisperCrawl','solarEchoField','blazeSwarmField','solarGuardField','flareWardenRing','flareThornField','coronaWhisperCrawl','coronaHeartLine','coronaHeartCollapse','flareSwarmField','zenithWardenRing','zenithThornField','zenithWhisperCrawl','zenithEchoField','zenithGuardField','blindWardenRing','blindThornField','blindWhisperCrawl','blindHeartLine','blindHeartCollapse','blindSwarmField','ascWardenRing','ascThornField','ascWhisperCrawl','ascEchoField','ascGuardField','summitWardenRing','summitThornField','summitWhisperCrawl','summitHeartLine','summitHeartCollapse','summitSwarmField','portalWardenRing','portalThornField','portalWhisperCrawl','portalEchoField','portalGuardField','lastWardenRing','lastThornField','precursorRing','precursorLine','precursorCollapse'];
+const DASH_ATTACKS = ['charge','blinkStrike','prismDash','echoDash','devourLunge','swarmDash','whisperTwinDash','marauderPounce','ashDash','swarmEmberDash','dustDash','greyEchoDash','dawnDash','goldenEchoDash','swarmGoldenDash','sentinelDash','solarEchoDash','swarmBlazeDash','swarmFlareDash','zenithEchoDash','swarmBlindDash','ascEchoDash','swarmSummitDash','portalEchoDash'];
+const BURST_ATTACKS = ['radialBurst','radiantNova','butterflyBurst','rainbowLine','spiralBloom','petalRing','mirrorSplit','phantomBarrage','twinPulse','crossFire','boneShards','frostNova','stormBolt','boneVolley','toxicSpores','boneArmor','witchesBlessing','summon','mudSlow','cinderBurst','thornVolley','healingBloom','lightTwins','flameWhip','eyeLaser','cursedFlameBreath','mirrorDecoy','fracturedBurst','boundStrike','illusionSwap','twinStrike','mirrorGaze','bondedShield','iceLance','boltRunner','soulBarrage','frostBreath','darkPulse','crownfire','numbingChill','staticField','starlightDrain','royalDecree','umbraStep','throneSlam','skullBarrage','boneShrapnel','skeletalSwarm','skullStorm','boneWhip','deathRattle','hauntingWail','graveyardShift','deathMark','tombstoneSlam','gravebind','boneChain','cryptWhisper','rattlingBones','bogBurst','leechSwarm','witchesCurse','numbTonic','witchsEye','cauldronBubble','willOWisp','venomLash','shadowBrew','batSwarm','curseBind','witchsMark','spectralHex','gooBurst','lavaSpurt','cinderSwarm','demonRoar','ashCloud','infernalBond','sulfurBreath','demonEye','infernalChains','flameWreath','hellgate','cinderVolley','demonicHowl','infernalCrown','petalStorm','vineWhip','prismShard','nectarSwarm','gildedThorns','glowWisp','sunfireLance','lightPollen','witheringPetals','petalVeil','gardenGuardians','shatterVolley','reflectedBarrage','prismaticShards','mirageSwarm','silverStrike','phantomChaser','reflectedLance','hauntingReflection','disorientingGaze','shatteredFocus','silveredSkin','mirroredEcho','twinVolley','soulShards','pairedBolts','spiritBurst','boundArrows','spiritChaser','soulLance','kinseeker','sharedWound','soulSap','boundCurse','sharedBlessing','twinSpirits','frostShards','glacialVolley','iceShrapnel','crystalBarrage','polarWind','snowSquall','frostWisp','iceStalker','frostbite','brittleChill','glacialGrip','glacialWard','boltSpray','thunderClap','chargedBurst','windSlash','stormShards','arcVolley','stormChaser','thunderEye','staticShock','galeForce','overcharge','stormShield','shadowShards','voidBurst','darkVolley','eclipseSpray','starfallShards','umbralArc','voidWisp','shadowStalker','voidGrasp','starDrain','nullTouch','voidShroud','crownShards','royalVolley','soulBurst','radiantBlast','scepterShards','dominionSpray','soulChaser','wraithMark','royalCurse','soulDrain','crownBind','royalAegis','shadowBurst','solarFlare','hollowVolley','weaverBurst','whisperVolley','echoSwarmBurst','crackVolley','thornBurst','wardenVolley','swarmPepper','heraldBurst','whisperDodge','drownedVolley','twilightBurst','facelessGaze','vineBurst','doubleVolley','shardBurst','custodianVolley','lamentDodge','lamentWail','heartBurst','choirWave','marauderHail','graniteVolley','bloomBurst','emberBurst','cinderScatter','emberVolley','paleBurst','emberWardenVolley','emberSwarmBurst','mistBurst','dimmedVolley','greyThornBurst','dimWhisperDodge','dimmedWhisperVolley','dimmedHeartBurst','dustScatter','fissureBurst','hollowBurst','stoneWhisperDodge','stoneVolley','dustHeartBurst','gleamBurst','stoneWardenVolley','lightThornBurst','greyEchoBurst','ashLightBurst','veilBurst','edgeGuardVolley','dawnThornBurst','edgeHeartBurst','dawnScatter','dawnGuardVolley','goldenEchoBurst','goldenThornBurst','dawnWhisperDodge','dawnWhisperVolley','brightBurst','goldenSwarmBurst','radiantVolley','radiantThornBurst','sunHeraldBurst','sentinelScatter','solarWardenVolley','solarWhisperDodge','solarWhisperVolley','solarEchoBurst','blazeSwarmBurst','solarGuardBurst','flareWardenVolley','flareThornBurst','coronaWhisperDodge','coronaWhisperVolley','coronaHeartBurst','flareSwarmBurst','zenithWardenVolley','zenithThornBurst','zenithWhisperDodge','zenithWhisperVolley','zenithEchoBurst','zenithGuardBurst','blindWardenVolley','blindThornBurst','blindWhisperDodge','blindWhisperVolley','blindHeartBurst','blindSwarmBurst','ascWardenVolley','ascThornBurst','ascWhisperDodge','ascWhisperVolley','ascEchoBurst','ascGuardBurst','summitWardenVolley','summitThornBurst','summitWhisperDodge','summitWhisperVolley','summitHeartBurst','summitSwarmBurst','portalWardenVolley','portalThornBurst','portalWhisperDodge','portalWhisperVolley','portalEchoBurst','portalGuardBurst','lastWardenVolley','lastThornBurst','precursorBurst'];
 const DASH_ATTACKS_EXTRA_TELEGRAPH = ['twinCharge']; // uses the simple line telegraph like real dash attacks, without counting toward the dash budget
 
 function showAttackBanner(boss, type){
@@ -4057,9 +5743,11 @@ function pickBossAttack(boss){
   if(type==='crystalCage'){
     boss.telegraph.t = 0.7; boss.telegraph.dur = 0.7; // brief slam wind-up before the crystals erupt
   }
-  if(type==='plasmaBeam'){
+  if(type==='plasmaBeam' || type==='dawnBeam' || type==='voidBeam'){
     // he anchors to one edge of the arena and charges a beam that travels straight across to
-    // the opposite edge — a wall of pressure that forces you to relocate, not just sidestep
+    // the opposite edge — a wall of pressure that forces you to relocate, not just sidestep.
+    // dawnBeam (El Sol) reuses this exact mechanic with its own color/toast — a beam of light
+    // instead of plasma, but mechanically the same fair 3/4-arena sweep.
     const dur = 2.4;
     boss.telegraph.t = dur; boss.telegraph.dur = dur;
     boss.telegraph.hotAt = 0.6;
@@ -4075,7 +5763,41 @@ function pickBossAttack(boss){
       boss.y = fromStart ? bnds.y+boss.radius : bnds.y+bnds.h-boss.radius;
       boss.x = clamp(p.x, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
     }
-    spawnToast('¡Un haz de plasma va a atravesar la sala de lado a lado!');
+    spawnToast(type==='dawnBeam' ? '¡Un haz de luz va a atravesar la sala de lado a lado!' : type==='voidBeam' ? '¡Un haz de vacío va a atravesar la sala de lado a lado!' : '¡Un haz de plasma va a atravesar la sala de lado a lado!');
+  }
+  if(type==='geoSweep'){
+    // El Sol anchors to one edge and charges twin parallel walls of magenta plasma that sweep
+    // across together — always vertical per the reference ("perfectamente verticales")
+    const dur = 2.6;
+    boss.telegraph.t = dur; boss.telegraph.dur = dur;
+    boss.telegraph.hotAt = 0.7;
+    boss.telegraph.gap = 170;
+    const bnds = arenaBounds();
+    const fromStart = Math.random()<0.5;
+    boss.telegraph.fromStart = fromStart;
+    boss.x = fromStart ? bnds.x+boss.radius : bnds.x+bnds.w-boss.radius;
+    boss.y = clamp(p.y, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    spawnToast('¡Dos paredes de plasma geomagnético barren la sala — buscá el hueco entre ellas!');
+  }
+  if(type==='stormSpiral'){
+    const dur=4.4;
+    boss.telegraph.t=dur; boss.telegraph.dur=dur;
+    boss.telegraph.hotAt=0.5;
+    boss.telegraph.spiralAngle=0;
+    boss.telegraph.spiralTick=0;
+    spawnToast('¡El Sol gira sobre sí mismo — una tormenta estelar en espiral comienza!');
+  }
+  if(type==='eruptionConvergence'){
+    boss.telegraph.t = 1.0; boss.telegraph.dur = 1.0;
+    spawnToast('El Sol se pone blanco brillante — algo enorme se está gestando');
+  }
+  if(type==='zeroGravityRings'){
+    boss.telegraph.t = 0.6; boss.telegraph.dur = 0.6;
+    spawnToast('¡La gravedad se altera! Prepará el cuerpo para moverte más lento');
+  }
+  if(type==='totalCollapse'){
+    startSunSupernova(boss);
+    boss.telegraph.t = 999; boss.telegraph.dur = 999; // ended explicitly by finishSunSupernova, not by t reaching 0
   }
   if(type==='iceSlide'){
     boss.telegraph.t = 0.6; boss.telegraph.dur = 0.6;
@@ -4631,6 +6353,14 @@ function resolveBossAttack(type, tg){
     // all the damage already happened during the sweep itself (see the per-frame update)
     spawnToast('El haz de plasma se disipa');
     addParticles(boss.x,boss.y,'#ff6a3d',18,160,0.35);
+    shake(4);
+  } else if(type==='dawnBeam'){
+    spawnToast('El haz de luz se disipa');
+    addParticles(boss.x,boss.y,'#fff3c4',18,160,0.35);
+    shake(4);
+  } else if(type==='voidBeam'){
+    spawnToast('El haz de vacío se disipa');
+    addParticles(boss.x,boss.y,'#a070c0',18,160,0.35);
     shake(4);
   } else if(type==='solarSporeSpiral'){
     spawnToast('El polen solar se disipa');
@@ -7102,6 +8832,3127 @@ function resolveBossAttack(type, tg){
     }
     shake(5);
   }
+
+  // ============================================================
+  // ASCENSO — attacks exclusive to the tower-above-100 bosses.
+  // Piso 1 (Larva de Sombra): voidClaw, voidPuddles, shadowBurst
+  // Piso 100 (El Sol): solarFlare, radiantCollapse, zenith (dawnBeam is wired above,
+  // sharing the plasmaBeam mechanic — see the generalized blocks earlier in this file)
+  // ============================================================
+  else if(type==='voidClaw'){
+    // a heavier, slower cousin of 'slam' — Larva de Sombra's only melee-range punish
+    const r = 135;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.15);
+    addParticles(boss.x,boss.y,'#8a5ad9',24,220,0.5);
+    spawnShockwave(boss.x,boss.y,'#3a2f52',r,0.4);
+    shake(7);
+  }
+  else if(type==='voidPuddles'){
+    // 3 pools of pure dark bloom near the player — stand in one and it also slows you, since
+    // shadow doesn't just hurt, it clings
+    for(let i=0;i<3;i++){
+      const hx = clamp(targetX+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'void', telegraph:0.65, active:2.6, tick:0, dmg:boss.dmg*0.32, slow:{factor:0.55,dur:0.6} });
+    }
+    addParticles(targetX,targetY,'#8a5ad9',18,140,0.4);
+    spawnToast('La oscuridad se derrama a tu alrededor');
+  }
+  else if(type==='shadowBurst'){
+    // a modest 6-shard radial burst — Larva de Sombra is floor 1, this is meant to be learnable,
+    // not overwhelming (compare to El Sol's 14-shard solarFlare at the top of the tower)
+    const n=6;
+    for(let i=0;i<n;i++){
+      const ang = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*200, vy:Math.sin(ang)*200,
+        dmg:boss.dmg*0.6, radius:7, owner:'enemy', color:'#8a5ad9', life:2.4 });
+    }
+    shake(5);
+  }
+  else if(type==='geoSweep'){
+    // all the damage already happened during the twin-wall sweep itself (see per-frame update)
+    spawnToast('Las paredes de plasma geomagnético se disipan');
+    addParticles(boss.x,boss.y,'#ff2fd6',20,170,0.35);
+    shake(4);
+  }
+  else if(type==='stormSpiral'){
+    spawnToast('La tormenta estelar en espiral se disipa');
+    addParticles(boss.x,boss.y,'#33e5ff',20,170,0.35);
+  }
+  else if(type==='eruptionConvergence'){
+    // 6 fixed danger zones scattered across the arena (rejecting picks that land too close
+    // together), each set to detonate ~1s later — plus 6 giant projectiles launched straight
+    // at those exact points, timed to arrive right as the zones go off
+    const bnds = arenaBounds();
+    const points = [];
+    for(let i=0;i<6;i++){
+      let x,y,tries=0,ok;
+      do {
+        x = clamp(bnds.x+70+Math.random()*(bnds.w-140), bnds.x+70, bnds.x+bnds.w-70);
+        y = clamp(bnds.y+70+Math.random()*(bnds.h-140), bnds.y+70, bnds.y+bnds.h-70);
+        ok = points.every(pt=>dist(pt.x,pt.y,x,y) > 140);
+        tries++;
+      } while(!ok && tries<12);
+      points.push({x,y});
+      game.hazards.push({ x, y, r:72, type:'solar', telegraph:1.0, active:0.5, tick:0, dmg:boss.dmg*1.3 });
+    }
+    const travelTime = 1.0;
+    points.forEach(pt=>{
+      const dx = pt.x-boss.x, dy = pt.y-boss.y;
+      const d = Math.hypot(dx,dy)||1;
+      const speed = d/travelTime;
+      spawnProjectile({ x:boss.x, y:boss.y, vx:(dx/d)*speed, vy:(dy/d)*speed,
+        dmg:boss.dmg*0.9, radius:20, owner:'enemy', color:'#c020ff', life:travelTime+0.15, shape:'orb' });
+    });
+    addParticles(boss.x,boss.y,'#c020ff',26,210,0.5);
+    spawnToast('¡Convergencia de erupciones! 6 puntos van a detonar — no te quedes parado');
+    shake(8);
+  }
+  else if(type==='zeroGravityRings'){
+    // gravity itself gets heavy: player speed halved for the duration, while concentric rings
+    // of cyan radiation pulse outward from El Sol's position, staggered so they read as
+    // genuinely expanding rather than one flat blast
+    game.player.slowTimer = Math.max(game.player.slowTimer||0, 5.5);
+    game.player.slowFactor = 0.5;
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*62, type:'solar', telegraph:0.5+ring*0.5, active:0.5, tick:0, dmg:boss.dmg*0.55 });
+    }
+    spawnToast('¡Gravedad alterada! Te movés más lento — esquivá los anillos de radiación');
+    addParticles(boss.x,boss.y,'#33e5ff',28,210,0.45);
+    shake(7);
+  }
+
+  // ---- Piso 2: Eco Hueco ----
+  else if(type==='echoSlam'){
+    // a melee slam that leaves a lingering echo of itself behind — the ground it hit stays
+    // dangerous a moment longer, punishing players who circle back to the same spot
+    const r = 120;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.7, type:'void', telegraph:0.3, active:1.1, tick:0, dmg:boss.dmg*0.35 });
+    addParticles(boss.x,boss.y,'#4a3d68',20,190,0.4);
+    shake(6);
+  }
+  else if(type==='hollowVolley'){
+    const n=7;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.16;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*230, vy:Math.sin(a)*230,
+        dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:'#4a3d68', life:2.4 });
+    }
+    shake(4);
+  }
+  else if(type==='duplicantPulse'){
+    // teleports to a spot near the player, warns briefly, then pulses — a positioning threat
+    // rather than a reflex-test, since the pulse itself is slow and telegraphed
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const oldX=boss.x, oldY=boss.y;
+    boss.x = clamp(p.x+Math.cos(ang)*90, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*90, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    addParticles(oldX,oldY,'#4a3d68',14,150,0.3);
+    game.hazards.push({ x:boss.x, y:boss.y, r:110, type:'void', telegraph:0.7, active:0.4, tick:0, dmg:boss.dmg*0.8 });
+    spawnToast('Eco Hueco se reubica en silencio');
+  }
+
+  // ---- Piso 3: Tejedor de Grietas ----
+  else if(type==='crackLine'){
+    // a line of small fissures across the arena with one gap to slip through — same "find the
+    // gap" language as blazingFissure/growingMagma but oriented toward the player's position
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 60;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 65) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'void', telegraph:0.9, active:1.6, tick:0, dmg:boss.dmg*0.5 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 65) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'void', telegraph:0.9, active:1.6, tick:0, dmg:boss.dmg*0.5 });
+      }
+    }
+    spawnToast('El suelo se agrieta — buscá el hueco');
+  }
+  else if(type==='tendrilBloom'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-160,160), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-160,160), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:50, type:'void', telegraph:0.6, active:2.2, tick:0, dmg:boss.dmg*0.3, slow:{factor:0.6,dur:0.5} });
+    }
+    addParticles(p.x,p.y,'#5a4a7a',16,140,0.4);
+  }
+  else if(type==='weaverBurst'){
+    // spiral burst — each shot offset a bit further than the last, distinct from Eco Hueco's flat volley
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + performance.now()/900;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*210, vy:Math.sin(a)*210,
+        dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:'#5a4a7a', life:2.6 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 4: Guardiana Muda (más tanque, ataques más lentos y pesados) ----
+  else if(type==='silentSlam'){
+    const r = 155;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.3);
+    spawnShockwave(boss.x,boss.y,'#6a5a8c',r,0.45);
+    addParticles(boss.x,boss.y,'#6a5a8c',26,220,0.5);
+    shake(9);
+  }
+  else if(type==='mutePulse'){
+    for(let ring=0; ring<3; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:60+ring*65, type:'void', telegraph:0.4+ring*0.4, active:0.4, tick:0, dmg:boss.dmg*0.45 });
+    }
+    spawnToast('La Guardiana colapsa hacia adentro');
+    shake(5);
+  }
+  else if(type==='whisperVolley'){
+    // fewer, heavier shots than the other early bosses' volleys — fits her slow/tanky identity
+    const n=5;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.22;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*190, vy:Math.sin(a)*190,
+        dmg:boss.dmg*0.85, radius:9, owner:'enemy', color:'#6a5a8c', life:2.8 });
+    }
+    shake(6);
+  }
+
+  // ---- Piso 5: Devorador de Ecos ----
+  else if(type==='devourLunge'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=200, steps=10;
+    for(let i=0;i<steps;i++){
+      boss.x += Math.cos(ang)*(dashDist/steps);
+      boss.y += Math.sin(ang)*(dashDist/steps);
+    }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+20) hitPlayer(boss.dmg*1.1);
+    shake(8);
+    addParticles(boss.x,boss.y,'#7a6a9e',18,220,0.4);
+  }
+  else if(type==='echoSwarmBurst'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*250, vy:Math.sin(a)*250,
+        dmg:boss.dmg*0.45, radius:7, owner:'enemy', color:'#7a6a9e', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#7a6a9e',18,180,0.4);
+    shake(6);
+  }
+  else if(type==='voidMawPuddles'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(targetX+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:44, type:'void', telegraph:0.55, active:2.4, tick:0, dmg:boss.dmg*0.32 });
+    }
+    spawnToast('El Devorador de Ecos abre fauces en el piso');
+  }
+
+  // ---- Piso 6: Centinela de Ceniza ----
+  else if(type==='ashSlam'){
+    const r = 130;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+    addParticles(boss.x,boss.y,'#8a7ab0',22,200,0.45);
+    spawnShockwave(boss.x,boss.y,'#8a7ab0',r,0.4);
+    shake(7);
+  }
+  else if(type==='cinderRing'){
+    for(let ring=0; ring<4; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:50+ring*55, type:'solar', telegraph:0.3+ring*0.3, active:0.4, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('Ceniza incandescente se expande desde el Centinela');
+    shake(5);
+  }
+  else if(type==='ashStorm'){
+    const n=9;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.05;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*220, vy:Math.sin(a)*220,
+        dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:'#8a7ab0', life:2.4 });
+    }
+    game.hazards.push({ x:p.x, y:p.y, r:60, type:'solar', telegraph:0.8, active:1.0, tick:0, dmg:boss.dmg*0.4 });
+    addParticles(boss.x,boss.y,'#8a7ab0',20,180,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 7: Susurro de Grieta (ágil, se reubica antes de rematar) ----
+  else if(type==='whisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 220+Math.random()*140;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<5;i++){
+      const a = shootAng + (i-2)*0.13;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*260, vy:Math.sin(a)*260,
+        dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:'#9a5ac0', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#9a5ac0',16,160,0.3);
+    spawnToast('Susurro de Grieta se desvanece y reaparece');
+  }
+  else if(type==='crackVolley'){
+    const n=9;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*270, vy:Math.sin(a)*270,
+        dmg:boss.dmg*0.45, radius:6, owner:'enemy', color:'#9a5ac0', life:2.1 });
+    }
+    shake(4);
+  }
+  else if(type==='whisperCrawl'){
+    // a short line of hazards crawling from the boss toward the player, not a static line —
+    // reads as a "reaching" attack rather than a wall to sidestep
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=5;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*55, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*55, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'void', telegraph:0.35+i*0.12, active:1.0, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('Una grieta serpentea hacia vos');
+  }
+
+  // ---- Piso 8: Espina de Sombra (deja daño persistente, tema "veneno de sombra") ----
+  else if(type==='thornLash'){
+    const r = 110;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.0);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'poison', telegraph:0.25, active:1.6, tick:0, dmg:boss.dmg*0.28 });
+    addParticles(boss.x,boss.y,'#5c2f7a',18,180,0.4);
+    shake(6);
+  }
+  else if(type==='thornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'poison', telegraph:0.6, active:2.6, tick:0, dmg:boss.dmg*0.3 });
+    }
+    addParticles(p.x,p.y,'#5c2f7a',16,140,0.35);
+  }
+  else if(type==='thornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*200, vy:Math.sin(a)*200,
+        dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:'#5c2f7a', life:2.5, poison:true });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 9: Custodio Callado (segundo tanque, más lento y pesado que Guardiana Muda) ----
+  else if(type==='wardenCrush'){
+    const r = 165;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.35);
+    spawnShockwave(boss.x,boss.y,'#7a6a9e',r,0.5);
+    addParticles(boss.x,boss.y,'#7a6a9e',28,230,0.55);
+    shake(10);
+  }
+  else if(type==='wardenBarrier'){
+    for(let ring=0; ring<4; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*60, type:'void', telegraph:0.35+ring*0.35, active:0.45, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('El Custodio levanta una barrera de sombra');
+    shake(5);
+  }
+  else if(type==='wardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.28;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*175, vy:Math.sin(a)*175,
+        dmg:boss.dmg*0.95, radius:10, owner:'enemy', color:'#7a6a9e', life:3.0 });
+    }
+    shake(6);
+  }
+
+  // ---- Piso 10: Enjambre de Cenizas (rápido, muchos golpes débiles en vez de pocos fuertes) ----
+  else if(type==='swarmDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=180, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#9a8ab8',16,200,0.35);
+  }
+  else if(type==='swarmPepper'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*230, vy:Math.sin(a)*230,
+        dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:'#9a8ab8', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#9a8ab8',20,170,0.35);
+    shake(5);
+  }
+  else if(type==='swarmField'){
+    for(let i=0;i<6;i++){
+      const hx = clamp(targetX+rand(-180,180), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-180,180), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:34, type:'void', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.24 });
+    }
+    spawnToast('El Enjambre se dispersa por el suelo');
+  }
+
+  // ---- Piso 11: Heraldo de la Grieta (primer piso de dos dígitos — 4 ataques, más peligroso) ----
+  else if(type==='heraldSlam'){
+    const r = 140;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.15);
+    addParticles(boss.x,boss.y,'#aa7ad0',24,210,0.45);
+    spawnShockwave(boss.x,boss.y,'#aa7ad0',r,0.4);
+    shake(8);
+  }
+  else if(type==='heraldLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 58;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 70) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'void', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.5 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 70) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'void', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.5 });
+      }
+    }
+    spawnToast('La Grieta se abre de punta a punta');
+  }
+  else if(type==='heraldBurst'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*245, vy:Math.sin(a)*245,
+        dmg:boss.dmg*0.45, radius:7, owner:'enemy', color:'#aa7ad0', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#aa7ad0',20,190,0.4);
+    shake(6);
+  }
+  else if(type==='heraldCollapse'){
+    for(let ring=0; ring<3; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:65+ring*65, type:'void', telegraph:0.3+ring*0.35, active:0.4, tick:0, dmg:boss.dmg*0.55 });
+    }
+    addParticles(boss.x,boss.y,'#aa7ad0',26,220,0.5);
+    spawnToast('El Heraldo colapsa la grieta sobre sí mismo');
+    shake(7);
+  }
+
+  // ---- Piso 12: Grito Ahogado (una sola onda pesada + minas de eco retardadas) ----
+  else if(type==='screamSlam'){
+    const r = 145;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.2);
+    spawnShockwave(boss.x,boss.y,'#4a2f6a',r,0.45);
+    addParticles(boss.x,boss.y,'#4a2f6a',24,210,0.5);
+    shake(8);
+  }
+  else if(type==='drownedVolley'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*225, vy:Math.sin(a)*225,
+        dmg:boss.dmg*0.45, radius:7, owner:'enemy', color:'#4a2f6a', life:2.4 });
+    }
+    shake(5);
+  }
+  else if(type==='echoTrap'){
+    // 2 heavy "landmines" with a long telegraph — the delay is the whole point: it forces you to
+    // remember where they are and route around them well before they actually go off
+    for(let i=0;i<2;i++){
+      const hx = clamp(p.x+rand(-200,200), b.x+30, b.x+b.w-30);
+      const hy = clamp(p.y+rand(-200,200), b.y+30, b.y+b.h-30);
+      game.hazards.push({ x:hx, y:hy, r:80, type:'void', telegraph:2.2, active:0.5, tick:0, dmg:boss.dmg*1.1 });
+    }
+    spawnToast('Dos ecos quedan plantados en el piso — van a estallar');
+  }
+
+  // ---- Piso 13: Tejido de Penumbra (transición — empieza a mezclar con luz) ----
+  else if(type==='duskLash'){
+    const r = 115;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.7, type:'light', telegraph:0.3, active:1.2, tick:0, dmg:boss.dmg*0.3 });
+    addParticles(boss.x,boss.y,'#6a4a8a',20,190,0.4);
+    shake(6);
+  }
+  else if(type==='duskWeb'){
+    // a denser web of small hazards than tendrilBloom — more numerous, smaller, covering a wider area
+    for(let i=0;i<6;i++){
+      const hx = clamp(p.x+rand(-190,190), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-190,190), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:34, type:'void', telegraph:0.5, active:1.8, tick:0, dmg:boss.dmg*0.26 });
+    }
+    spawnToast('Un tejido de penumbra cubre el piso');
+  }
+  else if(type==='twilightBurst'){
+    const n=12;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.06;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*215, vy:Math.sin(a)*215,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:'#6a4a8a', life:2.5 });
+    }
+    addParticles(boss.x,boss.y,'#6a4a8a',18,180,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 14: Guardián sin Rostro (tercer tanque, el más pesado hasta ahora) ----
+  else if(type==='facelessCrush'){
+    const r = 175;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.4);
+    spawnShockwave(boss.x,boss.y,'#7a5a9a',r,0.5);
+    addParticles(boss.x,boss.y,'#7a5a9a',30,240,0.55);
+    shake(11);
+  }
+  else if(type==='facelessWard'){
+    for(let ring=0; ring<4; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:60+ring*62, type:'void', telegraph:0.35+ring*0.35, active:0.45, tick:0, dmg:boss.dmg*0.42 });
+    }
+    spawnToast('El Guardián levanta un muro de silencio');
+    shake(5);
+  }
+  else if(type==='facelessGaze'){
+    const n=3;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.32;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*160, vy:Math.sin(a)*160,
+        dmg:boss.dmg*1.05, radius:11, owner:'enemy', color:'#7a5a9a', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 15: Enredadera Oscura (denegación de área, cobertura amplia) ----
+  else if(type==='vineLash'){
+    const r = 120;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+    addParticles(boss.x,boss.y,'#3a5a3a',20,190,0.4);
+    spawnShockwave(boss.x,boss.y,'#3a5a3a',r,0.4);
+    shake(6);
+  }
+  else if(type==='vineField'){
+    // covers a broad swath of the arena in small hazards — meant to shrink the safe space
+    // rather than threaten any one spot directly
+    const cx = clamp(p.x+rand(-60,60), b.x+120, b.x+b.w-120);
+    const cy = clamp(p.y+rand(-60,60), b.y+120, b.y+b.h-120);
+    for(let i=0;i<8;i++){
+      const a = (i/8)*Math.PI*2;
+      const hx = clamp(cx+Math.cos(a)*90, b.x+24, b.x+b.w-24);
+      const hy = clamp(cy+Math.sin(a)*90, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:40, type:'void', telegraph:0.55, active:2.0, tick:0, dmg:boss.dmg*0.28 });
+    }
+    spawnToast('Raíces oscuras brotan del piso');
+  }
+  else if(type==='vineBurst'){
+    const n=9;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*205, vy:Math.sin(a)*205,
+        dmg:boss.dmg*0.48, radius:7, owner:'enemy', color:'#3a5a3a', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 16: Susurro Doble (todo lo que hace, lo hace en pares) ----
+  else if(type==='whisperTwinDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=170, steps=8;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.85);
+    // a second, shorter dash right after — the "twin" motif carried into the attack itself
+    const ang2 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<5;i++){ boss.x += Math.cos(ang2)*18; boss.y += Math.sin(ang2)*18; }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.85);
+    shake(7);
+    addParticles(boss.x,boss.y,'#8a4a9a',18,200,0.4);
+  }
+  else if(type==='doubleVolley'){
+    const n=6;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let pass=0; pass<2; pass++){
+      for(let i=0;i<n;i++){
+        const a = ang0 + (i-(n-1)/2)*0.15 + pass*0.08;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*(230+pass*20), vy:Math.sin(a)*(230+pass*20),
+          dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:'#8a4a9a', life:2.3 });
+      }
+    }
+    shake(5);
+  }
+  else if(type==='twinCrawl'){
+    // two crawling lines from two different points, converging on the player — a wider pincer
+    // version of Susurro de Grieta's single-direction whisperCrawl
+    const origins = [{x:b.x+40,y:boss.y}, {x:b.x+b.w-40,y:boss.y}];
+    origins.forEach(o=>{
+      const ang = Math.atan2(p.y-o.y,p.x-o.x);
+      for(let i=1;i<=4;i++){
+        const hx = clamp(o.x+Math.cos(ang)*i*55, b.x+24, b.x+b.w-24);
+        const hy = clamp(o.y+Math.sin(ang)*i*55, b.y+24, b.y+b.h-24);
+        game.hazards.push({ x:hx, y:hy, r:38, type:'void', telegraph:0.35+i*0.12, active:1.0, tick:0, dmg:boss.dmg*0.35 });
+      }
+    });
+    spawnToast('Dos grietas se cierran sobre vos');
+  }
+
+  // ---- Piso 17: Fragmento Roto (espinas de cristal cayendo en oleadas escalonadas) ----
+  else if(type==='shardSlam'){
+    const r = 125;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+    addParticles(boss.x,boss.y,'#9a6ac0',22,210,0.45);
+    spawnShockwave(boss.x,boss.y,'#9a6ac0',r,0.42);
+    shake(7);
+  }
+  else if(type==='shardRain'){
+    // 7 shards with staggered telegraphs — reads as falling one after another rather than
+    // appearing all at once, distinct from the other bosses' simultaneous hazard fields
+    for(let i=0;i<7;i++){
+      const hx = clamp(p.x+rand(-200,200), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-200,200), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:36, type:'void', telegraph:0.4+i*0.14, active:1.2, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('Esquirlas de cristal caen del techo');
+  }
+  else if(type==='shardBurst'){
+    // an uneven, "shattered" spread instead of a clean radial pattern
+    const n=9;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + rand(-0.18,0.18);
+      const spd = 190+rand(-20,40);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd,
+        dmg:boss.dmg*0.42, radius:6, owner:'enemy', color:'#9a6ac0', life:2.4 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 18: Custodia de Cenizas (tanque #4, la más lenta de todas hasta ahora) ----
+  else if(type==='custodianSlam'){
+    const r = 150;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.25);
+    spawnShockwave(boss.x,boss.y,'#a08ac0',r,0.46);
+    addParticles(boss.x,boss.y,'#a08ac0',26,220,0.5);
+    shake(9);
+  }
+  else if(type==='custodianRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:50+ring*55, type:'void', telegraph:0.3+ring*0.3, active:0.4, tick:0, dmg:boss.dmg*0.35 });
+    }
+    spawnToast('La Custodia levanta cenizas en capas');
+    shake(5);
+  }
+  else if(type==='custodianVolley'){
+    const n=6;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*185, vy:Math.sin(a)*185,
+        dmg:boss.dmg*0.6, radius:8, owner:'enemy', color:'#a08ac0', life:2.8 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 19: Lamento sin Nombre (ágil y esquiva, ataca desde lejos) ----
+  else if(type==='lamentDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 200+Math.random()*150;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*265, vy:Math.sin(a)*265,
+        dmg:boss.dmg*0.45, radius:6, owner:'enemy', color:'#b07ad0', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#b07ad0',16,160,0.3);
+    spawnToast('El Lamento se desvanece y reaparece');
+  }
+  else if(type==='lamentCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'void', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.35 });
+    }
+    spawnToast('Un lamento serpentea hacia vos');
+  }
+  else if(type==='lamentWail'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*235, vy:Math.sin(a)*235,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:'#b07ad0', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#b07ad0',18,180,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 20: Corazón de Grieta (segundo piso "de control", 4 ataques) ----
+  else if(type==='heartSlam'){
+    const r = 150;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.2);
+    addParticles(boss.x,boss.y,'#c08ae0',26,220,0.5);
+    spawnShockwave(boss.x,boss.y,'#c08ae0',r,0.44);
+    shake(8);
+  }
+  else if(type==='heartLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 56;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 72) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'void', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.5 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 72) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'void', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.5 });
+      }
+    }
+    spawnToast('El Corazón de Grieta parte la sala al medio');
+  }
+  else if(type==='heartBurst'){
+    const n=12;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*250, vy:Math.sin(a)*250,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:'#c08ae0', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#c08ae0',20,190,0.4);
+    shake(6);
+  }
+  else if(type==='heartCollapse'){
+    for(let ring=0; ring<3; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:70+ring*68, type:'void', telegraph:0.3+ring*0.35, active:0.4, tick:0, dmg:boss.dmg*0.58 });
+    }
+    addParticles(boss.x,boss.y,'#c08ae0',28,230,0.52);
+    spawnToast('El Corazón late — y colapsa hacia adentro');
+    shake(8);
+  }
+
+  // ---- Piso 21: Ecos del Umbral (primer haz barredor fuera de El Sol — voidBeam) ----
+  else if(type==='thresholdSlam'){
+    const r = 128;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+    addParticles(boss.x,boss.y,'#a070c0',22,200,0.42);
+    spawnShockwave(boss.x,boss.y,'#a070c0',r,0.4);
+    shake(7);
+  }
+  else if(type==='thresholdField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(targetX+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'void', telegraph:0.55, active:2.0, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('El Umbral se llena de ecos');
+  }
+
+  // ---- Piso 22: Coro Hueco (ataques "corales", en abanico ancho en vez de círculo completo) ----
+  else if(type==='choirSlam'){
+    const r = 130;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+    addParticles(boss.x,boss.y,'#9a5ab0',22,200,0.42);
+    spawnShockwave(boss.x,boss.y,'#9a5ab0',r,0.4);
+    shake(7);
+  }
+  else if(type==='choirWave'){
+    // a wide fan aimed at the player instead of a full radial burst — reads as a chorus of
+    // voices converging on one direction rather than an omnidirectional blast
+    const n=13;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.09;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*230, vy:Math.sin(a)*230,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:'#9a5ab0', life:2.3 });
+    }
+    shake(5);
+  }
+  else if(type==='choirEcho'){
+    for(let i=0;i<5;i++){
+      const a = (i/5)*Math.PI*2;
+      const hx = clamp(p.x+Math.cos(a)*110, b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+Math.sin(a)*110, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'void', telegraph:0.5, active:1.6, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('El Coro Hueco canta desde todas direcciones');
+  }
+
+  // ---- Piso 23: Merodeador del Ocaso (rápido, combina embestida + zarpazo inmediato) ----
+  else if(type==='marauderPounce'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=210, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*1.0);
+    shake(7);
+    addParticles(boss.x,boss.y,'#b06ac0',18,210,0.38);
+  }
+  else if(type==='marauderRake'){
+    const r = 105;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.95);
+    addParticles(boss.x,boss.y,'#b06ac0',16,170,0.32);
+    shake(5);
+  }
+  else if(type==='marauderHail'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + rand(-0.1,0.1);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*255, vy:Math.sin(a)*255,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:'#b06ac0', life:2.2 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 24: Custodio de Granito (tanque #5, el más pesado hasta ahora) ----
+  else if(type==='graniteCrush'){
+    const r = 180;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.4);
+    spawnShockwave(boss.x,boss.y,'#8a7a9a',r,0.5);
+    addParticles(boss.x,boss.y,'#8a7a9a',30,240,0.55);
+    shake(12);
+  }
+  else if(type==='graniteWall'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'void', telegraph:0.3+ring*0.32, active:0.42, tick:0, dmg:boss.dmg*0.36 });
+    }
+    spawnToast('El Custodio levanta un muro de piedra');
+    shake(6);
+  }
+  else if(type==='graniteVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.25;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*170, vy:Math.sin(a)*170,
+        dmg:boss.dmg*1.0, radius:11, owner:'enemy', color:'#8a7a9a', life:3.2 });
+    }
+    shake(6);
+  }
+
+  // ---- Piso 25: Florecer Marchito (primera mezcla real sombra/luz — cierre del primer tramo) ----
+  else if(type==='bloomLash'){
+    const r = 118;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.7, type:'light', telegraph:0.3, active:1.2, tick:0, dmg:boss.dmg*0.3 });
+    addParticles(boss.x,boss.y,'#6a8a5a',20,190,0.4);
+    shake(6);
+  }
+  else if(type==='bloomField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-170,170), b.y+24, b.y+b.h-24);
+      const hazType = i%2===0 ? 'void' : 'light';
+      game.hazards.push({ x:hx, y:hy, r:40, type:hazType, telegraph:0.55, active:2.0, tick:0, dmg:boss.dmg*0.28 });
+    }
+    spawnToast('Brotes a medio camino entre la sombra y la luz');
+  }
+  else if(type==='bloomBurst'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*215, vy:Math.sin(a)*215,
+        dmg:boss.dmg*0.44, radius:7, owner:'enemy', color:'#6a8a5a', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#6a8a5a',18,190,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 26: Corona de Brasas (primer jefe realmente "ardiendo" — abre el segundo tramo) ----
+  else if(type==='emberSlam'){
+    const r = 140;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.2);
+    addParticles(boss.x,boss.y,'#d0906a',24,220,0.48);
+    spawnShockwave(boss.x,boss.y,'#d0906a',r,0.42);
+    shake(8);
+  }
+  else if(type==='crownAshfall'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-160,160), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-160,160), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:44, type:'fire', telegraph:0.5, active:2.2, tick:0, dmg:boss.dmg*0.32 });
+    }
+    spawnToast('Brasas caen alrededor de la Corona');
+  }
+  else if(type==='emberBurst'){
+    const n=12;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.05;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*235, vy:Math.sin(a)*235,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:'#d0906a', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#d0906a',20,200,0.42);
+    shake(6);
+  }
+
+  // ---- Piso 27: Ceniza Errante (rápido y ligero, deja rastro de brasas al moverse) ----
+  else if(type==='ashDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=210, steps=9;
+    for(let i=0;i<steps;i++){
+      boss.x += Math.cos(ang)*(dashDist/steps);
+      boss.y += Math.sin(ang)*(dashDist/steps);
+      if(i%2===0){
+        const hx = clamp(boss.x, b.x+24, b.x+b.w-24), hy = clamp(boss.y, b.y+24, b.y+b.h-24);
+        game.hazards.push({ x:hx, y:hy, r:28, type:'fire', telegraph:0.15, active:1.0, tick:0, dmg:boss.dmg*0.2 });
+      }
+    }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#c07850',16,200,0.35);
+  }
+  else if(type==='emberWake'){
+    // crawling line of embers toward the player, same "reaching" feel as whisperCrawl (piso 7)
+    // but with the fire hazard instead of void, matching the boss's ash/ember theme
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=5;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*55, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*55, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'fire', telegraph:0.3+i*0.11, active:1.0, tick:0, dmg:boss.dmg*0.32 });
+    }
+    spawnToast('Una estela de brasas serpentea hacia vos');
+  }
+  else if(type==='cinderScatter'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*245, vy:Math.sin(a)*245,
+        dmg:boss.dmg*0.38, radius:6, owner:'enemy', color:'#c07850', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#c07850',18,190,0.38);
+    shake(5);
+  }
+
+  // ---- Piso 28: Brasa Doliente (lento y pesado, el dolor del golpe se refleja en el jefe mismo) ----
+  else if(type==='emberCrush'){
+    const r = 155;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.3);
+    spawnShockwave(boss.x,boss.y,'#a8452c',r,0.48);
+    addParticles(boss.x,boss.y,'#a8452c',30,240,0.5);
+    shake(10);
+  }
+  else if(type==='achingRing'){
+    for(let ring=0; ring<4; ring++){
+      game.hazards.push({ x:p.x, y:p.y, r:50+ring*58, type:'fire', telegraph:0.35+ring*0.35, active:0.45, tick:0, dmg:boss.dmg*0.42 });
+    }
+    spawnToast('Brasa Doliente levanta anillos de fuego alrededor tuyo');
+    shake(5);
+  }
+  else if(type==='emberVolley'){
+    const n=5;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.24;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*165, vy:Math.sin(a)*165,
+        dmg:boss.dmg*1.0, radius:11, owner:'enemy', color:'#a8452c', life:3.1 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 29: Llama Pálida (primer híbrido real de fuego/sombra — ni luz ni penumbra pura) ----
+  else if(type==='paleFlicker'){
+    const r = 130;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+    addParticles(boss.x,boss.y,'#8a6a7a',24,210,0.42);
+    spawnShockwave(boss.x,boss.y,'#8a6a7a',r,0.4);
+    shake(8);
+  }
+  else if(type==='paleWake'){
+    // alternates fire/void hazards in the same pattern, echoing bloomField's void/light mix
+    // from piso 25 but now with the boss's own ember/shadow duality
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-165,165), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-165,165), b.y+24, b.y+b.h-24);
+      const hazType = i%2===0 ? 'fire' : 'void';
+      game.hazards.push({ x:hx, y:hy, r:40, type:hazType, telegraph:0.55, active:2.0, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('Fuego y sombra se turnan bajo tus pies');
+  }
+  else if(type==='paleBurst'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      const col = i%2===0 ? '#c07850' : '#5a4a7a';
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*220, vy:Math.sin(a)*220,
+        dmg:boss.dmg*0.46, radius:7, owner:'enemy', color:col, life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#8a6a7a',18,190,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 30: Custodio de Rescoldos (sexto tanque, quiebre temático del tramo 26-30) ----
+  else if(type==='wardenEmberSlam'){
+    const r = 175;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.4);
+    spawnShockwave(boss.x,boss.y,'#903a20',r,0.52);
+    addParticles(boss.x,boss.y,'#903a20',32,250,0.55);
+    shake(11);
+  }
+  else if(type==='emberWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'fire', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('El Custodio de Rescoldos levanta anillos de brasas');
+    shake(6);
+  }
+  else if(type==='emberWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*160, vy:Math.sin(a)*160,
+        dmg:boss.dmg*1.0, radius:11, owner:'enemy', color:'#903a20', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 31: Enjambre de Rescoldos (variante rápida que abre el siguiente bloque) ----
+  else if(type==='swarmEmberDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=190, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#d68a4a',16,205,0.35);
+  }
+  else if(type==='emberSwarmField'){
+    for(let i=0;i<7;i++){
+      const hx = clamp(targetX+rand(-180,180), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-180,180), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:32, type:'fire', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.24 });
+    }
+    spawnToast('El Enjambre de Rescoldos se dispersa por el suelo');
+  }
+  else if(type==='emberSwarmBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*235, vy:Math.sin(a)*235,
+        dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:'#d68a4a', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#d68a4a',20,175,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 32: Bruma Apagada (el fuego se apaga — primer jefe del sub-arco "apagado") ----
+  else if(type==='mistSlam'){
+    const r = 135;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+    addParticles(boss.x,boss.y,'#5a5468',24,200,0.42);
+    spawnShockwave(boss.x,boss.y,'#5a5468',r,0.4);
+    shake(7);
+  }
+  else if(type==='mistField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-160,160), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-160,160), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'void', telegraph:0.55, active:2.0, tick:0, dmg:boss.dmg*0.28 });
+    }
+    spawnToast('La bruma se asienta sobre el suelo');
+  }
+  else if(type==='mistBurst'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*210, vy:Math.sin(a)*210,
+        dmg:boss.dmg*0.44, radius:7, owner:'enemy', color:'#5a5468', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#5a5468',18,180,0.38);
+    shake(5);
+  }
+
+  // ---- Piso 33: Custodio Apagado (séptimo tanque — guardó una llama que ya no arde) ----
+  else if(type==='dimmedCrush'){
+    const r = 172;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.38);
+    spawnShockwave(boss.x,boss.y,'#4a4658',r,0.5);
+    addParticles(boss.x,boss.y,'#4a4658',30,240,0.52);
+    shake(10);
+  }
+  else if(type==='dimmedRing'){
+    for(let ring=0; ring<4; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*60, type:'void', telegraph:0.35+ring*0.35, active:0.45, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('El Custodio Apagado levanta un anillo de ceniza fría');
+    shake(5);
+  }
+  else if(type==='dimmedVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*170, vy:Math.sin(a)*170,
+        dmg:boss.dmg*0.95, radius:10, owner:'enemy', color:'#4a4658', life:3.0 });
+    }
+    shake(6);
+  }
+
+  // ---- Piso 34: Espina Apagada (veneno frío, versión "apagada" del tema de piso 8) ----
+  else if(type==='greyThornLash'){
+    const r = 112;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.0);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'poison', telegraph:0.25, active:1.6, tick:0, dmg:boss.dmg*0.26 });
+    addParticles(boss.x,boss.y,'#524a5a',18,180,0.4);
+    shake(6);
+  }
+  else if(type==='greyThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'poison', telegraph:0.6, active:2.6, tick:0, dmg:boss.dmg*0.28 });
+    }
+    addParticles(p.x,p.y,'#524a5a',16,140,0.35);
+  }
+  else if(type==='greyThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*200, vy:Math.sin(a)*200,
+        dmg:boss.dmg*0.48, radius:7, owner:'enemy', color:'#524a5a', life:2.5, poison:true });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 35: Susurro Apagado (ágil, ni su propio eco recuerda el calor) ----
+  else if(type==='dimWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 200+Math.random()*150;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*260, vy:Math.sin(a)*260,
+        dmg:boss.dmg*0.43, radius:6, owner:'enemy', color:'#4e485c', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#4e485c',16,160,0.3);
+    spawnToast('El Susurro Apagado se desvanece y reaparece');
+  }
+  else if(type==='dimmedCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'void', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.35 });
+    }
+    spawnToast('Un susurro sin calor serpentea hacia vos');
+  }
+  else if(type==='dimmedWhisperVolley'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*230, vy:Math.sin(a)*230,
+        dmg:boss.dmg*0.38, radius:7, owner:'enemy', color:'#4e485c', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#4e485c',18,180,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 36: Corazón Apagado (cierra el sub-arco — de la ceniza a la nada, otra vez) ----
+  else if(type==='heartDimSlam'){
+    const r = 148;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.2);
+    addParticles(boss.x,boss.y,'#403c50',26,220,0.5);
+    spawnShockwave(boss.x,boss.y,'#403c50',r,0.44);
+    shake(8);
+  }
+  else if(type==='dimmedHeartLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 56;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 72) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'void', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.48 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 72) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'void', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.48 });
+      }
+    }
+    spawnToast('El Corazón Apagado parte la sala al medio');
+  }
+  else if(type==='dimmedHeartBurst'){
+    const n=12;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*245, vy:Math.sin(a)*245,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:'#403c50', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#403c50',20,190,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 37: Polvo Errante (rápido y ligero, ni ceniza ni piedra) ----
+  else if(type==='dustDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=215, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#8a8478',16,200,0.35);
+  }
+  else if(type==='dustTrail'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=5;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*55, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*55, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'void', telegraph:0.3+i*0.11, active:1.0, tick:0, dmg:boss.dmg*0.34 });
+    }
+    spawnToast('Una estela de polvo serpentea hacia vos');
+  }
+  else if(type==='dustScatter'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*240, vy:Math.sin(a)*240,
+        dmg:boss.dmg*0.38, radius:6, owner:'enemy', color:'#8a8478', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#8a8478',18,190,0.38);
+    shake(5);
+  }
+
+  // ---- Piso 38: Fisura de Ceniza (el suelo mismo empieza a resentir el peso) ----
+  else if(type==='fissureLash'){
+    const r = 118;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.72, type:'void', telegraph:0.28, active:1.5, tick:0, dmg:boss.dmg*0.3 });
+    addParticles(boss.x,boss.y,'#6a6258',20,190,0.4);
+    shake(7);
+  }
+  else if(type==='fissureField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-165,165), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-165,165), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'void', telegraph:0.55, active:2.1, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('Grietas se abren bajo tus pies');
+  }
+  else if(type==='fissureBurst'){
+    const n=9;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*215, vy:Math.sin(a)*215,
+        dmg:boss.dmg*0.46, radius:7, owner:'enemy', color:'#6a6258', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#6a6258',18,180,0.38);
+    shake(6);
+  }
+
+  // ---- Piso 39: Reflejo Hueco (devuelve una imagen que ya no reconoce a nadie) ----
+  else if(type==='hollowSlam'){
+    const r = 138;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.15);
+    addParticles(boss.x,boss.y,'#9a948c',24,210,0.44);
+    spawnShockwave(boss.x,boss.y,'#9a948c',r,0.42);
+    shake(8);
+  }
+  else if(type==='hollowField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:40, type:'void', telegraph:0.55, active:2.0, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('El Reflejo Hueco dispersa su propia imagen por el suelo');
+  }
+  else if(type==='hollowBurst'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*220, vy:Math.sin(a)*220,
+        dmg:boss.dmg*0.44, radius:7, owner:'enemy', color:'#9a948c', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#9a948c',18,190,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 40: Susurro de Piedra (habla lento, nunca dos veces desde el mismo sitio) ----
+  else if(type==='stoneWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 210+Math.random()*140;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*255, vy:Math.sin(a)*255,
+        dmg:boss.dmg*0.44, radius:7, owner:'enemy', color:'#78726a', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#78726a',16,160,0.3);
+    spawnToast('El Susurro de Piedra se reubica en silencio');
+  }
+  else if(type==='stoneCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'void', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.35 });
+    }
+    spawnToast('Una grieta de piedra serpentea hacia vos');
+  }
+  else if(type==='stoneVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.26;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*172, vy:Math.sin(a)*172,
+        dmg:boss.dmg*0.92, radius:10, owner:'enemy', color:'#78726a', life:3.0 });
+    }
+    shake(6);
+  }
+
+  // ---- Piso 41: Corazón de Polvo (punto medio del camino, 4 ataques) ----
+  else if(type==='dustHeartSlam'){
+    const r = 152;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.22);
+    addParticles(boss.x,boss.y,'#7a746a',27,225,0.5);
+    spawnShockwave(boss.x,boss.y,'#7a746a',r,0.44);
+    shake(9);
+  }
+  else if(type==='dustHeartLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 56;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 72) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'void', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.48 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 72) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'void', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.48 });
+      }
+    }
+    spawnToast('El Corazón de Polvo parte la sala al medio');
+  }
+  else if(type==='dustHeartBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*248, vy:Math.sin(a)*248,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:'#7a746a', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#7a746a',20,190,0.4);
+    shake(6);
+  }
+  else if(type==='dustHeartCollapse'){
+    for(let ring=0; ring<3; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:70+ring*68, type:'void', telegraph:0.3+ring*0.35, active:0.4, tick:0, dmg:boss.dmg*0.56 });
+    }
+    addParticles(boss.x,boss.y,'#7a746a',28,230,0.5);
+    spawnToast('El Corazón de Polvo late — y colapsa hacia adentro');
+    shake(8);
+  }
+
+  // ---- Piso 42: Brillo Apagado (apenas un destello, pero ya no es solo sombra) ----
+  else if(type==='gleamSlam'){
+    const r = 132;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+    addParticles(boss.x,boss.y,'#948a78',24,205,0.42);
+    spawnShockwave(boss.x,boss.y,'#948a78',r,0.4);
+    shake(7);
+  }
+  else if(type==='gleamField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-165,165), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-165,165), b.y+24, b.y+b.h-24);
+      const hazType = i%2===0 ? 'void' : 'light';
+      game.hazards.push({ x:hx, y:hy, r:40, type:hazType, telegraph:0.55, active:2.0, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('Sombra y un poco de luz se turnan bajo tus pies');
+  }
+  else if(type==='gleamBurst'){
+    const n=10;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      const col = i%2===0 ? '#948a78' : '#e8dfc0';
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*222, vy:Math.sin(a)*222,
+        dmg:boss.dmg*0.44, radius:7, owner:'enemy', color:col, life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#948a78',18,190,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 43: Custodio de Piedra (octavo tanque, el más inmóvil de todos) ----
+  else if(type==='stoneWardenCrush'){
+    const r = 178;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.42);
+    spawnShockwave(boss.x,boss.y,'#6a645c',r,0.52);
+    addParticles(boss.x,boss.y,'#6a645c',32,250,0.55);
+    shake(11);
+  }
+  else if(type==='stoneWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'void', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('El Custodio de Piedra levanta anillos de escombros');
+    shake(6);
+  }
+  else if(type==='stoneWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*158, vy:Math.sin(a)*158,
+        dmg:boss.dmg*1.0, radius:11, owner:'enemy', color:'#6a645c', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 44: Espina de Luz (el primer dolor que quema en vez de pudrir) ----
+  else if(type==='lightThornLash'){
+    const r = 114;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.0);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.6, tick:0, dmg:boss.dmg*0.28 });
+    addParticles(boss.x,boss.y,'#c9b878',18,185,0.4);
+    shake(6);
+  }
+  else if(type==='lightThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.6, tick:0, dmg:boss.dmg*0.3 });
+    }
+    addParticles(p.x,p.y,'#c9b878',16,140,0.35);
+  }
+  else if(type==='lightThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*205, vy:Math.sin(a)*205,
+        dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:'#c9b878', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 45: Ecos Grises (cada eco repite un poco menos de sombra que el anterior) ----
+  else if(type==='greyEchoDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=200, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#8a8290',16,200,0.35);
+  }
+  else if(type==='greyEchoField'){
+    for(let i=0;i<6;i++){
+      const hx = clamp(targetX+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:34, type:'void', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.26 });
+    }
+    spawnToast('Ecos Grises se dispersan por el suelo');
+  }
+  else if(type==='greyEchoBurst'){
+    const n=14;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*232, vy:Math.sin(a)*232,
+        dmg:boss.dmg*0.28, radius:6, owner:'enemy', color:'#8a8290', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#8a8290',20,175,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 46: Guardiana de Ceniza y Luz (cierra el tramo — ya no defiende solo la sombra) ----
+  else if(type==='ashLightSlam'){
+    const r = 145;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.2);
+    addParticles(boss.x,boss.y,'#b0a488',26,220,0.48);
+    spawnShockwave(boss.x,boss.y,'#b0a488',r,0.44);
+    shake(8);
+  }
+  else if(type==='ashLightField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-170,170), b.y+24, b.y+b.h-24);
+      const hazType = i%2===0 ? 'void' : 'light';
+      game.hazards.push({ x:hx, y:hy, r:42, type:hazType, telegraph:0.55, active:2.1, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('Ceniza y luz caen juntas al suelo');
+  }
+  else if(type==='ashLightBurst'){
+    const n=12;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      const col = i%2===0 ? '#b0a488' : '#e8dfc0';
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*228, vy:Math.sin(a)*228,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:col, life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#b0a488',20,190,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 47: Velo Tenue (ni sombra ni luz — todavía no decide qué es) ----
+  else if(type==='veilSlam'){
+    const r = 128;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.12);
+    addParticles(boss.x,boss.y,'#a89ccc',24,208,0.42);
+    spawnShockwave(boss.x,boss.y,'#a89ccc',r,0.4);
+    shake(7);
+  }
+  else if(type==='veilField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-165,165), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-165,165), b.y+24, b.y+b.h-24);
+      const hazType = i%2===0 ? 'void' : 'light';
+      game.hazards.push({ x:hx, y:hy, r:40, type:hazType, telegraph:0.55, active:2.0, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('El Velo Tenue no termina de decidir qué dejar caer');
+  }
+  else if(type==='veilBurst'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      const col = i%2===0 ? '#a89ccc' : '#e0d8f0';
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*225, vy:Math.sin(a)*225,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:col, life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#a89ccc',18,190,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 48: Guardiana del Límite (novena en guardia, custodia la frontera misma) ----
+  else if(type==='edgeGuardCrush'){
+    const r = 180;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.42);
+    spawnShockwave(boss.x,boss.y,'#7a6e98',r,0.52);
+    addParticles(boss.x,boss.y,'#7a6e98',32,250,0.55);
+    shake(11);
+  }
+  else if(type==='edgeGuardRing'){
+    for(let ring=0; ring<5; ring++){
+      const hazType = ring%2===0 ? 'void' : 'light';
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:hazType, telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('La Guardiana del Límite traza un anillo que es mitad y mitad');
+    shake(6);
+  }
+  else if(type==='edgeGuardVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*162, vy:Math.sin(a)*162,
+        dmg:boss.dmg*1.02, radius:11, owner:'enemy', color:'#7a6e98', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 49: Espina del Alba (ya no quema como fuego ni pudre como sombra — quema como el alba) ----
+  else if(type==='dawnThornLash'){
+    const r = 116;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.02);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.6, tick:0, dmg:boss.dmg*0.28 });
+    addParticles(boss.x,boss.y,'#d8b878',18,185,0.4);
+    shake(6);
+  }
+  else if(type==='dawnThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.6, tick:0, dmg:boss.dmg*0.3 });
+    }
+    addParticles(p.x,p.y,'#d8b878',16,140,0.35);
+  }
+  else if(type==='dawnThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*208, vy:Math.sin(a)*208,
+        dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:'#d8b878', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 50: Corazón del Límite (cierra el tramo 26-50 entero, 4 ataques) ----
+  else if(type==='edgeHeartSlam'){
+    const r = 158;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.25);
+    addParticles(boss.x,boss.y,'#8878a8',28,228,0.5);
+    spawnShockwave(boss.x,boss.y,'#8878a8',r,0.46);
+    shake(9);
+  }
+  else if(type==='edgeHeartLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 56;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 72) continue;
+        const hazType = (Math.floor((y-b.y)/spacing))%2===0 ? 'void' : 'light';
+        game.hazards.push({ x:boss.x, y, r:40, type:hazType, telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.48 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 72) continue;
+        const hazType = (Math.floor((x-b.x)/spacing))%2===0 ? 'void' : 'light';
+        game.hazards.push({ x, y:boss.y, r:40, type:hazType, telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.48 });
+      }
+    }
+    spawnToast('El Corazón del Límite parte la sala entre sombra y luz');
+  }
+  else if(type==='edgeHeartBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      const col = i%2===0 ? '#8878a8' : '#e8dfc0';
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*250, vy:Math.sin(a)*250,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:col, life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#8878a8',20,190,0.4);
+    shake(6);
+  }
+  else if(type==='edgeHeartCollapse'){
+    for(let ring=0; ring<3; ring++){
+      const hazType = ring%2===0 ? 'void' : 'light';
+      game.hazards.push({ x:boss.x, y:boss.y, r:70+ring*68, type:hazType, telegraph:0.3+ring*0.35, active:0.4, tick:0, dmg:boss.dmg*0.56 });
+    }
+    addParticles(boss.x,boss.y,'#8878a8',28,230,0.5);
+    spawnToast('El Corazón del Límite colapsa — la penumbra termina acá');
+    shake(8);
+  }
+
+  // ---- Piso 51: Alba Errante (abre el tramo — la luz empieza a crecer de verdad) ----
+  else if(type==='dawnDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=218, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#e8c888',16,205,0.35);
+  }
+  else if(type==='dawnTrail'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=5;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*55, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*55, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.11, active:1.0, tick:0, dmg:boss.dmg*0.32 });
+    }
+    spawnToast('Una estela de alba serpentea hacia vos');
+  }
+  else if(type==='dawnScatter'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*246, vy:Math.sin(a)*246,
+        dmg:boss.dmg*0.38, radius:6, owner:'enemy', color:'#e8c888', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#e8c888',18,190,0.38);
+    shake(5);
+  }
+
+  // ---- Piso 52: Guardiana del Alba (décima en guardia, la luz también sabe ser paciente) ----
+  else if(type==='dawnGuardCrush'){
+    const r = 182;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.44);
+    spawnShockwave(boss.x,boss.y,'#c8a848',r,0.52);
+    addParticles(boss.x,boss.y,'#c8a848',32,250,0.55);
+    shake(11);
+  }
+  else if(type==='dawnGuardRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'light', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('La Guardiana del Alba levanta un anillo dorado');
+    shake(6);
+  }
+  else if(type==='dawnGuardVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*164, vy:Math.sin(a)*164,
+        dmg:boss.dmg*1.02, radius:11, owner:'enemy', color:'#c8a848', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 53: Eco Dorado (cada eco brilla un poco más que el anterior) ----
+  else if(type==='goldenEchoDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=205, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#e0b858',16,200,0.35);
+  }
+  else if(type==='goldenEchoField'){
+    for(let i=0;i<6;i++){
+      const hx = clamp(targetX+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:34, type:'light', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.26 });
+    }
+    spawnToast('El Eco Dorado se dispersa por el suelo');
+  }
+  else if(type==='goldenEchoBurst'){
+    const n=14;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*235, vy:Math.sin(a)*235,
+        dmg:boss.dmg*0.28, radius:6, owner:'enemy', color:'#e0b858', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#e0b858',20,175,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 54: Espina Dorada (el dolor del alba ya pesa más que el de la sombra) ----
+  else if(type==='goldenThornLash'){
+    const r = 118;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.7, tick:0, dmg:boss.dmg*0.3 });
+    addParticles(boss.x,boss.y,'#f0c868',18,188,0.4);
+    shake(6);
+  }
+  else if(type==='goldenThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.7, tick:0, dmg:boss.dmg*0.32 });
+    }
+    addParticles(p.x,p.y,'#f0c868',16,140,0.35);
+  }
+  else if(type==='goldenThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*210, vy:Math.sin(a)*210,
+        dmg:boss.dmg*0.52, radius:7, owner:'enemy', color:'#f0c868', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 55: Susurro del Alba (ni siquiera necesita esconderse en la penumbra) ----
+  else if(type==='dawnWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 205+Math.random()*145;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*258, vy:Math.sin(a)*258,
+        dmg:boss.dmg*0.45, radius:7, owner:'enemy', color:'#e8d078', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#e8d078',16,160,0.3);
+    spawnToast('El Susurro del Alba se reubica a plena luz');
+  }
+  else if(type==='dawnWhisperCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.36 });
+    }
+    spawnToast('Una estela dorada serpentea hacia vos');
+  }
+  else if(type==='dawnWhisperVolley'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*233, vy:Math.sin(a)*233,
+        dmg:boss.dmg*0.39, radius:7, owner:'enemy', color:'#e8d078', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#e8d078',18,180,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 56: Hueco Brillante (cierra el tramo — lo que fue vacío ahora refleja luz) ----
+  else if(type==='brightSlam'){
+    const r = 150;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.24);
+    addParticles(boss.x,boss.y,'#f4d888',27,225,0.5);
+    spawnShockwave(boss.x,boss.y,'#f4d888',r,0.45);
+    shake(9);
+  }
+  else if(type==='brightField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'light', telegraph:0.55, active:2.1, tick:0, dmg:boss.dmg*0.32 });
+    }
+    spawnToast('El Hueco Brillante inunda el suelo de luz');
+  }
+  else if(type==='brightBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*250, vy:Math.sin(a)*250,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:'#f4d888', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#f4d888',20,195,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 57: Enjambre Dorado (cientos de chispas que ya no recuerdan haber sido sombra) ----
+  else if(type==='swarmGoldenDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=195, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#f0d068',16,205,0.35);
+  }
+  else if(type==='goldenSwarmField'){
+    for(let i=0;i<7;i++){
+      const hx = clamp(targetX+rand(-180,180), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-180,180), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:32, type:'light', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.24 });
+    }
+    spawnToast('El Enjambre Dorado se dispersa por el suelo');
+  }
+  else if(type==='goldenSwarmBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*238, vy:Math.sin(a)*238,
+        dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:'#f0d068', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#f0d068',20,178,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 58: Custodio Radiante (undécimo en guardia — ni la luz más fuerte lo hace parpadear) ----
+  else if(type==='radiantCrush'){
+    const r = 185;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.46);
+    spawnShockwave(boss.x,boss.y,'#e8c048',r,0.53);
+    addParticles(boss.x,boss.y,'#e8c048',33,255,0.56);
+    shake(11);
+  }
+  else if(type==='radiantRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'light', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('El Custodio Radiante levanta un anillo cegador');
+    shake(6);
+  }
+  else if(type==='radiantVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*166, vy:Math.sin(a)*166,
+        dmg:boss.dmg*1.05, radius:11, owner:'enemy', color:'#e8c048', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 59: Espina Radiante (duele más de lo que cualquier sombra dolió jamás) ----
+  else if(type==='radiantThornLash'){
+    const r = 120;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.08);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.7, tick:0, dmg:boss.dmg*0.32 });
+    addParticles(boss.x,boss.y,'#ffd868',18,190,0.4);
+    shake(6);
+  }
+  else if(type==='radiantThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.7, tick:0, dmg:boss.dmg*0.34 });
+    }
+    addParticles(p.x,p.y,'#ffd868',16,140,0.35);
+  }
+  else if(type==='radiantThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*212, vy:Math.sin(a)*212,
+        dmg:boss.dmg*0.54, radius:7, owner:'enemy', color:'#ffd868', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 60: Heraldo del Sol (anuncia lo que viene, 4 ataques, milestone del tramo) ----
+  else if(type==='sunHeraldSlam'){
+    const r = 162;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.28);
+    addParticles(boss.x,boss.y,'#ffdc78',29,232,0.5);
+    spawnShockwave(boss.x,boss.y,'#ffdc78',r,0.46);
+    shake(9);
+  }
+  else if(type==='sunHeraldLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 56;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 72) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'light', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.5 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 72) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'light', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.5 });
+      }
+    }
+    spawnToast('El Heraldo del Sol parte la sala con un rayo de luz');
+  }
+  else if(type==='sunHeraldBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*252, vy:Math.sin(a)*252,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:'#ffdc78', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#ffdc78',21,195,0.4);
+    shake(6);
+  }
+  else if(type==='sunHeraldCollapse'){
+    for(let ring=0; ring<3; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:70+ring*68, type:'light', telegraph:0.3+ring*0.35, active:0.4, tick:0, dmg:boss.dmg*0.58 });
+    }
+    addParticles(boss.x,boss.y,'#ffdc78',29,232,0.5);
+    spawnToast('El Heraldo del Sol colapsa en un solo destello');
+    shake(8);
+  }
+
+  // ---- Piso 61: Centinela Dorado (abre el tramo final antes del ecuador del camino) ----
+  else if(type==='sentinelDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=220, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#ffe088',16,208,0.35);
+  }
+  else if(type==='sentinelTrail'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=5;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*55, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*55, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.11, active:1.0, tick:0, dmg:boss.dmg*0.33 });
+    }
+    spawnToast('Una estela dorada serpentea hacia vos');
+  }
+  else if(type==='sentinelScatter'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*248, vy:Math.sin(a)*248,
+        dmg:boss.dmg*0.38, radius:6, owner:'enemy', color:'#ffe088', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#ffe088',18,192,0.38);
+    shake(5);
+  }
+
+  // ---- Piso 62: Custodio Solar (duodécimo en guardia, ya casi no queda sombra que proteger) ----
+  else if(type==='solarWardenCrush'){
+    const r = 188;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.48);
+    spawnShockwave(boss.x,boss.y,'#ffcc48',r,0.53);
+    addParticles(boss.x,boss.y,'#ffcc48',34,258,0.56);
+    shake(12);
+  }
+  else if(type==='solarWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'light', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.42 });
+    }
+    spawnToast('El Custodio Solar levanta un anillo de calor');
+    shake(6);
+  }
+  else if(type==='solarWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*168, vy:Math.sin(a)*168,
+        dmg:boss.dmg*1.06, radius:11, owner:'enemy', color:'#ffcc48', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 63: Susurro Solar (su voz ya no es un susurro, apenas logra contenerse) ----
+  else if(type==='solarWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 210+Math.random()*145;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*260, vy:Math.sin(a)*260,
+        dmg:boss.dmg*0.46, radius:7, owner:'enemy', color:'#ffd858', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#ffd858',16,160,0.3);
+    spawnToast('El Susurro Solar apenas logra contenerse');
+  }
+  else if(type==='solarWhisperCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.37 });
+    }
+    spawnToast('Una estela solar serpentea hacia vos');
+  }
+  else if(type==='solarWhisperVolley'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*236, vy:Math.sin(a)*236,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:'#ffd858', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#ffd858',18,182,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 64: Eco Solar (cada eco es un poco más brillante que la fuente) ----
+  else if(type==='solarEchoDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=210, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#ffe068',16,205,0.35);
+  }
+  else if(type==='solarEchoField'){
+    for(let i=0;i<6;i++){
+      const hx = clamp(targetX+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:34, type:'light', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.27 });
+    }
+    spawnToast('El Eco Solar se dispersa por el suelo');
+  }
+  else if(type==='solarEchoBurst'){
+    const n=14;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*238, vy:Math.sin(a)*238,
+        dmg:boss.dmg*0.29, radius:6, owner:'enemy', color:'#ffe068', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#ffe068',20,178,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 65: Enjambre de Llamas (ya no quedan cenizas, solo llama pura y en movimiento) ----
+  else if(type==='swarmBlazeDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=198, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#ffb848',16,208,0.35);
+  }
+  else if(type==='blazeSwarmField'){
+    for(let i=0;i<7;i++){
+      const hx = clamp(targetX+rand(-180,180), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-180,180), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:32, type:'fire', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.25 });
+    }
+    spawnToast('El Enjambre de Llamas se dispersa por el suelo');
+  }
+  else if(type==='blazeSwarmBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*240, vy:Math.sin(a)*240,
+        dmg:boss.dmg*0.31, radius:6, owner:'enemy', color:'#ffb848', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#ffb848',20,180,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 66: Guardiana Solar (cierra el tramo — el ecuador del camino al Sol está cerca) ----
+  else if(type==='solarGuardSlam'){
+    const r = 154;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.26);
+    addParticles(boss.x,boss.y,'#ffe488',27,228,0.5);
+    spawnShockwave(boss.x,boss.y,'#ffe488',r,0.46);
+    shake(9);
+  }
+  else if(type==='solarGuardField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-172,172), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-172,172), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'light', telegraph:0.55, active:2.1, tick:0, dmg:boss.dmg*0.33 });
+    }
+    spawnToast('La Guardiana Solar inunda el suelo de calor');
+  }
+  else if(type==='solarGuardBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*252, vy:Math.sin(a)*252,
+        dmg:boss.dmg*0.41, radius:7, owner:'enemy', color:'#ffe488', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#ffe488',21,196,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 67: Custodio de Flare (decimotercero en guardia, hasta el fuego respeta su turno) ----
+  else if(type==='flareWardenCrush'){
+    const r = 190;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.5);
+    spawnShockwave(boss.x,boss.y,'#ffb828',r,0.54);
+    addParticles(boss.x,boss.y,'#ffb828',34,260,0.56);
+    shake(12);
+  }
+  else if(type==='flareWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'fire', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.42 });
+    }
+    spawnToast('El Custodio de Flare levanta un anillo de fuego');
+    shake(6);
+  }
+  else if(type==='flareWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*170, vy:Math.sin(a)*170,
+        dmg:boss.dmg*1.08, radius:11, owner:'enemy', color:'#ffb828', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 68: Espina de Flare (cada espina es una pequeña llamarada que no se apaga) ----
+  else if(type==='flareThornLash'){
+    const r = 122;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'fire', telegraph:0.25, active:1.7, tick:0, dmg:boss.dmg*0.33 });
+    addParticles(boss.x,boss.y,'#ffa838',18,192,0.4);
+    shake(6);
+  }
+  else if(type==='flareThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'fire', telegraph:0.6, active:2.7, tick:0, dmg:boss.dmg*0.35 });
+    }
+    addParticles(p.x,p.y,'#ffa838',16,140,0.35);
+  }
+  else if(type==='flareThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*214, vy:Math.sin(a)*214,
+        dmg:boss.dmg*0.56, radius:7, owner:'enemy', color:'#ffa838', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 69: Susurro de Corona (ya brilla tanto que cuesta verlo moverse) ----
+  else if(type==='coronaWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 212+Math.random()*146;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*262, vy:Math.sin(a)*262,
+        dmg:boss.dmg*0.47, radius:7, owner:'enemy', color:'#ffc048', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#ffc048',16,160,0.3);
+    spawnToast('El Susurro de Corona brilla tanto que cuesta verlo moverse');
+  }
+  else if(type==='coronaWhisperCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.38 });
+    }
+    spawnToast('Una estela de corona serpentea hacia vos');
+  }
+  else if(type==='coronaWhisperVolley'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*238, vy:Math.sin(a)*238,
+        dmg:boss.dmg*0.41, radius:7, owner:'enemy', color:'#ffc048', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#ffc048',18,184,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 70: Corazón de Corona (cierra el tramo, 4 ataques — la corona ya se distingue entera) ----
+  else if(type==='coronaHeartSlam'){
+    const r = 166;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.3);
+    addParticles(boss.x,boss.y,'#ffb438',30,234,0.5);
+    spawnShockwave(boss.x,boss.y,'#ffb438',r,0.47);
+    shake(9);
+  }
+  else if(type==='coronaHeartLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 56;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 72) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'fire', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.52 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 72) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'fire', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.52 });
+      }
+    }
+    spawnToast('El Corazón de Corona parte la sala con un rayo de fuego');
+  }
+  else if(type==='coronaHeartBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*254, vy:Math.sin(a)*254,
+        dmg:boss.dmg*0.43, radius:7, owner:'enemy', color:'#ffb438', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#ffb438',22,198,0.4);
+    shake(6);
+  }
+  else if(type==='coronaHeartCollapse'){
+    for(let ring=0; ring<3; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:70+ring*68, type:'fire', telegraph:0.3+ring*0.35, active:0.4, tick:0, dmg:boss.dmg*0.6 });
+    }
+    addParticles(boss.x,boss.y,'#ffb438',30,235,0.5);
+    spawnToast('El Corazón de Corona colapsa en un solo destello');
+    shake(8);
+  }
+
+  // ---- Piso 71: Enjambre de Flare (abre el tramo — cada vez menos falta para la cima) ----
+  else if(type==='swarmFlareDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=200, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#ffcc58',16,210,0.35);
+  }
+  else if(type==='flareSwarmField'){
+    for(let i=0;i<7;i++){
+      const hx = clamp(targetX+rand(-180,180), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-180,180), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:32, type:'fire', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.26 });
+    }
+    spawnToast('El Enjambre de Flare se dispersa por el suelo');
+  }
+  else if(type==='flareSwarmBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*242, vy:Math.sin(a)*242,
+        dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:'#ffcc58', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#ffcc58',20,182,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 72: Custodio del Cenit (decimocuarto en guardia, arriba el sol ya pesa sobre todos) ----
+  else if(type==='zenithWardenCrush'){
+    const r = 192;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.52);
+    spawnShockwave(boss.x,boss.y,'#ffdc38',r,0.54);
+    addParticles(boss.x,boss.y,'#ffdc38',35,262,0.57);
+    shake(12);
+  }
+  else if(type==='zenithWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'light', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.44 });
+    }
+    spawnToast('El Custodio del Cenit levanta un anillo de sol pleno');
+    shake(6);
+  }
+  else if(type==='zenithWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*172, vy:Math.sin(a)*172,
+        dmg:boss.dmg*1.1, radius:11, owner:'enemy', color:'#ffdc38', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 73: Espina del Cenit (a esta altura, hasta el dolor tiene su propio brillo) ----
+  else if(type==='zenithThornLash'){
+    const r = 124;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.12);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.7, tick:0, dmg:boss.dmg*0.34 });
+    addParticles(boss.x,boss.y,'#ffe048',18,194,0.4);
+    shake(6);
+  }
+  else if(type==='zenithThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.7, tick:0, dmg:boss.dmg*0.36 });
+    }
+    addParticles(p.x,p.y,'#ffe048',16,140,0.35);
+  }
+  else if(type==='zenithThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*216, vy:Math.sin(a)*216,
+        dmg:boss.dmg*0.58, radius:7, owner:'enemy', color:'#ffe048', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 74: Susurro del Cenit (ya no necesita sombra ninguna para moverse rápido) ----
+  else if(type==='zenithWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 214+Math.random()*148;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*264, vy:Math.sin(a)*264,
+        dmg:boss.dmg*0.48, radius:7, owner:'enemy', color:'#ffe458', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#ffe458',16,160,0.3);
+    spawnToast('El Susurro del Cenit ya no necesita ninguna sombra');
+  }
+  else if(type==='zenithWhisperCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.39 });
+    }
+    spawnToast('Una estela cegadora serpentea hacia vos');
+  }
+  else if(type==='zenithWhisperVolley'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*240, vy:Math.sin(a)*240,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:'#ffe458', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#ffe458',18,186,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 75: Eco del Cenit (marca los tres cuartos del camino — cada eco es puro mediodía) ----
+  else if(type==='zenithEchoDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=212, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#ffe868',16,207,0.35);
+  }
+  else if(type==='zenithEchoField'){
+    for(let i=0;i<6;i++){
+      const hx = clamp(targetX+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:34, type:'light', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.28 });
+    }
+    spawnToast('El Eco del Cenit se dispersa por el suelo');
+  }
+  else if(type==='zenithEchoBurst'){
+    const n=14;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*240, vy:Math.sin(a)*240,
+        dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:'#ffe868', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#ffe868',20,180,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 76: Guardiana del Cenit (cierra el tramo — desde acá, todo el camino es cuesta de luz) ----
+  else if(type==='zenithGuardSlam'){
+    const r = 156;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.28);
+    addParticles(boss.x,boss.y,'#ffec78',27,230,0.5);
+    spawnShockwave(boss.x,boss.y,'#ffec78',r,0.46);
+    shake(9);
+  }
+  else if(type==='zenithGuardField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-172,172), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-172,172), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'light', telegraph:0.55, active:2.1, tick:0, dmg:boss.dmg*0.35 });
+    }
+    spawnToast('La Guardiana del Cenit inunda el suelo de mediodía');
+  }
+  else if(type==='zenithGuardBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*254, vy:Math.sin(a)*254,
+        dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:'#ffec78', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#ffec78',22,198,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 77: Custodio Cegador (decimoquinto en guardia, casi no se distingue ya su forma) ----
+  else if(type==='blindWardenCrush'){
+    const r = 195;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.54);
+    spawnShockwave(boss.x,boss.y,'#fff088',r,0.55);
+    addParticles(boss.x,boss.y,'#fff088',36,265,0.58);
+    shake(12);
+  }
+  else if(type==='blindWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'light', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.46 });
+    }
+    spawnToast('El Custodio Cegador levanta un anillo de luz pura');
+    shake(6);
+  }
+  else if(type==='blindWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*174, vy:Math.sin(a)*174,
+        dmg:boss.dmg*1.12, radius:11, owner:'enemy', color:'#fff088', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 78: Espina Cegadora (el dolor y la luz son, a esta altura, la misma cosa) ----
+  else if(type==='blindThornLash'){
+    const r = 126;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.14);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.7, tick:0, dmg:boss.dmg*0.36 });
+    addParticles(boss.x,boss.y,'#fff498',18,196,0.4);
+    shake(6);
+  }
+  else if(type==='blindThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.7, tick:0, dmg:boss.dmg*0.38 });
+    }
+    addParticles(p.x,p.y,'#fff498',16,140,0.35);
+  }
+  else if(type==='blindThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*218, vy:Math.sin(a)*218,
+        dmg:boss.dmg*0.6, radius:7, owner:'enemy', color:'#fff498', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 79: Susurro Cegador (ya nadie recuerda si alguna vez fue penumbra) ----
+  else if(type==='blindWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 216+Math.random()*150;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*266, vy:Math.sin(a)*266,
+        dmg:boss.dmg*0.49, radius:7, owner:'enemy', color:'#fff6a8', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#fff6a8',16,160,0.3);
+    spawnToast('El Susurro Cegador ya no recuerda haber sido penumbra');
+  }
+  else if(type==='blindWhisperCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.4 });
+    }
+    spawnToast('Una estela cegadora serpentea hacia vos');
+  }
+  else if(type==='blindWhisperVolley'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*242, vy:Math.sin(a)*242,
+        dmg:boss.dmg*0.43, radius:7, owner:'enemy', color:'#fff6a8', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#fff6a8',18,188,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 80: Corazón Cegador (cierra el tramo, 4 ataques — falta poco para el final) ----
+  else if(type==='blindHeartSlam'){
+    const r = 168;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.32);
+    addParticles(boss.x,boss.y,'#fff8b8',31,236,0.5);
+    spawnShockwave(boss.x,boss.y,'#fff8b8',r,0.47);
+    shake(9);
+  }
+  else if(type==='blindHeartLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 56;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 72) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'light', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.54 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 72) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'light', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.54 });
+      }
+    }
+    spawnToast('El Corazón Cegador parte la sala con un rayo puro');
+  }
+  else if(type==='blindHeartBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*256, vy:Math.sin(a)*256,
+        dmg:boss.dmg*0.44, radius:7, owner:'enemy', color:'#fff8b8', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#fff8b8',23,200,0.4);
+    shake(6);
+  }
+  else if(type==='blindHeartCollapse'){
+    for(let ring=0; ring<3; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:70+ring*68, type:'light', telegraph:0.3+ring*0.35, active:0.4, tick:0, dmg:boss.dmg*0.62 });
+    }
+    addParticles(boss.x,boss.y,'#fff8b8',31,236,0.5);
+    spawnToast('El Corazón Cegador colapsa en pura luz');
+    shake(8);
+  }
+
+  // ---- Piso 81: Enjambre Cegador (abre la recta final — cada chispa ya es casi Sol) ----
+  else if(type==='swarmBlindDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=202, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#fffac8',16,212,0.35);
+  }
+  else if(type==='blindSwarmField'){
+    for(let i=0;i<7;i++){
+      const hx = clamp(targetX+rand(-180,180), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-180,180), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:32, type:'light', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.27 });
+    }
+    spawnToast('El Enjambre Cegador se dispersa por el suelo');
+  }
+  else if(type==='blindSwarmBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*244, vy:Math.sin(a)*244,
+        dmg:boss.dmg*0.33, radius:6, owner:'enemy', color:'#fffac8', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#fffac8',20,184,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 82: Custodio Ascendente (decimosexto en guardia, sube con el camino) ----
+  else if(type==='ascWardenCrush'){
+    const r = 198;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.56);
+    spawnShockwave(boss.x,boss.y,'#fff4a0',r,0.55);
+    addParticles(boss.x,boss.y,'#fff4a0',36,268,0.58);
+    shake(12);
+  }
+  else if(type==='ascWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'light', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.46 });
+    }
+    spawnToast('El Custodio Ascendente levanta un anillo que sube con vos');
+    shake(6);
+  }
+  else if(type==='ascWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*176, vy:Math.sin(a)*176,
+        dmg:boss.dmg*1.14, radius:11, owner:'enemy', color:'#fff4a0', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 83: Espina Ascendente (cada paso hacia arriba se paga con un poco de dolor propio) ----
+  else if(type==='ascThornLash'){
+    const r = 128;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.16);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.7, tick:0, dmg:boss.dmg*0.38 });
+    addParticles(boss.x,boss.y,'#fff6b0',18,198,0.4);
+    shake(6);
+  }
+  else if(type==='ascThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.7, tick:0, dmg:boss.dmg*0.4 });
+    }
+    addParticles(p.x,p.y,'#fff6b0',16,140,0.35);
+  }
+  else if(type==='ascThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*220, vy:Math.sin(a)*220,
+        dmg:boss.dmg*0.62, radius:7, owner:'enemy', color:'#fff6b0', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 84: Susurro Ascendente (habla en el idioma que solo se escucha cerca de la cima) ----
+  else if(type==='ascWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 218+Math.random()*152;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*268, vy:Math.sin(a)*268,
+        dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:'#fff8c0', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#fff8c0',16,160,0.3);
+    spawnToast('El Susurro Ascendente habla un idioma casi imposible de oír');
+  }
+  else if(type==='ascWhisperCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.41 });
+    }
+    spawnToast('Una estela ascendente serpentea hacia vos');
+  }
+  else if(type==='ascWhisperVolley'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*244, vy:Math.sin(a)*244,
+        dmg:boss.dmg*0.44, radius:7, owner:'enemy', color:'#fff8c0', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#fff8c0',18,190,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 85: Eco Ascendente (cada eco sube un poco más que el anterior, sin cansarse nunca) ----
+  else if(type==='ascEchoDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=214, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#fffad0',16,209,0.35);
+  }
+  else if(type==='ascEchoField'){
+    for(let i=0;i<6;i++){
+      const hx = clamp(targetX+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:34, type:'light', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.29 });
+    }
+    spawnToast('El Eco Ascendente se dispersa por el suelo');
+  }
+  else if(type==='ascEchoBurst'){
+    const n=14;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*242, vy:Math.sin(a)*242,
+        dmg:boss.dmg*0.31, radius:6, owner:'enemy', color:'#fffad0', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#fffad0',20,186,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 86: Guardiana Ascendente (cierra el tramo — desde acá se ve la cima entera) ----
+  else if(type==='ascGuardSlam'){
+    const r = 158;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.3);
+    addParticles(boss.x,boss.y,'#fffce0',28,232,0.5);
+    spawnShockwave(boss.x,boss.y,'#fffce0',r,0.46);
+    shake(9);
+  }
+  else if(type==='ascGuardField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-174,174), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-174,174), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'light', telegraph:0.55, active:2.1, tick:0, dmg:boss.dmg*0.37 });
+    }
+    spawnToast('La Guardiana Ascendente inunda el suelo — la cima ya se ve');
+  }
+  else if(type==='ascGuardBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*256, vy:Math.sin(a)*256,
+        dmg:boss.dmg*0.43, radius:7, owner:'enemy', color:'#fffce0', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#fffce0',23,200,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 87: Custodio de la Cumbre (decimoséptimo en guardia, último antes del Sol) ----
+  else if(type==='summitWardenCrush'){
+    const r = 200;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.58);
+    spawnShockwave(boss.x,boss.y,'#fffef0',r,0.56);
+    addParticles(boss.x,boss.y,'#fffef0',37,270,0.58);
+    shake(12);
+  }
+  else if(type==='summitWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'light', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.48 });
+    }
+    spawnToast('El Custodio de la Cumbre levanta un anillo final de luz');
+    shake(6);
+  }
+  else if(type==='summitWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*178, vy:Math.sin(a)*178,
+        dmg:boss.dmg*1.16, radius:11, owner:'enemy', color:'#fffef0', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 88: Espina de la Cumbre (a esta altura, el dolor y la luz ya no se distinguen) ----
+  else if(type==='summitThornLash'){
+    const r = 130;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.18);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.7, tick:0, dmg:boss.dmg*0.4 });
+    addParticles(boss.x,boss.y,'#fffff4',18,200,0.4);
+    shake(6);
+  }
+  else if(type==='summitThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.7, tick:0, dmg:boss.dmg*0.42 });
+    }
+    addParticles(p.x,p.y,'#fffff4',16,140,0.35);
+  }
+  else if(type==='summitThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*222, vy:Math.sin(a)*222,
+        dmg:boss.dmg*0.64, radius:7, owner:'enemy', color:'#fffff4', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 89: Susurro de la Cumbre (el último susurro — después solo queda gritar) ----
+  else if(type==='summitWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 220+Math.random()*154;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*270, vy:Math.sin(a)*270,
+        dmg:boss.dmg*0.51, radius:7, owner:'enemy', color:'#fffff8', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#fffff8',16,160,0.3);
+    spawnToast('El último susurro antes del silencio final');
+  }
+  else if(type==='summitWhisperCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.42 });
+    }
+    spawnToast('Una estela final serpentea hacia vos');
+  }
+  else if(type==='summitWhisperVolley'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*246, vy:Math.sin(a)*246,
+        dmg:boss.dmg*0.45, radius:7, owner:'enemy', color:'#fffff8', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#fffff8',18,192,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 90: Corazón de la Cumbre (cierra el tramo, 4 ataques — el Sol está tras la puerta) ----
+  else if(type==='summitHeartSlam'){
+    const r = 170;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.34);
+    addParticles(boss.x,boss.y,'#fffffc',32,238,0.5);
+    spawnShockwave(boss.x,boss.y,'#fffffc',r,0.47);
+    shake(10);
+  }
+  else if(type==='summitHeartLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 56;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 72) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'light', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.56 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 72) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'light', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.56 });
+      }
+    }
+    spawnToast('El Corazón de la Cumbre parte la sala con luz total');
+  }
+  else if(type==='summitHeartBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*258, vy:Math.sin(a)*258,
+        dmg:boss.dmg*0.45, radius:7, owner:'enemy', color:'#fffffc', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#fffffc',24,202,0.4);
+    shake(6);
+  }
+  else if(type==='summitHeartCollapse'){
+    for(let ring=0; ring<3; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:70+ring*68, type:'light', telegraph:0.3+ring*0.35, active:0.4, tick:0, dmg:boss.dmg*0.64 });
+    }
+    addParticles(boss.x,boss.y,'#fffffc',32,238,0.5);
+    spawnToast('El Corazón de la Cumbre colapsa — solo queda el Sol');
+    shake(8);
+  }
+
+  // ---- Piso 91: Enjambre de la Cumbre (abre el tramo final — ya no hay más tramos después) ----
+  else if(type==='swarmSummitDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=204, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#ffffff',16,214,0.35);
+  }
+  else if(type==='summitSwarmField'){
+    for(let i=0;i<7;i++){
+      const hx = clamp(targetX+rand(-180,180), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-180,180), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:32, type:'light', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.28 });
+    }
+    spawnToast('El Enjambre de la Cumbre se dispersa por el suelo');
+  }
+  else if(type==='summitSwarmBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.1;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*246, vy:Math.sin(a)*246,
+        dmg:boss.dmg*0.34, radius:6, owner:'enemy', color:'#ffffff', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#ffffff',20,186,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 92: Custodio del Portal (decimoctavo en guardia, el último que custodia la entrada) ----
+  else if(type==='portalWardenCrush'){
+    const r = 202;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.6);
+    spawnShockwave(boss.x,boss.y,'#fffef5',r,0.56);
+    addParticles(boss.x,boss.y,'#fffef5',38,272,0.58);
+    shake(13);
+  }
+  else if(type==='portalWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'light', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.5 });
+    }
+    spawnToast('El Custodio del Portal levanta el último anillo de guardia');
+    shake(6);
+  }
+  else if(type==='portalWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*180, vy:Math.sin(a)*180,
+        dmg:boss.dmg*1.18, radius:11, owner:'enemy', color:'#fffef5', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 93: Espina del Portal (ya no queda distancia entre el dolor y la luz misma) ----
+  else if(type==='portalThornLash'){
+    const r = 132;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.2);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.7, tick:0, dmg:boss.dmg*0.42 });
+    addParticles(boss.x,boss.y,'#fffff6',18,202,0.4);
+    shake(6);
+  }
+  else if(type==='portalThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.7, tick:0, dmg:boss.dmg*0.44 });
+    }
+    addParticles(p.x,p.y,'#fffff6',16,140,0.35);
+  }
+  else if(type==='portalThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*224, vy:Math.sin(a)*224,
+        dmg:boss.dmg*0.66, radius:7, owner:'enemy', color:'#fffff6', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 94: Susurro del Portal (lo que susurra ya no es idioma — es solo calor) ----
+  else if(type==='portalWhisperDodge'){
+    const bnds = arenaBounds();
+    const ang = Math.random()*Math.PI*2;
+    const dist2 = 222+Math.random()*156;
+    boss.x = clamp(p.x+Math.cos(ang)*dist2, bnds.x+boss.radius, bnds.x+bnds.w-boss.radius);
+    boss.y = clamp(p.y+Math.sin(ang)*dist2, bnds.y+boss.radius, bnds.y+bnds.h-boss.radius);
+    const shootAng = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<6;i++){
+      const a = shootAng + (i-2.5)*0.11;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*272, vy:Math.sin(a)*272,
+        dmg:boss.dmg*0.52, radius:7, owner:'enemy', color:'#fffff9', life:2.2 });
+    }
+    addParticles(boss.x,boss.y,'#fffff9',16,160,0.3);
+    spawnToast('El Susurro del Portal ya solo emite calor puro');
+  }
+  else if(type==='portalWhisperCrawl'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const steps=6;
+    for(let i=1;i<=steps;i++){
+      const hx = clamp(boss.x+Math.cos(ang)*i*50, b.x+24, b.x+b.w-24);
+      const hy = clamp(boss.y+Math.sin(ang)*i*50, b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.3+i*0.1, active:1.0, tick:0, dmg:boss.dmg*0.43 });
+    }
+    spawnToast('Una estela de calor puro serpentea hacia vos');
+  }
+  else if(type==='portalWhisperVolley'){
+    const n=11;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*248, vy:Math.sin(a)*248,
+        dmg:boss.dmg*0.46, radius:7, owner:'enemy', color:'#fffff9', life:2.3 });
+    }
+    addParticles(boss.x,boss.y,'#fffff9',18,194,0.4);
+    shake(5);
+  }
+
+  // ---- Piso 95: Eco del Portal (el último eco antes del silencio total del Sol) ----
+  else if(type==='portalEchoDash'){
+    const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
+    const dashDist=216, steps=9;
+    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
+    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
+    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
+    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
+    shake(6);
+    addParticles(boss.x,boss.y,'#fffffb',16,211,0.35);
+  }
+  else if(type==='portalEchoField'){
+    for(let i=0;i<6;i++){
+      const hx = clamp(targetX+rand(-170,170), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-170,170), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:34, type:'light', telegraph:0.4, active:1.8, tick:0, dmg:boss.dmg*0.3 });
+    }
+    spawnToast('El Eco del Portal se dispersa por el suelo');
+  }
+  else if(type==='portalEchoBurst'){
+    const n=14;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2 + Math.random()*0.08;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*244, vy:Math.sin(a)*244,
+        dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:'#fffffb', life:2.0 });
+    }
+    addParticles(boss.x,boss.y,'#fffffb',20,188,0.35);
+    shake(5);
+  }
+
+  // ---- Piso 96: Guardiana del Portal (cierra el tramo — el Sol está justo del otro lado) ----
+  else if(type==='portalGuardSlam'){
+    const r = 172;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.36);
+    addParticles(boss.x,boss.y,'#fffffd',33,240,0.5);
+    spawnShockwave(boss.x,boss.y,'#fffffd',r,0.48);
+    shake(10);
+  }
+  else if(type==='portalGuardField'){
+    for(let i=0;i<5;i++){
+      const hx = clamp(p.x+rand(-176,176), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-176,176), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'light', telegraph:0.55, active:2.1, tick:0, dmg:boss.dmg*0.39 });
+    }
+    spawnToast('La Guardiana del Portal inunda el suelo — el Sol está cerca');
+  }
+  else if(type==='portalGuardBurst'){
+    const n=13;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*260, vy:Math.sin(a)*260,
+        dmg:boss.dmg*0.46, radius:7, owner:'enemy', color:'#fffffd', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#fffffd',25,204,0.4);
+    shake(6);
+  }
+
+  // ---- Piso 97: Último Custodio (el último que hace guardia — nadie viene después de él) ----
+  else if(type==='lastWardenCrush'){
+    const r = 205;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.62);
+    spawnShockwave(boss.x,boss.y,'#fffefb',r,0.57);
+    addParticles(boss.x,boss.y,'#fffefb',39,275,0.6);
+    shake(13);
+  }
+  else if(type==='lastWardenRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*58, type:'light', telegraph:0.35+ring*0.3, active:0.45, tick:0, dmg:boss.dmg*0.52 });
+    }
+    spawnToast('El Último Custodio levanta el anillo final de guardia');
+    shake(6);
+  }
+  else if(type==='lastWardenVolley'){
+    const n=4;
+    const ang0 = Math.atan2(p.y-boss.y,p.x-boss.x);
+    for(let i=0;i<n;i++){
+      const a = ang0 + (i-(n-1)/2)*0.27;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*182, vy:Math.sin(a)*182,
+        dmg:boss.dmg*1.2, radius:11, owner:'enemy', color:'#fffefb', life:3.2 });
+    }
+    shake(7);
+  }
+
+  // ---- Piso 98: Última Espina (el último dolor antes de que ya no haya más que luz) ----
+  else if(type==='lastThornLash'){
+    const r = 134;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.22);
+    game.hazards.push({ x:boss.x, y:boss.y, r:r*0.75, type:'light', telegraph:0.25, active:1.7, tick:0, dmg:boss.dmg*0.44 });
+    addParticles(boss.x,boss.y,'#fffefe',18,204,0.4);
+    shake(6);
+  }
+  else if(type==='lastThornField'){
+    for(let i=0;i<4;i++){
+      const hx = clamp(p.x+rand(-150,150), b.x+24, b.x+b.w-24);
+      const hy = clamp(p.y+rand(-150,150), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:46, type:'light', telegraph:0.6, active:2.7, tick:0, dmg:boss.dmg*0.46 });
+    }
+    addParticles(p.x,p.y,'#fffefe',16,140,0.35);
+  }
+  else if(type==='lastThornBurst'){
+    const n=8;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*226, vy:Math.sin(a)*226,
+        dmg:boss.dmg*0.68, radius:7, owner:'enemy', color:'#fffefe', life:2.5 });
+    }
+    shake(5);
+  }
+
+  // ---- Piso 99: Precursor del Sol (anuncia al Sol en persona, 5 ataques — última puerta) ----
+  else if(type==='precursorSlam'){
+    const r = 178;
+    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.4);
+    addParticles(boss.x,boss.y,'#ffffff',35,245,0.52);
+    spawnShockwave(boss.x,boss.y,'#ffffff',r,0.5);
+    shake(11);
+  }
+  else if(type==='precursorRing'){
+    for(let ring=0; ring<5; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:55+ring*60, type:'light', telegraph:0.32+ring*0.28, active:0.45, tick:0, dmg:boss.dmg*0.44 });
+    }
+    spawnToast('El Precursor del Sol traza un anillo total de luz');
+    shake(6);
+  }
+  else if(type==='precursorLine'){
+    const vertical = Math.random()<0.5;
+    const gapCenter = vertical ? p.y : p.x;
+    const spacing = 54;
+    if(vertical){
+      for(let y=b.y+30; y<b.y+b.h-30; y+=spacing){
+        if(Math.abs(y-gapCenter) < 70) continue;
+        game.hazards.push({ x:boss.x, y, r:40, type:'light', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.56 });
+      }
+    } else {
+      for(let x=b.x+30; x<b.x+b.w-30; x+=spacing){
+        if(Math.abs(x-gapCenter) < 70) continue;
+        game.hazards.push({ x, y:boss.y, r:40, type:'light', telegraph:0.85, active:1.5, tick:0, dmg:boss.dmg*0.56 });
+      }
+    }
+    spawnToast('El Precursor del Sol parte la sala con un rayo total');
+  }
+  else if(type==='precursorBurst'){
+    const n=15;
+    for(let i=0;i<n;i++){
+      const a = (i/n)*Math.PI*2;
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*260, vy:Math.sin(a)*260,
+        dmg:boss.dmg*0.4, radius:7, owner:'enemy', color:'#ffffff', life:2.4 });
+    }
+    addParticles(boss.x,boss.y,'#ffffff',26,208,0.42);
+    shake(7);
+  }
+  else if(type==='precursorCollapse'){
+    for(let ring=0; ring<4; ring++){
+      game.hazards.push({ x:boss.x, y:boss.y, r:65+ring*62, type:'light', telegraph:0.28+ring*0.3, active:0.4, tick:0, dmg:boss.dmg*0.5 });
+    }
+    addParticles(boss.x,boss.y,'#ffffff',35,248,0.52);
+    spawnToast('El Precursor del Sol colapsa — la última puerta se abre');
+    shake(9);
+  }
 }
 
 /* ---------- projectiles ---------- */
@@ -7208,7 +12059,16 @@ function updateHazards(dt){
         const p=game.player;
         if(h.tick<=0 && p.invuln<=0 && dist(h.x,h.y,p.x,p.y)<h.r){
           h.tick = h.type==='poison' ? 0.6 : 0.45;
-          hitPlayer(h.dmg);
+          // Paso Fantasma: the first time you touch each hazard type on a given floor, it's free
+          if(p.relics.effect_ghostStep && !(p._ghostStepUsed && p._ghostStepUsed[h.type])){
+            p._ghostStepUsed = p._ghostStepUsed || {};
+            p._ghostStepUsed[h.type] = true;
+            addParticles(p.x,p.y,'#ffffff',12,140,0.3);
+            spawnToast('Paso Fantasma te dejó atravesar el peligro sin daño');
+          } else {
+            hitPlayer(h.dmg);
+            if(h.slow){ p.slowTimer = Math.max(p.slowTimer, h.slow.dur); p.slowFactor = h.slow.factor; }
+          }
         }
         if(h.active<=0){ game.hazards.splice(i,1); continue; }
       }
@@ -7218,7 +12078,10 @@ function updateHazards(dt){
     if(h.tick<=0 && h.dot){
       h.tick=0.5;
       const p=game.player;
-      if(p.invuln<=0){ p.hp -= 2; addDamageText(p.x,p.y-30,2,'#8bff6b',false); }
+      if(p.invuln<=0){
+        hitPlayer(2); // was a direct `p.hp -= 2` that bypassed devMode's damage immunity entirely
+        addDamageText(p.x,p.y-30,2,'#8bff6b',false);
+      }
     }
     if(h.timer<=0) game.hazards.splice(i,1);
   }
@@ -7239,7 +12102,8 @@ function updateGoldOrbs(dt){
       g.vx*=0.9; g.vy*=0.9;
     }
     if(d<22){
-      game.gold += Math.round(g.value * p.goldMult * (game.pacts.hardMode ? 1.15 : 1) * comboFactor(p) * game.routeGoldMult);
+      game.gold += Math.round(g.value * p.goldMult * (game.pacts.hardMode ? 1.15 : 1) * (game.pacts.vultureMode ? 1.25 : 1) * comboFactor(p) * game.routeGoldMult);
+      if(p.relics.effect_lifeCurrent){ p.hp = Math.min(p.maxHp, p.hp+1); }
       game.goldOrbs.splice(i,1);
     }
   }
@@ -7296,7 +12160,7 @@ function usePotion(id){
   p.potions[id]--;
   const def = POTIONS.find(x=>x.id===id);
   if(id==='hp'){
-    p.hp = Math.min(p.maxHp, p.hp + 25);
+    p.hp = Math.min(p.maxHp, p.hp + 25*(p.relics.effect_altarBlessing?1.5:1));
     addParticles(p.x,p.y,'#e8434f',20,160,0.4);
   } else if(id==='def'){
     p.potionEffects.def = 6;
@@ -7466,6 +12330,8 @@ const EFFECT_DEFS = [
   { get:p=>p.effects.warcry, label:'Grito de Guerra', desc:'+35% daño', kind:'buff' },
   { get:p=>p.effects.shadow, label:'Paso Sombrío', desc:'invisible, +15% vel., próx. golpe crítico', kind:'buff' },
   { get:p=>p.effects.wall, label:'Escudo Sagrado', desc:'+25% reducción de daño', kind:'buff' },
+  { get:p=>p.effects.mirrorShield, label:'Escudo Especular', desc:'devuelve el daño recibido', kind:'buff' },
+  { get:p=>p.effects.mantoLuz, label:'Manto de Luz', desc:'invulnerable, +40% vel.', kind:'buff' },
   { get:p=>p.potionEffects.def, label:'Poción de Defensa', desc:'+30% reducción de daño', kind:'buff' },
   { get:p=>p.potionEffects.dmg, label:'Poción de Daño', desc:'+25% daño', kind:'buff' },
   { get:p=>p.potionEffects.spd, label:'Poción de Velocidad', desc:'+30% velocidad', kind:'buff' },
@@ -7511,18 +12377,30 @@ function syncHud(){
   if(p.qTimer>0){ qcd.style.display='flex'; qcd.textContent = p.qTimer.toFixed(1); } else qcd.style.display='none';
   if(p.eTimer>0){ ecd.style.display='flex'; ecd.textContent = p.eTimer.toFixed(1); } else ecd.style.display='none';
   const rSlot = $('r-slot');
-  if(progress.unlockedAbilities.length){
+  if(p.activeUltimate){
     rSlot.style.display='flex';
-    let best=null;
-    progress.unlockedAbilities.forEach(id=>{ const cd=p.ultCooldowns[id]||0; if(!best||cd<best.cd) best={id,cd}; });
-    const ab = ULTIMATE_ABILITIES.find(a=>a.id===best.id);
+    const ab = ULTIMATE_ABILITIES.find(a=>a.id===p.activeUltimate);
+    const cd = p.ultCooldowns[p.activeUltimate]||0;
     const rIcon = $('r-icon');
     rIcon.textContent = ab.icon;
     rIcon.style.color = ab.color;
     const rcd = $('r-cd');
-    if(best.cd>0){ rcd.style.display='flex'; rcd.textContent = best.cd.toFixed(1); } else rcd.style.display='none';
+    if(cd>0){ rcd.style.display='flex'; rcd.textContent = cd.toFixed(1); } else rcd.style.display='none';
   } else {
     rSlot.style.display='none';
+  }
+  const shiftSlot = $('shift-slot');
+  if(p.activeShiftAbility){
+    shiftSlot.style.display='flex';
+    const sab = SHIFT_ABILITIES.find(a=>a.id===p.activeShiftAbility);
+    const scd = p.shiftCooldowns[p.activeShiftAbility]||0;
+    const shiftIcon = $('shift-icon');
+    shiftIcon.textContent = sab.icon;
+    shiftIcon.style.color = sab.color;
+    const shiftCdEl = $('shift-cd');
+    if(scd>0){ shiftCdEl.style.display='flex'; shiftCdEl.textContent = scd.toFixed(1); } else shiftCdEl.style.display='none';
+  } else {
+    shiftSlot.style.display='none';
   }
   updatePhaseNote();
   if(game.boss){
@@ -7589,7 +12467,7 @@ function render(){
   ctx.restore();
 
   if(game.boss && game.boss.enrageActive) drawAbyssEnrageOverlay(game.boss);
-  if(game.phase==='bossIntro') drawBossCountdown(game.bossCountdown);
+  if(game.phase==='bossIntro' || game.phase==='ascensoBossIntro') drawBossCountdown(game.bossCountdown);
 
   ctx.restore();
 }
@@ -7662,6 +12540,7 @@ const ZONE_THEMES = {
   tormenta:  { top:'#4a4318', bottom:'#221f0a', terrainA:'#8a7d2e', terrainB:'#5e5518', grid:'rgba(255,228,90,0.12)', border:'#7a6e28', decor:'stormshard',   decorColor:'#ffe45a', secondaryColor:'#3a3612', landmark:'watchtower' },
   abismo:    { top:'#241a3e', bottom:'#0f0a1e', terrainA:'#4a3578', terrainB:'#2e2050', grid:'rgba(155,122,224,0.12)', border:'#4a3578', decor:'starpoint',    decorColor:'#c9b6ff', secondaryColor:'#3a2a5c', landmark:'monolith' },
   trono:     { top:'#4a3a14', bottom:'#221a08', terrainA:'#8a6f2e', terrainB:'#5e4c18', grid:'rgba(224,201,160,0.14)', border:'#8a6f2e', decor:'crownmotif',   decorColor:'#ffd97a', secondaryColor:'#6b5220', landmark:'thronesil' },
+  ascenso:   { top:'#0d0a1a', bottom:'#050308', terrainA:'#1a1530', terrainB:'#0a0815', grid:'rgba(160,140,220,0.10)', border:'#2a2040', decor:'starpoint',    decorColor:'#c9b6ff', secondaryColor:'#1a1530', landmark:'monolith' },
 };
 
 // Deterministic per-floor decoration layout, generated once when a stage loads (see startStage)
@@ -7924,6 +12803,141 @@ function secondaryDecorFor(decorType){
   return map[decorType] || 'crackedearth';
 }
 
+// Ascenso arenas were deliberately left undecorated (no terrain props — see enterAscensoFloor),
+// which read as too bare/empty in practice. This draws a procedural sacred-geometry mandala
+// instead: concentric rings + a rotated diamond, in magenta/cyan on the early dark floors,
+// crossfading to gold/white as ascensoLight climbs toward the Sun at floor 100.
+// Small utility: '#rrggbb' -> 'rgba(r,g,b,a)', used by the arena accent-glow rendering
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), bl = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${bl},${alpha})`;
+}
+
+// Ambient motes for Ascenso arenas — a small fixed set of drifting particles, regenerated once
+// per floor (not every frame) so this stays cheap. Cool magenta/cyan sparks on the dark floors,
+// warm drifting light motes as ascensoLight climbs toward the Sun.
+let _ascensoMotesFloor = null;
+let _ascensoMotesCache = [];
+function getAscensoMotes(b){
+  if(_ascensoMotesFloor !== game.ascensoFloor){
+    _ascensoMotesFloor = game.ascensoFloor;
+    _ascensoMotesCache = [];
+    const n = 26;
+    for(let i=0;i<n;i++){
+      _ascensoMotesCache.push({
+        fx: Math.random(), fy: Math.random(),
+        size: 1+Math.random()*2.2,
+        speed: 6+Math.random()*14,
+        phase: Math.random()*Math.PI*2,
+        drift: (Math.random()-0.5)*8,
+      });
+    }
+  }
+  return _ascensoMotesCache;
+}
+
+function drawAscensoMandala(b){
+  const light = clamp(game.ascensoLight||0, 0, 1);
+  const cx = b.x+b.w/2, cy = b.y+b.h/2;
+  const isSunFloor = game.ascensoFloor === ASCENSO_MAX_FLOOR-1;
+  const t = performance.now()/1000;
+  const colDarkA = [255,47,214];   // magenta
+  const colDarkB = [70,225,255];   // cyan
+  const colLight = [255,214,120];  // warm gold
+  const lerp3 = (c1,c2,f)=>[
+    Math.round(c1[0]*(1-f)+c2[0]*f),
+    Math.round(c1[1]*(1-f)+c2[1]*f),
+    Math.round(c1[2]*(1-f)+c2[2]*f),
+  ];
+
+  // horizon glow band across the lower third — deep violet fading up in the dark, warm dawn/dusk
+  // gradient in the light — gives the arena a sense of depth beyond the flat grid
+  ctx.save();
+  const horizonCol = lerp3(colDarkB, colLight, light);
+  const bandGrad = ctx.createLinearGradient(0, b.y+b.h*0.55, 0, b.y+b.h);
+  bandGrad.addColorStop(0, `rgba(${horizonCol[0]},${horizonCol[1]},${horizonCol[2]},0)`);
+  bandGrad.addColorStop(1, `rgba(${horizonCol[0]},${horizonCol[1]},${horizonCol[2]},${0.05+light*0.07})`);
+  ctx.fillStyle = bandGrad;
+  ctx.fillRect(b.x, b.y+b.h*0.55, b.w, b.h*0.45);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  // concentric rings, alternating accent color, slowly breathing in opacity — two staggered
+  // layers now (offset radii + offset phase) so it reads less like a single flat set of circles
+  for(let layer=0; layer<2; layer++){
+    const ringCount = 5;
+    for(let i=0;i<ringCount;i++){
+      const r = 55 + layer*24 + i*68 + Math.sin(t*0.4+i+layer)*4;
+      const baseCol = lerp3(i%2===0?colDarkA:colDarkB, colLight, light);
+      const alpha = ((0.05 + i*0.012) + light*0.05) * (layer===0?1:0.5);
+      ctx.strokeStyle = `rgba(${baseCol[0]},${baseCol[1]},${baseCol[2]},${alpha})`;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+    }
+  }
+
+  // slowly rotating diamond + square, sacred-geometry style
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(t*0.03);
+  const s = 150;
+  const diamondCol = lerp3(colDarkB, colLight, light);
+  ctx.strokeStyle = `rgba(${diamondCol[0]},${diamondCol[1]},${diamondCol[2]},${0.06+light*0.06})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0,-s); ctx.lineTo(s,0); ctx.lineTo(0,s); ctx.lineTo(-s,0); ctx.closePath();
+  ctx.stroke();
+  ctx.rotate(Math.PI/4);
+  ctx.strokeStyle = `rgba(255,255,255,${0.03+light*0.04})`;
+  ctx.strokeRect(-s*0.62,-s*0.62,s*1.24,s*1.24);
+  ctx.restore();
+
+  // radiating lines from center, faint — more of them and brighter the closer to the Sun
+  const rayCount = isSunFloor ? 16 : 8;
+  const rayCol = lerp3(colDarkA, colLight, light);
+  for(let i=0;i<rayCount;i++){
+    const ang = (i/rayCount)*Math.PI*2 + t*0.02;
+    const rr = Math.max(b.w,b.h)*0.6;
+    ctx.strokeStyle = `rgba(${rayCol[0]},${rayCol[1]},${rayCol[2]},${0.03+light*0.05})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(ang)*60, cy+Math.sin(ang)*60);
+    ctx.lineTo(cx+Math.cos(ang)*rr, cy+Math.sin(ang)*rr);
+    ctx.stroke();
+  }
+
+  // drifting ambient motes — cool sparks in the dark, warm light-dust nearer the Sun
+  const motes = getAscensoMotes(b);
+  const moteCol = lerp3(colDarkA, colLight, light);
+  motes.forEach(m=>{
+    const twinkle = 0.4+0.6*Math.abs(Math.sin(t*0.8+m.phase));
+    const yOff = ((t*m.speed + m.phase*20) % (b.h+40)) - 20;
+    const mx = b.x + m.fx*b.w + Math.sin(t*0.3+m.phase)*m.drift;
+    const my = b.y + ((m.fy*b.h - yOff) % b.h + b.h) % b.h;
+    ctx.globalAlpha = (0.15+light*0.2) * twinkle;
+    ctx.fillStyle = `rgb(${moteCol[0]},${moteCol[1]},${moteCol[2]})`;
+    ctx.beginPath(); ctx.arc(mx,my,m.size,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+
+  // the Sun's own floor gets one extra bright core glow behind everything else, gold/white
+  if(isSunFloor){
+    ctx.save();
+    const pulse = 0.5+Math.sin(t*1.4)*0.5;
+    const glow = ctx.createRadialGradient(cx,cy,10,cx,cy,Math.max(b.w,b.h)*0.5);
+    glow.addColorStop(0, `rgba(255,243,196,${0.10+pulse*0.05})`);
+    glow.addColorStop(1, 'rgba(255,243,196,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.restore();
+  }
+}
+
 function drawArena(b){
   const stage = game.currentStage;
   const theme = ZONE_THEMES[stage ? stage.key : 'cripta'] || ZONE_THEMES.cripta;
@@ -7966,6 +12980,20 @@ function drawArena(b){
     drawArenaLandmark(theme.landmark, decor.landmark, theme);
   }
 
+  // Descenso: a faint theme-colored accent glow behind the action, echoing the Ascenso mandola's
+  // sense of atmosphere without needing per-zone prop art — cheap, subtle, always-on ambiance
+  if(!game.ascenso){
+    ctx.save();
+    const cx = b.x+b.w/2, cy = b.y+b.h/2;
+    const pulse = 0.5+Math.sin(performance.now()/1400)*0.5;
+    const accentGlow = ctx.createRadialGradient(cx,cy,10,cx,cy,Math.max(b.w,b.h)*0.55);
+    accentGlow.addColorStop(0, hexToRgba(theme.decorColor, 0.05+pulse*0.03));
+    accentGlow.addColorStop(1, hexToRgba(theme.decorColor, 0));
+    ctx.fillStyle = accentGlow;
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.restore();
+  }
+
   // filled ground patches (puddles, cracks, frost...), then standing props on top of them
   if(decor && decor.patches){
     decor.patches.forEach(p2=> drawArenaSecondaryPatch(secondaryDecorFor(theme.decor), p2, theme.secondaryColor));
@@ -7988,6 +13016,17 @@ function drawArena(b){
     glow.addColorStop(1,'rgba(255,203,71,0)');
     ctx.fillStyle = glow;
     ctx.fillRect(b.x,b.y,b.w,b.h);
+  }
+
+  // Ascenso: the whole tower brightens gradually from pure darkness (floor 1) toward the light
+  // (floor 100) — a single translucent warm-white wash over the arena, opacity tied to progress
+  if(game.ascenso){
+    drawAscensoMandala(b);
+    ctx.save();
+    ctx.globalAlpha = (game.ascensoLight||0) * 0.8;
+    ctx.fillStyle = '#fff3c4';
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.restore();
   }
 
   ctx.strokeStyle = isFinal ? '#ffcb47' : theme.border;
@@ -8042,6 +13081,7 @@ const HAZARD_COLORS = {
   storm:  { ring:'rgba(255,224,90,0.8)',  fillA:'rgba(255,224,90,0.55)',  fillB:'rgba(255,224,90,0.05)' },
   void:   { ring:'rgba(138,90,217,0.8)',  fillA:'rgba(138,90,217,0.55)',  fillB:'rgba(138,90,217,0.05)' },
   light:  { ring:'rgba(255,179,236,0.8)', fillA:'rgba(255,179,236,0.55)', fillB:'rgba(255,179,236,0.05)' },
+  solar:  { ring:'rgba(255,224,140,0.9)', fillA:'rgba(255,236,180,0.6)', fillB:'rgba(255,224,140,0.08)' },
 };
 function drawHazard(h){
   const c = HAZARD_COLORS[h.type];
@@ -8624,13 +13664,122 @@ function drawBossTelegraphIndicator(boss){
     if(boss.twin && boss.twin.alive && tg.twinStartAngle!==undefined){
       drawOrigin(boss.twin.x, boss.twin.y, tg.twinStartAngle);
     }
-  } else if(tg.type==='plasmaBeam'){
-    // preview: a thin line at the starting edge while charging, then a thick moving wall of light
+  } else if(tg.type==='geoSweep'){
+    // twin parallel magenta walls with a visible gap between them — preview both starting
+    // lines while charging, then the two thick moving walls with the safe gap left dark
+    const elapsedG = tg.dur - tg.t;
+    if(elapsedG <= tg.hotAt){
+      ctx.save();
+      ctx.globalAlpha = 0.35+0.25*Math.sin(performance.now()/110);
+      ctx.strokeStyle = '#ff2fd6'; ctx.lineWidth = 6;
+      const lx = tg.fromStart ? b.x+6 : b.x+b.w-6;
+      ctx.beginPath(); ctx.moveTo(lx,b.y); ctx.lineTo(lx,b.y+b.h); ctx.stroke();
+      ctx.restore();
+    } else if(tg.curPos!==undefined){
+      const gapHalf = tg.gap/2;
+      [tg.curPos-gapHalf, tg.curPos+gapHalf].forEach(wallX=>{
+        ctx.save();
+        ctx.shadowColor = '#ff2fd6'; ctx.shadowBlur = 18;
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = '#ff2fd6'; ctx.lineWidth = 22;
+        ctx.beginPath(); ctx.moveTo(wallX,b.y); ctx.lineTo(wallX,b.y+b.h); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(wallX,b.y); ctx.lineTo(wallX,b.y+b.h); ctx.stroke();
+        ctx.restore();
+      });
+      // a faint cyan marker line down the middle of the safe gap — the "aim here" cue
+      ctx.save();
+      ctx.globalAlpha = 0.4+0.2*Math.sin(performance.now()/140);
+      ctx.strokeStyle = '#33e5ff'; ctx.lineWidth = 2;
+      ctx.setLineDash([6,8]);
+      ctx.beginPath(); ctx.moveTo(tg.curPos,b.y); ctx.lineTo(tg.curPos,b.y+b.h); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  } else if(tg.type==='stormSpiral'){
+    // charging preview: a rotating sacred-geometry glyph at El Sol's position — diamond inside
+    // a ring, magenta/cyan — before the spiral itself starts firing (handled in updateBoss)
+    const elapsedS3 = tg.dur - tg.t;
+    if(elapsedS3 <= tg.hotAt){
+      ctx.save();
+      ctx.translate(boss.x,boss.y);
+      ctx.rotate(performance.now()/260);
+      ctx.globalAlpha = 0.5+0.3*Math.sin(performance.now()/120);
+      ctx.strokeStyle = '#ff2fd6'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0,0,46,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle = '#33e5ff'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0,-30); ctx.lineTo(30,0); ctx.lineTo(0,30); ctx.lineTo(-30,0); ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
+  } else if(tg.type==='eruptionConvergence'){
+    // El Sol "se pone blanco brillante" while channeling — a bright expanding white core glow
+    ctx.save();
+    const pulse = 0.5+Math.sin(performance.now()/90)*0.5;
+    ctx.globalAlpha = 0.3+prog*0.4+pulse*0.15;
+    const r = 55+prog*45;
+    const glow = ctx.createRadialGradient(boss.x,boss.y,4,boss.x,boss.y,r);
+    glow.addColorStop(0,'rgba(255,255,255,0.95)');
+    glow.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(boss.x,boss.y,r,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  } else if(tg.type==='totalCollapse'){
+    // Colapso Total: El Sol compresses toward a single blinding point while a countdown ring
+    // drains away — the core itself (the small bright center) is what actually needs the damage
+    const collProg = boss.supernovaActive ? clamp(1-boss.supernovaTimer/boss.supernovaMaxTimer, 0, 1) : 0;
+    const coreR = Math.max(14, boss.radius*(1-collProg*0.7));
+    ctx.save();
+    // arena edges visually "cracking" — jagged lines creeping in from each corner as time runs out
+    ctx.globalAlpha = 0.15+collProg*0.35;
+    ctx.strokeStyle = '#ff2fd6';
+    ctx.lineWidth = 2;
+    const corners = [[b.x,b.y],[b.x+b.w,b.y],[b.x,b.y+b.h],[b.x+b.w,b.y+b.h]];
+    corners.forEach(([cx0,cy0])=>{
+      const dirx = cx0<boss.x?1:-1, diry = cy0<boss.y?1:-1;
+      ctx.beginPath();
+      ctx.moveTo(cx0,cy0);
+      let x=cx0,y=cy0;
+      for(let k=0;k<4;k++){
+        x += dirx*(30+Math.random()*30)*collProg;
+        y += diry*(22+Math.random()*22)*collProg;
+        ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    });
+    ctx.restore();
+    // the shrinking, ever-brighter core — the actual damage target
+    ctx.save();
+    const pulseC = 0.6+Math.sin(performance.now()/70)*0.4;
+    const coreGlow = ctx.createRadialGradient(boss.x,boss.y,2,boss.x,boss.y,coreR*2.2);
+    coreGlow.addColorStop(0, `rgba(255,255,255,${0.7+pulseC*0.3})`);
+    coreGlow.addColorStop(0.5, 'rgba(255,47,214,0.4)');
+    coreGlow.addColorStop(1, 'rgba(255,47,214,0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath(); ctx.arc(boss.x,boss.y,coreR*2.2,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(boss.x,boss.y,coreR*0.4,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    // countdown ring around the core, draining clockwise as the timer runs out
+    ctx.save();
+    ctx.strokeStyle = '#33e5ff';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(boss.x,boss.y,coreR+18,-Math.PI/2,-Math.PI/2+(1-collProg)*Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  } else if(tg.type==='plasmaBeam' || tg.type==='dawnBeam' || tg.type==='voidBeam'){
+    // preview: a thin line at the starting edge while charging, then a thick moving wall of light.
+    // dawnBeam (El Sol) reuses the exact same mechanic/telegraph, just recolored gold instead of orange.
+    const beamColor = tg.type==='dawnBeam' ? '#fff3c4' : tg.type==='voidBeam' ? '#a070c0' : '#ff6a3d';
     const elapsedB = tg.dur - tg.t;
     if(elapsedB <= tg.hotAt){
       ctx.save();
       ctx.globalAlpha = 0.35+0.25*Math.sin(performance.now()/110);
-      ctx.strokeStyle = '#ff6a3d'; ctx.lineWidth = 6;
+      ctx.strokeStyle = beamColor; ctx.lineWidth = 6;
       ctx.beginPath();
       if(tg.vertical){
         const lx = tg.fromStart ? b.x+6 : b.x+b.w-6;
@@ -8644,7 +13793,7 @@ function drawBossTelegraphIndicator(boss){
     } else if(tg.curPos!==undefined){
       ctx.save();
       ctx.globalAlpha = 0.9;
-      ctx.strokeStyle = '#ff6a3d'; ctx.lineWidth = 26;
+      ctx.strokeStyle = beamColor; ctx.lineWidth = 26;
       ctx.beginPath();
       if(tg.vertical){ ctx.moveTo(tg.curPos,b.y); ctx.lineTo(tg.curPos,b.y+b.h); }
       else { ctx.moveTo(b.x,tg.curPos); ctx.lineTo(b.x+b.w,tg.curPos); }
@@ -9059,13 +14208,14 @@ function drawPlayer(p){
   ctx.beginPath(); ctx.moveTo(p.radius,0); ctx.lineTo(p.radius+16,-8); ctx.lineTo(p.radius+16,8); ctx.closePath(); ctx.fill();
   ctx.restore();
 
-  const glowColor = p.effects.warcry>0 ? '#ff6a3d' : p.def.accent;
+  const accent = p.skinAccent || p.def.accent;
+  const glowColor = p.effects.warcry>0 ? '#ff6a3d' : accent;
   ctx.shadowColor=glowColor; ctx.shadowBlur = p.effects.warcry>0?24:14;
   ctx.fillStyle='#ece2cf';
   ctx.beginPath(); ctx.arc(0,0,p.radius,0,Math.PI*2); ctx.fill();
   ctx.shadowBlur=0;
-  ctx.strokeStyle=p.def.accent; ctx.lineWidth=3; ctx.stroke();
-  ctx.fillStyle=p.def.accent;
+  ctx.strokeStyle=accent; ctx.lineWidth=3; ctx.stroke();
+  ctx.fillStyle=accent;
   ctx.font='16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(p.def.icon,0,1);
   if(p.shield>0){
