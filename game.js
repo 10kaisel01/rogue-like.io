@@ -1069,6 +1069,13 @@ const BOSS_ATTACKS = {
   sunPrecursor: ['precursorSlam','precursorRing','precursorLine','precursorBurst','precursorCollapse'],
   theSun: ['geoSweep','stormSpiral','eruptionConvergence','zeroGravityRings','totalCollapse'],
 };
+// Any boss attack that restores boss HP (direct heal, regen-over-time, or life-drain-from-player).
+// Nerf: a boss can only roll one of these once every 10 attacks it executes (see pickBossAttack).
+const HEAL_ATTACK_TYPES = new Set([
+  'sisterCall','cryptWhisper','witchesBlessing','shadowBrew','infernalBond',
+  'healingBloom','sharedBlessing','glacialWard','stormShield','starlightDrain',
+  'voidShroud','royalAegis'
+]);
 generateFloorBosses(); // now that BOSS_DEFS/BOSS_ATTACKS exist, fill in the 90 regular-floor bosses
 
 const BOSS_ITEMS = {
@@ -5640,6 +5647,14 @@ function pickBossAttack(boss){
     const filtered = pool.filter(t=>t!=='summon');
     pool = filtered.length ? filtered : pool;
   }
+  // Heal nerf: a boss can only land a heal-type attack (direct heal, regen, or life-drain) once
+  // every 10 attacks it executes, tracked the same way as the summon cooldown above.
+  if(boss.lastHealAttack===undefined) boss.lastHealAttack = -10;
+  const canHeal = (boss.attackCount - boss.lastHealAttack) >= 10;
+  if(!canHeal && pool.some(t=>HEAL_ATTACK_TYPES.has(t))){
+    const filtered = pool.filter(t=>!HEAL_ATTACK_TYPES.has(t));
+    pool = filtered.length ? filtered : pool; // if heal was literally the only move, allow it rather than stall the boss
+  }
   let type;
   if(boss.forceNextAttack){
     type = boss.forceNextAttack;
@@ -5651,6 +5666,7 @@ function pickBossAttack(boss){
     type = pickAttackAvoidingTripleRepeat(boss, pool);
   }
   if(type==='summon') boss.lastSummonAttack = boss.attackCount;
+  if(HEAL_ATTACK_TYPES.has(type)) boss.lastHealAttack = boss.attackCount;
   const p = game.player;
   boss.telegraph = { type, t: 0.55, dur: 0.55, tx:p.x, ty:p.y };
   if(type==='blinkStrike'){
@@ -13462,12 +13478,28 @@ function drawEnemy(en){
   if(en.isElite){
     ctx.shadowColor='#ffd54a'; ctx.shadowBlur=16;
   }
+  // shared "creature" silhouette for every common enemy — a slightly notched blob instead of a
+  // bare circle, plus a pair of dark eye-slits, cheap enough to draw for a whole screen of them
+  const r = en.radius;
   ctx.fillStyle = en.hitFlash>0 ? '#ffffff' : en.def.color;
-  ctx.beginPath(); ctx.arc(0,0,en.radius,0,Math.PI*2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(0,-r);
+  ctx.quadraticCurveTo(r*0.9,-r*0.7, r*0.95,0);
+  ctx.quadraticCurveTo(r*0.9, r*0.65, r*0.35, r*0.95);
+  ctx.quadraticCurveTo(0, r*1.05, -r*0.35, r*0.95);
+  ctx.quadraticCurveTo(-r*0.9, r*0.65, -r*0.95, 0);
+  ctx.quadraticCurveTo(-r*0.9,-r*0.7, 0,-r);
+  ctx.closePath();
+  ctx.fill();
   ctx.shadowBlur=0;
   ctx.strokeStyle = en.isElite ? '#ffd54a' : 'rgba(0,0,0,0.4)';
   ctx.lineWidth = en.isElite ? 3 : 2;
   ctx.stroke();
+  ctx.fillStyle = 'rgba(10,7,16,0.85)';
+  ctx.beginPath();
+  ctx.ellipse(-r*0.28,-r*0.12, r*0.14, r*0.18, -0.3, 0, Math.PI*2);
+  ctx.ellipse(r*0.28,-r*0.12, r*0.14, r*0.18, 0.3, 0, Math.PI*2);
+  ctx.fill();
   if(en.armorHp>0){
     ctx.strokeStyle='rgba(200,200,215,0.85)';
     ctx.lineWidth=2;
@@ -13987,15 +14019,321 @@ function drawTwinCompanion(t, def){
     ctx.beginPath(); ctx.arc(0,0,t.radius+7,0,Math.PI*2); ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  ctx.fillStyle = t.hitFlash>0 ? '#ffffff' : def.color;
-  ctx.shadowColor=def.color; ctx.shadowBlur=14;
-  ctx.beginPath(); ctx.arc(0,0,t.radius,0,Math.PI*2); ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.strokeStyle='#0a0710'; ctx.lineWidth=2.5; ctx.stroke();
+  drawGuardianTwinBoss({ radius:t.radius, def, hitFlash:t.hitFlash });
   const w=t.radius*2;
   ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(-w/2,-t.radius-12,w,4);
   ctx.fillStyle='#ff9ad1'; ctx.fillRect(-w/2,-t.radius-12,w*clamp(t.hp/t.maxHp,0,1),4);
   ctx.restore();
+}
+
+// ============================================================
+// BOSS BODY ART — every Guardián de Piso (floors 10/20/30...100) gets its own hand-built
+// silhouette below. All other bosses (the 90 regular Descenso floors + every Ascenso boss)
+// intentionally share a single generic design, per design direction: only guardians are unique.
+// ============================================================
+
+// crown of triangular spikes radiating from a ring at radius r*innerRFactor — reused by several
+// guardians (and the generic boss) with different counts/colors/widths so each still reads distinctly
+function drawSpikeCrown(r, count, len, color, opts){
+  opts = opts||{};
+  const innerR = r*(opts.innerRFactor!==undefined?opts.innerRFactor:0.9);
+  const halfW = opts.width!==undefined?opts.width:0.13;
+  const rotate = opts.rotate||0;
+  ctx.save();
+  ctx.fillStyle = color;
+  for(let i=0;i<count;i++){
+    const a = (i/count)*Math.PI*2 + rotate;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a-halfW)*innerR, Math.sin(a-halfW)*innerR);
+    ctx.lineTo(Math.cos(a)*(innerR+len), Math.sin(a)*(innerR+len));
+    ctx.lineTo(Math.cos(a+halfW)*innerR, Math.sin(a+halfW)*innerR);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+// twin glowing eye dots — the one element every boss silhouette shares, so they all still read
+// as "alive" regardless of how different the rest of the body is
+function drawBossEyes(r, color){
+  ctx.save();
+  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(-r*0.22,-r*0.1,r*0.09,0,Math.PI*2);
+  ctx.arc(r*0.22,-r*0.1,r*0.09,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// ---- shared design for every non-guardian boss ----
+function drawGenericBossBody(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor = color; ctx.shadowBlur = 20;
+  drawSpikeCrown(r, 7, r*0.38, color, {rotate:performance.now()/9000});
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-15);
+  ctx.beginPath();
+  ctx.moveTo(0,-r);
+  ctx.quadraticCurveTo(r*0.95,-r*0.65, r, r*0.05);
+  ctx.quadraticCurveTo(r*0.9, r*0.75, r*0.4, r);
+  ctx.quadraticCurveTo(0, r*1.12, -r*0.4, r);
+  ctx.quadraticCurveTo(-r*0.9, r*0.75, -r, r*0.05);
+  ctx.quadraticCurveTo(-r*0.95,-r*0.65, 0,-r);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#0a0710'; ctx.lineWidth = 3; ctx.stroke();
+  drawBossEyes(r, color);
+  ctx.restore();
+}
+
+// ---- 1. Guardián de Hueso — bone crown, skull core, ribcage arcs ----
+function drawGuardianBoneGuardian(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  drawSpikeCrown(r, 10, r*0.34, '#f2ead2', {width:0.09, innerRFactor:0.9});
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : '#e8dfc4';
+  ctx.beginPath(); ctx.arc(0,0,r*0.92,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#8a7a5a'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.strokeStyle='rgba(120,105,80,0.55)'; ctx.lineWidth=2;
+  for(let i=0;i<3;i++){
+    ctx.beginPath();
+    ctx.arc(0, r*0.15, r*(0.55+i*0.14), 0.25*Math.PI, 0.75*Math.PI);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#100c14';
+  ctx.beginPath();
+  ctx.arc(-r*0.28,-r*0.15,r*0.16,0,Math.PI*2);
+  ctx.arc(r*0.28,-r*0.15,r*0.16,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// ---- 2. Bruja Madre — ragged robe, pointed hat ----
+function drawGuardianMotherWitch(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-25);
+  ctx.beginPath();
+  ctx.moveTo(-r*0.75, r*0.9);
+  for(let i=0;i<=6;i++){
+    const x = -r*0.75 + (i/6)*r*1.5;
+    const y = i%2===0 ? r*1.05 : r*0.75;
+    ctx.lineTo(x,y);
+  }
+  ctx.quadraticCurveTo(r*0.55,-r*0.2, r*0.15,-r*0.7);
+  ctx.quadraticCurveTo(0,-r*1.05,-r*0.15,-r*0.7);
+  ctx.quadraticCurveTo(-r*0.55,-r*0.2,-r*0.75,r*0.9);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle=shadeColor(color,20); ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle = shadeColor(color,-40);
+  ctx.beginPath();
+  ctx.moveTo(-r*0.42,-r*0.55); ctx.lineTo(0,-r*1.35); ctx.lineTo(r*0.42,-r*0.55);
+  ctx.closePath(); ctx.fill();
+  drawBossEyes(r*0.65, '#c9a4ff');
+  ctx.restore();
+}
+
+// ---- 3. Señor del Abismo — horns, flame-wing flares ----
+function drawGuardianAbyssLord(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=22;
+  ctx.fillStyle = shadeColor(color,-30);
+  [-1,1].forEach(side=>{
+    ctx.beginPath();
+    ctx.moveTo(side*r*0.3,-r*0.2);
+    ctx.lineTo(side*r*1.5,-r*0.6);
+    ctx.lineTo(side*r*1.15,r*0.05);
+    ctx.lineTo(side*r*1.4,r*0.35);
+    ctx.lineTo(side*r*0.55,r*0.35);
+    ctx.closePath(); ctx.fill();
+  });
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath(); ctx.arc(0,0,r*0.85,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#2a0a08'; ctx.lineWidth=3; ctx.stroke();
+  ctx.strokeStyle='#1c0806'; ctx.lineWidth=6; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-r*0.35,-r*0.6); ctx.quadraticCurveTo(-r*0.75,-r*1.25,-r*0.2,-r*1.3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(r*0.35,-r*0.6); ctx.quadraticCurveTo(r*0.75,-r*1.25,r*0.2,-r*1.3); ctx.stroke();
+  drawBossEyes(r, '#ffd54a');
+  ctx.restore();
+}
+
+// ---- 4. Emperatriz de la Luz — petal halo, small crown ----
+function drawGuardianEmpressOfLight(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=22;
+  drawSpikeCrown(r, 12, r*0.5, '#fff3fb', {width:0.11, innerRFactor:0.85, rotate:performance.now()/6000});
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath(); ctx.arc(0,0,r*0.8,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#ffe3f5'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.fillStyle='#ffe07a';
+  ctx.beginPath();
+  ctx.moveTo(-r*0.3,-r*0.6); ctx.lineTo(-r*0.15,-r*0.95); ctx.lineTo(0,-r*0.65);
+  ctx.lineTo(r*0.15,-r*0.95); ctx.lineTo(r*0.3,-r*0.6); ctx.closePath(); ctx.fill();
+  drawBossEyes(r*0.85, '#fff6ff');
+  ctx.restore();
+}
+
+// ---- 5. Reflejo — faceted crystal shell + a faint offset mirror-duplicate ----
+function drawFacetedShell(r, color, flash){
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  const facets = 8;
+  ctx.fillStyle = flash ? '#ffffff' : shadeColor(color,-10);
+  ctx.beginPath();
+  for(let i=0;i<facets;i++){
+    const a = (i/facets)*Math.PI*2;
+    const rr = r*(i%2===0?1:0.82);
+    const x = Math.cos(a)*rr, y = Math.sin(a)*rr;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.globalAlpha=0.5;
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.4; ctx.stroke();
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+function drawGuardianMirrorLord(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  ctx.translate(r*0.35, r*0.1);
+  drawFacetedShell(r*0.85, color, false);
+  ctx.restore();
+  drawFacetedShell(r, color, boss.hitFlash>0);
+  drawBossEyes(r*0.9, '#8fa8ff');
+  ctx.restore();
+}
+
+// ---- 6. Hermanas Gemelas — two overlapping circles bound by a ribbon ----
+function drawGuardianTwinBoss(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath(); ctx.arc(-r*0.18,0,r*0.78,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(r*0.18,0,r*0.78,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.globalAlpha=0.9;
+  ctx.strokeStyle='#ffe3f2'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(-r*0.18,0,r*0.78,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(r*0.18,0,r*0.78,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha=1;
+  ctx.strokeStyle='#ff6fc0'; ctx.lineWidth=2.4; ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(-r*0.5,-r*0.3); ctx.quadraticCurveTo(0, r*0.15, r*0.5,-r*0.3); ctx.stroke();
+  ctx.setLineDash([]);
+  drawBossEyes(r*0.75, '#fff0fa');
+  ctx.restore();
+}
+
+// ---- 7. Monarca del Glaciar — icy spike crown, hanging icicles ----
+function drawGuardianGlacierMonarch(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  drawSpikeCrown(r, 8, r*0.42, '#eaf9ff', {width:0.08, innerRFactor:0.86});
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath(); ctx.arc(0,0,r*0.88,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.globalAlpha=0.7;
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke();
+  ctx.globalAlpha=1;
+  ctx.fillStyle='#d8f3ff';
+  for(let i=-2;i<=2;i++){
+    const x = i*r*0.28;
+    ctx.beginPath();
+    ctx.moveTo(x-r*0.09, r*0.6); ctx.lineTo(x+r*0.09, r*0.6); ctx.lineTo(x, r*0.6+r*(0.25+Math.abs(i)*0.05));
+    ctx.closePath(); ctx.fill();
+  }
+  drawBossEyes(r, '#eafcff');
+  ctx.restore();
+}
+
+// ---- 8. Señor del Trueno — crackling lightning aura ----
+function drawGuardianStormLord(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=20;
+  ctx.strokeStyle='#fff6b0'; ctx.lineWidth=2.2; ctx.globalAlpha=0.85;
+  for(let i=0;i<5;i++){
+    const a = (i/5)*Math.PI*2 + performance.now()/500;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*r*0.9, Math.sin(a)*r*0.9);
+    ctx.lineTo(Math.cos(a+0.2)*r*1.3, Math.sin(a+0.2)*r*1.1);
+    ctx.lineTo(Math.cos(a+0.05)*r*1.5, Math.sin(a+0.05)*r*1.5);
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath(); ctx.arc(0,0,r*0.85,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#4a4408'; ctx.lineWidth=2.5; ctx.stroke();
+  drawBossEyes(r, '#fffbe0');
+  ctx.restore();
+}
+
+// ---- 9. Devorador de Estrellas — void core swallowing orbiting stars ----
+function drawGuardianStarDevourer(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=22;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-20);
+  ctx.beginPath(); ctx.arc(0,0,r*0.85,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#c9a8ff'; ctx.lineWidth=2; ctx.stroke();
+  const n=6;
+  for(let i=0;i<n;i++){
+    const a = (i/n)*Math.PI*2 + performance.now()/900;
+    const rr = r*(1.3 - (i%3)*0.15);
+    ctx.fillStyle = '#e8d8ff';
+    ctx.beginPath(); ctx.arc(Math.cos(a)*rr, Math.sin(a)*rr, 2.6,0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle='#0a0416';
+  ctx.beginPath(); ctx.arc(0,r*0.1,r*0.32,0,Math.PI*2); ctx.fill();
+  drawBossEyes(r*0.75, '#e8d8ff');
+  ctx.restore();
+}
+
+// ---- 10. El Verdadero Abismo — every spike, pulsing rim, void eyes ----
+function drawGuardianTrueFinal(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=26;
+  drawSpikeCrown(r, 16, r*0.5, '#ffffff', {width:0.06, innerRFactor:0.82, rotate:performance.now()/4000});
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-6);
+  ctx.beginPath(); ctx.arc(0,0,r*0.78,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#0a0710'; ctx.lineWidth=2.5; ctx.stroke();
+  const pulse = 0.5+Math.sin(performance.now()/200)*0.3;
+  ctx.strokeStyle=`rgba(255,255,255,${0.4+pulse*0.3})`; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(0,0,r*0.95,0,Math.PI*2); ctx.stroke();
+  drawBossEyes(r*0.7, '#0a0710');
+  ctx.restore();
+}
+
+const GUARDIAN_BODY_DRAWERS = {
+  boneGuardian: drawGuardianBoneGuardian,
+  motherWitch: drawGuardianMotherWitch,
+  abyssLord: drawGuardianAbyssLord,
+  empressOfLight: drawGuardianEmpressOfLight,
+  mirrorLord: drawGuardianMirrorLord,
+  twinBoss: drawGuardianTwinBoss,
+  glacierMonarch: drawGuardianGlacierMonarch,
+  stormLord: drawGuardianStormLord,
+  starDevourer: drawGuardianStarDevourer,
+  trueFinal: drawGuardianTrueFinal,
+};
+function drawBossBody(boss){
+  const fn = GUARDIAN_BODY_DRAWERS[boss.kind];
+  if(fn) fn(boss); else drawGenericBossBody(boss);
 }
 
 function drawBoss(boss){
@@ -14032,11 +14370,7 @@ function drawBoss(boss){
     ctx.beginPath(); ctx.arc(0,0,boss.radius+7,0,Math.PI*2); ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : boss.def.color;
-  ctx.shadowColor=boss.def.color; ctx.shadowBlur=18;
-  ctx.beginPath(); ctx.arc(0,0,boss.radius,0,Math.PI*2); ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.strokeStyle='#0a0710'; ctx.lineWidth=3; ctx.stroke();
+  drawBossBody(boss);
   ctx.restore();
 }
 
@@ -14201,23 +14535,79 @@ function drawPlayer(p){
         life:0.6, maxLife:0.6, color:'#a44fd9', r:1.8, type:'circle' });
     }
   }
-  // facing indicator
-  ctx.save();
-  ctx.rotate(p.facing);
-  ctx.fillStyle='rgba(255,255,255,0.15)';
-  ctx.beginPath(); ctx.moveTo(p.radius,0); ctx.lineTo(p.radius+16,-8); ctx.lineTo(p.radius+16,8); ctx.closePath(); ctx.fill();
-  ctx.restore();
-
   const accent = p.skinAccent || p.def.accent;
   const glowColor = p.effects.warcry>0 ? '#ff6a3d' : accent;
-  ctx.shadowColor=glowColor; ctx.shadowBlur = p.effects.warcry>0?24:14;
-  ctx.fillStyle='#ece2cf';
-  ctx.beginPath(); ctx.arc(0,0,p.radius,0,Math.PI*2); ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.strokeStyle=accent; ctx.lineWidth=3; ctx.stroke();
-  ctx.fillStyle=accent;
-  ctx.font='16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(p.def.icon,0,1);
+  const r = p.radius;
+  const dark = shadeColor(accent, -68);
+
+  // ---- ground shadow, so the figure reads as standing on the floor rather than floating ----
+  ctx.save();
+  ctx.globalAlpha *= 0.32;
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(0, r*0.8, r*0.82, r*0.3, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // ---- hooded body: a robed silhouette instead of a bare circle ----
+  ctx.save();
+  ctx.shadowColor = glowColor; ctx.shadowBlur = p.effects.warcry>0?26:15;
+  const bodyGrad = ctx.createLinearGradient(0,-r,0,r*0.9);
+  bodyGrad.addColorStop(0, dark);
+  bodyGrad.addColorStop(1, '#15111c');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.moveTo(-r*0.6, r*0.9);
+  ctx.quadraticCurveTo(-r*0.95, r*0.05, -r*0.44, -r*0.58);
+  ctx.quadraticCurveTo(0, -r*0.95, r*0.44, -r*0.58);
+  ctx.quadraticCurveTo(r*0.95, r*0.05, r*0.6, r*0.9);
+  ctx.quadraticCurveTo(0, r*1.08, -r*0.6, r*0.9);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = accent; ctx.lineWidth = 2.6; ctx.stroke();
+
+  // hood shadow — the "face" reads as a void rather than a drawn face, keeping every hero
+  // legible from a distance regardless of class
+  ctx.fillStyle = 'rgba(6,4,10,0.88)';
+  ctx.beginPath(); ctx.ellipse(0,-r*0.22, r*0.32, r*0.38, 0, 0, Math.PI*2); ctx.fill();
+
+  // twin glowing eyes in the class's accent color
+  ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = 9;
+  ctx.beginPath();
+  ctx.arc(-r*0.12,-r*0.22,r*0.065,0,Math.PI*2);
+  ctx.arc(r*0.12,-r*0.22,r*0.065,0,Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // chest emblem — removed: the old flat emoji-icon look, now that the robed silhouette itself
+  // carries the class identity via accent color + weapon shape
+  ctx.restore();
+
+  // ---- weapon, rotates with aim so melee/ranged read differently at a glance ----
+  ctx.save();
+  ctx.rotate(p.facing);
+  const atkKind = p.def.atk ? p.def.atk.kind : (p.stance==='ranged' ? 'ranged' : 'melee');
+  if(atkKind==='melee'){
+    ctx.save();
+    ctx.translate(r*0.85,0);
+    ctx.fillStyle = accent;
+    ctx.fillRect(-5,-2.5,7,5); // hilt
+    ctx.beginPath();
+    ctx.moveTo(2,-3); ctx.lineTo(r*0.85,-1.6); ctx.lineTo(r*0.98,0); ctx.lineTo(r*0.85,1.6); ctx.lineTo(2,3);
+    ctx.closePath();
+    ctx.fillStyle = '#d8d2c4'; ctx.fill();
+    ctx.strokeStyle = accent; ctx.lineWidth = 1.1; ctx.stroke();
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.translate(r*0.92,0);
+    ctx.strokeStyle = shadeColor(accent,-40); ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.moveTo(-r*0.42,0); ctx.lineTo(r*0.2,0); ctx.stroke();
+    ctx.fillStyle = accent; ctx.shadowColor = accent; ctx.shadowBlur = 9;
+    ctx.beginPath(); ctx.arc(r*0.3,0,4,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+  ctx.restore();
+
   if(p.shield>0){
     ctx.strokeStyle='#ffcb47'; ctx.lineWidth=2.5; ctx.globalAlpha=0.8;
     ctx.beginPath(); ctx.arc(0,0,p.radius+7,0,Math.PI*2); ctx.stroke();

@@ -154,9 +154,29 @@
     </div>
 
     <div class="boss-hp" id="boss-hp-wrap">
-      <div class="name" id="boss-name">Jefe</div>
+      <div class="boss-hp-crest"><span class="boss-hp-gem"></span></div>
+      <div class="boss-hp-emblem" aria-hidden="true">
+        <svg viewBox="0 0 60 60" width="34" height="34">
+          <path d="M30 4 L20 16 L8 12 L12 24 L2 30 L12 36 L8 48 L20 44 L30 56 L40 44 L52 48 L48 36 L58 30 L48 24 L52 12 L40 16 Z"
+                fill="var(--void-2)" stroke="var(--gold)" stroke-width="1.4"/>
+          <circle cx="21" cy="27" r="5" fill="var(--void)" stroke="var(--ember)" stroke-width="1.2"/>
+          <circle cx="39" cy="27" r="5" fill="var(--void)" stroke="var(--ember)" stroke-width="1.2"/>
+          <path d="M23 40 Q30 46 37 40 Q30 44 23 40Z" fill="var(--ember-dim)"/>
+          <path d="M14 18 Q6 8 10 2" fill="none" stroke="var(--bone-dim)" stroke-width="2.4" stroke-linecap="round"/>
+          <path d="M46 18 Q54 8 50 2" fill="none" stroke="var(--bone-dim)" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="boss-hp-plate">
+        <div class="name" id="boss-name">Jefe</div>
+        <div class="boss-hp-runes" aria-hidden="true">ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛈᛇᛉᛊᛏᛒᛖᛗᛚᛜᛟᛞᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛈᛇᛉ</div>
+        <div class="boss-bar-shell">
+          <div class="boss-bar-fill" id="boss-hp-fill" style="width:100%">
+            <div class="boss-bar-arc"></div>
+          </div>
+        </div>
+        <div class="boss-hp-runes bottom" aria-hidden="true">ᛊᛏᛒᛖᛗᛚᛜᛟᛞᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛈᛇᛉᛊᛏᛒᛖᛗ</div>
+      </div>
       <div class="attack-name" id="boss-attack-name"></div>
-      <div class="boss-bar-shell"><div class="boss-bar-fill" id="boss-hp-fill" style="width:100%"></div></div>
     </div>
 
     <div class="prompt-toast" id="prompt-toast"></div>
