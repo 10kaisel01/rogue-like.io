@@ -2943,21 +2943,28 @@ function onAscensoStageClear(){
 function finishAscensoVictory(){
   $('hud').classList.add('hidden');
   progress.bestStage = Math.max(progress.bestStage, TOWER_MAX_FLOOR); // Ascenso doesn't have its own separate high-score field yet — see continuation doc
+  const newlyUnlockedShift = [];
   SHIFT_ABILITIES.forEach(a=>{
     if(!progress.unlockedShiftAbilities.includes(a.id)){
       progress.unlockedShiftAbilities.push(a.id);
+      newlyUnlockedShift.push(a);
       spawnToast(`☀ Habilidad de Luz desbloqueada: ${a.name}`);
     }
   });
   saveProgress();
   recordRunHistory('victory');
+  // the toast above can get missed since it fades after ~3s — put it in the summary too so it's
+  // impossible to miss what you just unlocked
+  const shiftLine = newlyUnlockedShift.length
+    ? `<br>☀ Habilidad${newlyUnlockedShift.length>1?'es':''} de Luz desbloqueada${newlyUnlockedShift.length>1?'s':''}: <b>${newlyUnlockedShift.map(a=>a.name).join(', ')}</b> — tecla Shift, elegila en Habilidades Prohibidas`
+    : '';
   $('victory-summary').innerHTML = `
     <div id="run-summary">
       Personaje: <b>${game.player.def.name}</b><br>
       <b>Ascendiste hasta El Sol y volviste</b><br>
       Enemigos eliminados: <b>${game.kills}</b><br>
       Oro final: <b>${game.gold}</b><br>
-      Objetos obtenidos: <b>${game.player.items.length}</b>
+      Objetos obtenidos: <b>${game.player.items.length}</b>${shiftLine}
     </div>`;
   $('btn-ascend').classList.add('hidden'); // already ascended — nothing more to offer here yet
   showScreen('screen-victory');
@@ -14072,11 +14079,20 @@ function drawArena(b){
   }
 
   // Ascenso: the whole tower brightens gradually from pure darkness (floor 1) toward the light
-  // (floor 100) — a single translucent warm-white wash over the arena, opacity tied to progress
+  // (floor 100). Used to be a single flat rect at up to 0.8 alpha, which washed the mandala
+  // underneath out into "just yellow" near the Sun — now a radial glow (reads as light gathering
+  // toward a source rather than a flat tint) plus a much weaker flat warm wash underneath.
   if(game.ascenso){
     drawAscensoMandala(b);
     ctx.save();
-    ctx.globalAlpha = (game.ascensoLight||0) * 0.8;
+    const lightAmt = (game.ascensoLight||0);
+    const glowGrad = ctx.createRadialGradient(b.x+b.w/2, b.y+b.h*0.42, 10, b.x+b.w/2, b.y+b.h*0.42, Math.max(b.w,b.h)*0.75);
+    glowGrad.addColorStop(0, `rgba(255,246,214,${lightAmt*0.55})`);
+    glowGrad.addColorStop(0.55, `rgba(255,224,150,${lightAmt*0.22})`);
+    glowGrad.addColorStop(1, 'rgba(255,203,71,0)');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.globalAlpha = lightAmt*0.18;
     ctx.fillStyle = '#fff3c4';
     ctx.fillRect(b.x,b.y,b.w,b.h);
     ctx.restore();
@@ -15203,6 +15219,126 @@ function bossVariantIndex(boss){
   return h % GENERIC_BOSS_VARIANTS.length;
 }
 
+// ---- Ascenso-only generic variants: every regular Ascenso boss (not theSun/sunPrecursor, which
+// get their own bespoke art below) picks from this pool instead of Descenso's earthy/monster
+// GENERIC_BOSS_VARIANTS, so Ascenso reads as its own distinct, more luminous/ethereal place ----
+function drawAscensoVariantShard(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=20;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath();
+  ctx.moveTo(0,-r*1.1);
+  ctx.lineTo(r*0.6,-r*0.1);
+  ctx.lineTo(r*0.32,r*1.0);
+  ctx.lineTo(-r*0.32,r*1.0);
+  ctx.lineTo(-r*0.6,-r*0.1);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.globalAlpha=0.3;
+  ctx.beginPath(); ctx.moveTo(-r*0.15,r*0.9); ctx.lineTo(0,r*1.6); ctx.lineTo(r*0.15,r*0.9); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha=1;
+  drawBossEyes(r*0.55, '#ffffff');
+  ctx.restore();
+}
+function drawAscensoVariantSoul(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/1000;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=22;
+  ctx.globalAlpha=0.85;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath(); ctx.arc(0,0,r*0.8,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.shadowBlur=0;
+  for(let i=0;i<2;i++){
+    ctx.save();
+    ctx.rotate(t*0.5*(i===0?1:-1) + i*Math.PI/2);
+    ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.ellipse(0,0,r*1.15,r*0.4,0,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+  drawBossEyes(r*0.7, '#ffffff');
+  ctx.restore();
+}
+function drawAscensoVariantEcho(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/1000;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  for(let i=0;i<3;i++){
+    const pulse = (Math.sin(t*1.4 - i*0.6)+1)/2;
+    ctx.globalAlpha = 0.25+pulse*0.2;
+    ctx.strokeStyle = color; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(0,0,r*(0.5+i*0.25),0,Math.PI*2); ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath(); ctx.arc(0,0,r*0.45,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  drawBossEyes(r*0.35, '#ffffff');
+  ctx.restore();
+}
+const ASCENSO_BOSS_VARIANTS = [drawAscensoVariantShard, drawAscensoVariantSoul, drawAscensoVariantEcho];
+
+// ---- El Sol (piso 100 de Ascenso) — the true final boss of the whole game, gets the most
+// elaborate treatment: rotating double corona, bright radial-gradient core, dark solar-flare eyes
+// (everything else is blinding, so the eyes read dark instead of glowing like every other boss) ----
+function drawGuardianTheSun(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/1000;
+  ctx.save();
+  ctx.shadowColor = '#fff6d0'; ctx.shadowBlur = 40;
+  ctx.save(); ctx.rotate(t*0.15);
+  drawSpikeCrown(r, 20, r*0.9, 'rgba(255,224,140,0.55)', {width:0.045, innerRFactor:0.75});
+  ctx.restore();
+  ctx.save(); ctx.rotate(-t*0.08);
+  drawSpikeCrown(r, 12, r*0.55, '#fff6d0', {width:0.07, innerRFactor:0.82});
+  ctx.restore();
+  const coreGrad = ctx.createRadialGradient(0,0,0,0,0,r*0.85);
+  coreGrad.addColorStop(0, '#ffffff');
+  coreGrad.addColorStop(0.5, '#ffe9a8');
+  coreGrad.addColorStop(1, boss.hitFlash>0 ? '#ffffff' : color);
+  ctx.fillStyle = coreGrad;
+  ctx.beginPath(); ctx.arc(0,0,r*0.78,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0,0,r*0.78,0,Math.PI*2); ctx.stroke();
+  drawBossEyes(r*0.75, '#3a2400');
+  ctx.restore();
+}
+// ---- Precursor del Sol — an eclipsed, not-yet-risen sun: darker core, cracks of shadow across
+// the disc, a smaller/dimmer corona foreshadowing what floor 100 becomes ----
+function drawGuardianSunPrecursor(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/1000;
+  ctx.save();
+  ctx.shadowColor = color; ctx.shadowBlur = 24;
+  ctx.save(); ctx.rotate(t*0.1);
+  drawSpikeCrown(r, 10, r*0.5, shadeColor(color,10), {width:0.06, innerRFactor:0.82});
+  ctx.restore();
+  const coreGrad = ctx.createRadialGradient(0,0,0,0,0,r*0.85);
+  coreGrad.addColorStop(0, shadeColor(color,20));
+  coreGrad.addColorStop(0.6, color);
+  coreGrad.addColorStop(1, shadeColor(color,-40));
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : coreGrad;
+  ctx.beginPath(); ctx.arc(0,0,r*0.82,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle = 'rgba(10,5,0,0.55)'; ctx.lineWidth=2;
+  for(let i=0;i<4;i++){
+    const a = (i/4)*Math.PI*2 + 0.4;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*r*0.15, Math.sin(a)*r*0.15);
+    ctx.lineTo(Math.cos(a)*r*0.75, Math.sin(a)*r*0.75);
+    ctx.stroke();
+  }
+  ctx.strokeStyle='#0a0710'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.arc(0,0,r*0.82,0,Math.PI*2); ctx.stroke();
+  drawBossEyes(r*0.7, '#fff6d0');
+  ctx.restore();
+}
+
 // ---- 1. Guardián de Hueso — bone crown, skull core, ribcage arcs ----
 function drawGuardianBoneGuardian(boss){
   const r = boss.radius, color = boss.def.color;
@@ -15448,10 +15584,16 @@ const GUARDIAN_BODY_DRAWERS = {
   stormLord: drawGuardianStormLord,
   starDevourer: drawGuardianStarDevourer,
   trueFinal: drawGuardianTrueFinal,
+  theSun: drawGuardianTheSun,
+  sunPrecursor: drawGuardianSunPrecursor,
 };
 function drawBossBody(boss){
   const fn = GUARDIAN_BODY_DRAWERS[boss.kind];
   if(fn){ fn(boss); return; }
+  if(game.ascenso){
+    ASCENSO_BOSS_VARIANTS[bossVariantIndex(boss) % ASCENSO_BOSS_VARIANTS.length](boss);
+    return;
+  }
   GENERIC_BOSS_VARIANTS[bossVariantIndex(boss)](boss);
 }
 
