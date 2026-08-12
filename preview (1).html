@@ -835,6 +835,166 @@ const HEROES = {
     locked:true, unlockAch:'critMaster',
     scaling:{stat:'dmg', perLevel:0.04},
   },
+  torque: {
+    id:'torque', name:'Torque', className:'Arponero', icon:'🪝', accent:'#4fae9c', glow:'rgba(79,174,156,0.35)',
+    hp:130, speed:225, atk:{cd:0.45, dmg:12, range:460, projSpeed:520, radius:6, kind:'ranged'},
+    q:{name:'Garfio', icon:'🪝', cd:7, desc:'Engancha al enemigo más cercano frente tuyo, lo atrae y lo aturde'},
+    e:{name:'Cadena Punitiva', icon:'⛓', cd:12, desc:'Golpea y aturde a los enemigos cerca del último objetivo enganchado'},
+    locked:true, unlockAch:'deepDescent25',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  frey: {
+    id:'frey', name:'Frey', className:'Portador de Escarcha', icon:'❄', accent:'#8fd8ff', glow:'rgba(143,216,255,0.35)',
+    hp:100, speed:220, atk:{cd:0.5, dmg:12, range:420, projSpeed:440, radius:6, kind:'ranged'},
+    q:{name:'Escarcha Total', icon:'❄', cd:8, desc:'Congela al enemigo más cercano, dejándolo indefenso'},
+    e:{name:'Golpe Rompehielo', icon:'💠', cd:6, desc:'Golpe en área: hace añicos a los enemigos congelados para daño masivo'},
+    locked:true, unlockAch:'armoredRun',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  dorian: {
+    id:'dorian', name:'Dorian', className:'Duelista', icon:'🤺', accent:'#e0455a', glow:'rgba(224,69,90,0.35)',
+    hp:150, speed:245, atk:{cd:0.4, dmg:14, range:88, arc:70, kind:'melee'},
+    q:{name:'Postura de Parry', icon:'🤺', cd:9, desc:'Si te golpean durante la ventana, absorbés el golpe, explotás alrededor y ganás una carga de Contragolpe'},
+    e:{name:'Contragolpe', icon:'⚔', cd:7, desc:'Golpe certero; consume una carga de Contragolpe (si la tenés) para un impacto devastador'},
+    locked:true, unlockAch:'empoweredRun',
+    scaling:{stat:'dmg', perLevel:0.04},
+  },
+  ferro: {
+    id:'ferro', name:'Ferro', className:'Ingeniero', icon:'⚙', accent:'#c9a24a', glow:'rgba(201,162,74,0.35)',
+    hp:120, speed:230, atk:{cd:0.42, dmg:11, range:380, projSpeed:480, radius:6, kind:'ranged'},
+    q:{name:'Torreta', icon:'⚙', cd:10, desc:'Planta una torreta estacionaria que dispara sola a los enemigos cercanos'},
+    e:{name:'Sobrecarga', icon:'💥', cd:8, desc:'Detona una carga en la posición de tu torreta y le recarga la vida útil (o te da un escudo si no tenés una activa)'},
+    locked:true, unlockAch:'lifestealRun',
+    scaling:{stat:'dmg', perLevel:0.03},
+  },
+  mecha: {
+    id:'mecha', name:'Mecha', className:'Zapador', icon:'💣', accent:'#c96a4a', glow:'rgba(201,106,74,0.35)',
+    hp:110, speed:235, atk:{cd:0.5, dmg:10, range:360, projSpeed:400, radius:7, kind:'ranged'},
+    q:{name:'Sembrar Minas', icon:'💣', cd:6, desc:'Planta 2 minas de proximidad frente tuyo, se arman al toque y detonan solas con cualquier enemigo cerca'},
+    e:{name:'Detonación Remota', icon:'💥', cd:10, desc:'Detona todas las minas activas al instante, estén donde estén'},
+    locked:true, unlockAch:'veteranLevel15',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  arakne: {
+    id:'arakne', name:'Arakne', className:'Tejedora', icon:'🕷', accent:'#b89cff', glow:'rgba(184,156,255,0.35)',
+    hp:105, speed:240, atk:{cd:0.4, dmg:11, range:380, projSpeed:460, radius:6, kind:'ranged'},
+    q:{name:'Red Pegajosa', icon:'🕸', cd:8, desc:'Un cono de telaraña enreda y ralentiza a los enemigos frente tuyo'},
+    e:{name:'Embestida de Seda', icon:'🕷', cd:8, desc:'Dash que golpea a todo en tu camino; daño mucho mayor contra enemigos enredados'},
+    locked:true, unlockAch:'regenRun',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  rasha: {
+    id:'rasha', name:'Rasha', className:'Domadora de Manada', icon:'🦊', accent:'#e0a24a', glow:'rgba(224,162,74,0.35)',
+    hp:115, speed:238, atk:{cd:0.42, dmg:10, range:360, projSpeed:420, radius:6, kind:'ranged'},
+    q:{name:'Convocar Manada', icon:'🦊', cd:5, desc:'Suma una cría a tu manada (hasta 4 a la vez); con la manada al máximo, les recarga la vida útil'},
+    e:{name:'Embestida de Jauría', icon:'💥', cd:12, desc:'Toda tu manada converge y detona donde esté; si no tenés manada, te cura'},
+    locked:true, unlockAch:'killStreak450',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  marlow: {
+    id:'marlow', name:'Marlow', className:'Titiritero', icon:'🪆', accent:'#c98fd8', glow:'rgba(201,143,216,0.35)',
+    hp:110, speed:230, atk:{cd:0.42, dmg:10, range:380, projSpeed:440, radius:6, kind:'ranged'},
+    q:{name:'Marioneta', icon:'🪆', cd:9, desc:'Planta una marioneta ancla, quieta, que no ataca'},
+    e:{name:'Tirón de Hilo', icon:'⛓', cd:9, desc:'Recuperás la marioneta de un tirón, dañando y arrastrando hacia vos todo lo que estaba cerca de ella'},
+    locked:true, unlockAch:'richRun1000',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  orbis: {
+    id:'orbis', name:'Orbis', className:'Gravimante', icon:'🪐', accent:'#8a5fd8', glow:'rgba(138,95,216,0.35)',
+    hp:100, speed:215, atk:{cd:0.48, dmg:12, range:400, projSpeed:400, radius:7, kind:'ranged'},
+    q:{name:'Pozo de Gravedad', icon:'🪐', cd:11, desc:'Crea un pozo que atrae y daña a los enemigos comunes cercanos por un tiempo'},
+    e:{name:'Colapso', icon:'💥', cd:9, desc:'Hace colapsar el pozo activo en una explosión que lanza y daña a todo alrededor; si no hay pozo, te da un escudo'},
+    locked:true, unlockAch:'comboMaster55',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  skald: {
+    id:'skald', name:'Skald', className:'Caballero Rúnico', icon:'ᚱ', accent:'#b08d57', glow:'rgba(176,141,87,0.35)',
+    hp:170, speed:225, atk:{cd:0.45, dmg:15, range:92, arc:72, kind:'melee'},
+    q:{name:'Inscribir Runa', icon:'ᚱ', cd:5, desc:'Ganás una carga de runa (hasta 5) y un breve empuje de daño'},
+    e:{name:'Detonar Runas', icon:'💥', cd:8, desc:'Consume todas tus runas en una explosión cuyo daño escala con cuántas tenías; sin runas, te da un escudo'},
+    locked:true, unlockAch:'deepDescent35',
+    scaling:{stat:'hp', perLevel:0.035},
+  },
+  morbus: {
+    id:'morbus', name:'Morbus', className:'Médico de la Plaga', icon:'☣', accent:'#7ad14a', glow:'rgba(122,209,74,0.35)',
+    hp:115, speed:225, atk:{cd:0.45, dmg:10, range:380, projSpeed:420, radius:6, kind:'ranged'},
+    q:{name:'Plaga', icon:'☣', cd:7, desc:'Infecta al enemigo más cercano; la plaga salta sola a otros enemigos cercanos mientras hace tictac'},
+    e:{name:'Infección Propia', icon:'🧪', cd:9, desc:'Te infectás para robar vida de lo que contagiás o dañás a tu alrededor'},
+    locked:true, unlockAch:'ironBody550',
+    scaling:{stat:'dmg', perLevel:0.03},
+  },
+  tempus: {
+    id:'tempus', name:'Tempus', className:'Crononauta', icon:'⏳', accent:'#5fc9e6', glow:'rgba(95,201,230,0.35)',
+    hp:95, speed:220, atk:{cd:0.48, dmg:11, range:400, projSpeed:420, radius:6, kind:'ranged'},
+    q:{name:'Zona de Tiempo Lento', icon:'⏳', cd:10, desc:'Crea una zona que ralentiza a los enemigos comunes dentro por un tiempo'},
+    e:{name:'Rebobinado', icon:'⏪', cd:14, desc:'Volvés a tu posición de hace unos segundos y recuperás parte de la vida perdida en esa ventana'},
+    locked:true, unlockAch:'fastCooldownRun',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  seren: {
+    id:'seren', name:'Seren', className:'Danzante de Cuchillas', icon:'💃', accent:'#ff8fd0', glow:'rgba(255,143,208,0.35)',
+    hp:95, speed:255, atk:{cd:0.32, dmg:10, range:80, arc:64, kind:'melee'},
+    q:{name:'Paso de Cuchilla', icon:'💃', cd:4, desc:'Dash corto que golpea; si conecta, encadena (hasta 3 seguidos)'},
+    e:{name:'Giro Final', icon:'🌀', cd:8, desc:'Giro cuyo daño escala con cuántos dashes tenías encadenados'},
+    locked:true, unlockAch:'comboMaster70',
+    scaling:{stat:'dmg', perLevel:0.04},
+  },
+  rowan: {
+    id:'rowan', name:'Rowan', className:'Jinete Espectral', icon:'🐴', accent:'#d9c98f', glow:'rgba(217,201,143,0.35)',
+    hp:140, speed:235, atk:{cd:0.4, dmg:13, range:86, arc:68, kind:'melee'},
+    q:{name:'Montar', icon:'🐴', cd:13, desc:'Montás un corcel espectral: +60% velocidad y atropellás a lo que toques'},
+    e:{name:'Desmontar', icon:'💥', cd:10, desc:'Onda de choque; mucho más fuerte si seguís montado al usarla'},
+    locked:true, unlockAch:'speedRun',
+    scaling:{stat:'hp', perLevel:0.035},
+  },
+  talus: {
+    id:'talus', name:'Talus', className:'Terramante', icon:'🗿', accent:'#c9a878', glow:'rgba(201,168,120,0.35)',
+    hp:150, speed:210, atk:{cd:0.5, dmg:12, range:380, projSpeed:380, radius:7, kind:'ranged'},
+    q:{name:'Erupción', icon:'🗿', cd:9, desc:'Telegrafía y luego erupciona una línea de picos de tierra frente tuyo'},
+    e:{name:'Emboscada', icon:'💥', cd:11, desc:'Avanzás con invulnerabilidad hasta el enemigo más cercano y emergés con un golpe devastador'},
+    locked:true, unlockAch:'armoredRun70',
+    scaling:{stat:'hp', perLevel:0.04},
+  },
+  lira: {
+    id:'lira', name:'Lira', className:'Bardo', icon:'🎵', accent:'#ffcb6a', glow:'rgba(255,203,106,0.35)',
+    hp:110, speed:230, atk:{cd:0.4, dmg:10, range:380, projSpeed:420, radius:6, kind:'ranged'},
+    q:{name:'Canción', icon:'🎵', cd:3, desc:'Rota entre 3 canciones cada vez que la usás: daño, velocidad, curación'},
+    e:{name:'Crescendo', icon:'🎶', cd:9, desc:'Amplifica la canción activa en una versión mucho más fuerte'},
+    locked:true, unlockAch:'flatSpeedRun',
+    scaling:{stat:'dmg', perLevel:0.03},
+  },
+  amara: {
+    id:'amara', name:'Amara', className:'Poseedora', icon:'👻', accent:'#9c6fd8', glow:'rgba(156,111,216,0.35)',
+    hp:95, speed:225, atk:{cd:0.42, dmg:11, range:380, projSpeed:420, radius:6, kind:'ranged'},
+    q:{name:'Poseer', icon:'👻', cd:10, desc:'Tomás el control de un enemigo común cercano: pelea para vos por un tiempo'},
+    e:{name:'Autodestrucción', icon:'💥', cd:8, desc:'Fuerza a lo poseído a explotar; si no tenés nada poseído, un golpe menor a tu alrededor'},
+    locked:true, unlockAch:'sevenBosses',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  midas: {
+    id:'midas', name:'Midas', className:'Transmutador', icon:'👑', accent:'#ffd24a', glow:'rgba(255,210,74,0.35)',
+    hp:105, speed:225, atk:{cd:0.4, dmg:11, range:380, projSpeed:440, radius:6, kind:'ranged'},
+    q:{name:'Toque Dorado', icon:'💰', cd:6, desc:'Convierte tu propio oro en un escudo de daño (mínimo 20 de oro)'},
+    e:{name:'Desvío Dorado', icon:'👑', cd:8, desc:'Desvía los proyectiles enemigos cercanos y los convierte en oro'},
+    locked:true, unlockAch:'richRun2000',
+    scaling:{stat:'dmg', perLevel:0.03},
+  },
+  borea: {
+    id:'borea', name:'Borea', className:'Domadora de Vientos', icon:'🌬', accent:'#a8e0ff', glow:'rgba(168,224,255,0.35)',
+    hp:105, speed:245, atk:{cd:0.38, dmg:10, range:400, projSpeed:460, radius:6, kind:'ranged'},
+    q:{name:'Vórtice', icon:'🌬', cd:11, desc:'Crea un vórtice que absorbe proyectiles enemigos cercanos y banca su daño'},
+    e:{name:'Liberar', icon:'💨', cd:9, desc:'Libera todo lo absorbido en una ráfaga; más fuerte cuanto más absorbiste'},
+    locked:true, unlockAch:'regenRun5',
+    scaling:{stat:'dmg', perLevel:0.035},
+  },
+  anselm: {
+    id:'anselm', name:'Anselm', className:'Peregrino de Piedra', icon:'🪨', accent:'#9c9c9c', glow:'rgba(156,156,156,0.35)',
+    hp:190, speed:205, atk:{cd:0.5, dmg:13, range:90, arc:68, kind:'melee'},
+    q:{name:'Petrificarse', icon:'🪨', cd:12, desc:'Te volvés piedra: inmune e inmóvil, reflejás daño a lo que te golpee cerca'},
+    e:{name:'Romper Forma', icon:'💥', cd:9, desc:'Rompés la forma de piedra en una explosión; más daño cuanto más tiempo estuviste petrificado'},
+    locked:true, unlockAch:'ironBody700',
+    scaling:{stat:'hp', perLevel:0.04},
+  },
 };
 
 const ACHIEVEMENTS = [
@@ -870,9 +1030,51 @@ const ACHIEVEMENTS = [
     check: g=> g.player.maxHp>=450, target:450, progressVal: g=> Math.round(g.player.maxHp) },
   { id:'critMaster', name:'Filo Certero', desc:'Alcanza 30% de probabilidad de golpe crítico en una run', unlocks:'cazador',
     check: g=> g.player.critChance>=0.30, target:30, progressVal: g=> Math.round(g.player.critChance*100) },
+  { id:'deepDescent25', name:'Sondeadora del Abismo', desc:'Alcanza la etapa 25', unlocks:'torque',
+    check: g=> g.stats.stageReached>=25, target:25, progressVal: g=> g.stats.stageReached },
+  { id:'armoredRun', name:'Coraza Inquebrantable', desc:'Alcanza 40 de armadura en una misma run', unlocks:'frey',
+    check: g=> g.player.armor>=40, target:40, progressVal: g=> Math.round(g.player.armor) },
+  { id:'empoweredRun', name:'Filo Potenciado', desc:'Alcanza 180% de multiplicador de daño en una misma run', unlocks:'dorian',
+    check: g=> g.player.dmgMult>=1.8, target:180, progressVal: g=> Math.round(g.player.dmgMult*100) },
+  { id:'lifestealRun', name:'Sed Mecánica', desc:'Alcanza 20% de robo de vida en una misma run', unlocks:'ferro',
+    check: g=> g.player.lifesteal>=0.20, target:20, progressVal: g=> Math.round(g.player.lifesteal*100) },
+  { id:'veteranLevel15', name:'Veterana de Guerra', desc:'Alcanza el nivel 15 de personaje en una misma run', unlocks:'mecha',
+    check: g=> g.player.charLevel>=15, target:15, progressVal: g=> g.player.charLevel },
+  { id:'regenRun', name:'Vitalidad Persistente', desc:'Alcanza 3 de regeneración de vida por segundo en una misma run', unlocks:'arakne',
+    check: g=> g.player.regen>=3, target:3, progressVal: g=> Math.round(g.player.regen*10)/10 },
+  { id:'killStreak450', name:'Exterminio Total', desc:'Elimina 450 enemigos en una misma run', unlocks:'rasha',
+    check: g=> g.kills>=450, target:450, progressVal: g=> g.kills },
+  { id:'richRun1000', name:'Fortuna Colosal', desc:'Junta 1000 de oro en una misma run', unlocks:'marlow',
+    check: g=> g.gold>=1000, target:1000, progressVal: g=> g.gold },
+  { id:'comboMaster55', name:'Racha Trascendente', desc:'Alcanza una racha de combo de 55 en una misma run', unlocks:'orbis',
+    check: g=> g.player.combo>=55, target:55, progressVal: g=> g.player.combo },
+  { id:'deepDescent35', name:'Guardiana del Umbral', desc:'Alcanza la etapa 35', unlocks:'skald',
+    check: g=> g.stats.stageReached>=35, target:35, progressVal: g=> g.stats.stageReached },
+  { id:'ironBody550', name:'Cuerpo de Hierro', desc:'Alcanza 550 de HP máxima en una run', unlocks:'morbus',
+    check: g=> g.player.maxHp>=550, target:550, progressVal: g=> Math.round(g.player.maxHp) },
+  { id:'fastCooldownRun', name:'Fuera del Tiempo', desc:'Alcanza 30% de reducción de cooldown en una misma run', unlocks:'tempus',
+    check: g=> g.player.cdMult<=0.7, target:30, progressVal: g=> Math.round((1-g.player.cdMult)*100) },
+  { id:'comboMaster70', name:'Danza Incesante', desc:'Alcanza una racha de combo de 70 en una misma run', unlocks:'seren',
+    check: g=> g.player.combo>=70, target:70, progressVal: g=> g.player.combo },
+  { id:'speedRun', name:'Viento Espectral', desc:'Alcanza 50% de velocidad de movimiento bonus en una misma run', unlocks:'rowan',
+    check: g=> g.player.speedMult>=1.5, target:50, progressVal: g=> Math.round((g.player.speedMult-1)*100) },
+  { id:'armoredRun70', name:'Baluarte de Piedra', desc:'Alcanza 70 de armadura en una misma run', unlocks:'talus',
+    check: g=> g.player.armor>=70, target:70, progressVal: g=> Math.round(g.player.armor) },
+  { id:'flatSpeedRun', name:'Paso Ligero', desc:'Alcanza 60 de velocidad plana bonus en una misma run', unlocks:'lira',
+    check: g=> g.player.speedFlat>=60, target:60, progressVal: g=> Math.round(g.player.speedFlat) },
+  { id:'sevenBosses', name:'Cazadora de Titanes', desc:'Derrota 7 jefes en una misma run', unlocks:'amara',
+    check: g=> g.stats.bossesThisRun>=7, target:7, progressVal: g=> g.stats.bossesThisRun },
+  { id:'richRun2000', name:'Rey Midas', desc:'Junta 2000 de oro en una misma run', unlocks:'midas',
+    check: g=> g.gold>=2000, target:2000, progressVal: g=> g.gold },
+  { id:'regenRun5', name:'Aliento Eterno', desc:'Alcanza 5 de regeneración de vida por segundo en una misma run', unlocks:'borea',
+    check: g=> g.player.regen>=5, target:5, progressVal: g=> Math.round(g.player.regen*10)/10 },
+  { id:'ironBody700', name:'Corazón de Montaña', desc:'Alcanza 700 de HP máxima en una run', unlocks:'anselm',
+    check: g=> g.player.maxHp>=700, target:700, progressVal: g=> Math.round(g.player.maxHp) },
 ];
 const progress = { unlocked:{ guerrero:true, maga:true, picaro:true, paladin:false, nigromante:false, vidrio:false, coloso:false, silvano:false, dual:false,
-    monje:false, arquera:false, elementalista:false, berserker:false, ilusionista:false, alquimista:false, druida:false, sangre:false, centinela:false, cazador:false },
+    monje:false, arquera:false, elementalista:false, berserker:false, ilusionista:false, alquimista:false, druida:false, sangre:false, centinela:false, cazador:false,
+    torque:false, frey:false, dorian:false, ferro:false, mecha:false, arakne:false, rasha:false, marlow:false, orbis:false, skald:false, morbus:false,
+    tempus:false, seren:false, rowan:false, talus:false, lira:false, amara:false, midas:false, borea:false, anselm:false },
   unlockedAbilities:[], essence:0, homeUpgrades:{}, bestStage:0,
   achievementProgress:{}, // best value ever seen per achievement id, so locked cards can show "18/25" instead of just the goal text
   runHistory:[], skins:{}, selectedSkins:{},
@@ -1785,6 +1987,58 @@ const ULTIMATE_ABILITIES = [
         atkCd:0.6, atkTimer:0, hitFlash:0, life:8, color:'#c9a8ff' };
       addParticles(p.x,p.y,'#c9a8ff',26,170,0.5);
     } },
+  { id:'consumir_almas', name:'Consumir Almas', icon:'👁', cd:38, color:'#7a2fbf',
+    desc:'Golpea a todo enemigo en pantalla con más fuerza cuanto más herido esté, y te cura según el daño hecho',
+    cast: p=>{
+      let healed=0;
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        const missingFrac = t.maxHp ? 1-clamp(t.hp/t.maxHp,0,1) : 0;
+        const dmgObj = computeDamage(10 + missingFrac*30);
+        dealDamageToTarget(t, dmgObj, 'ult');
+        healed += dmgObj.value*0.3;
+        addParticles(t.x,t.y,'#7a2fbf',10,150,0.3);
+      });
+      p.hp = Math.min(p.maxHp, p.hp+healed);
+      shake(8);
+    } },
+  { id:'grito_ancestral', name:'Grito de Guerra Ancestral', icon:'🔥', cd:32, color:'#ff6a3d',
+    desc:'Gran aumento temporal de daño y velocidad de movimiento',
+    cast: p=>{
+      p.potionEffects.dmg = Math.max(p.potionEffects.dmg, 8);
+      p.potionEffects.spd = Math.max(p.potionEffects.spd, 8);
+      p.invuln = Math.max(p.invuln, 0.4);
+      addParticles(p.x,p.y,'#ff6a3d',24,190,0.5);
+      shake(6);
+    } },
+  { id:'colapso_estrella', name:'Colapso de Estrella', icon:'☄', cd:44, color:'#ffe08a',
+    desc:'El golpe más fuerte del juego a tu alrededor, pero te cuesta un 12% de tu vida máxima',
+    cast: p=>{
+      explodeAt(p.x, p.y, 220, computeDamage(46));
+      p.hp = Math.max(1, p.hp - p.maxHp*0.12);
+      shake(16);
+      addParticles(p.x,p.y,'#ffe08a',36,240,0.6);
+    } },
+  { id:'enjambre_espectral', name:'Enjambre Espectral', icon:'🦇', cd:36, color:'#8a6fd8',
+    desc:'Invoca hasta 3 espíritus que pelean a tu lado',
+    cast: p=>{
+      for(let i=0; i<3 && game.pack.length<4; i++){
+        game.pack.push({ x:p.x+rand(-30,30), y:p.y+rand(-30,30), hp:1, maxHp:1, radius:12, speed:260,
+          dmg:14, atkTimer:0, atkCd:0.5, color:'#8a6fd8', hitFlash:0, life:10 });
+      }
+      addParticles(p.x,p.y,'#8a6fd8',20,170,0.4);
+    } },
+  { id:'grieta_dimensional', name:'Grieta Dimensional', icon:'🌀', cd:30, color:'#c9a8ff',
+    desc:'Te teletransportás a un punto seguro del área y dejás una trampa retardada donde estabas',
+    cast: p=>{
+      const b = arenaBounds();
+      const oldX=p.x, oldY=p.y;
+      game.pendingBursts.push({ x:oldX, y:oldY, timer:0.4, radius:130, dmgBase:22 });
+      p.x = clamp(b.x+rand(60,b.w-60), b.x+p.radius, b.x+b.w-p.radius);
+      p.y = clamp(b.y+rand(60,b.h-60), b.y+p.radius, b.y+b.h-p.radius);
+      p.invuln = Math.max(p.invuln, 0.5);
+      addParticles(oldX,oldY,'#c9a8ff',18,160,0.35);
+      addParticles(p.x,p.y,'#c9a8ff',18,160,0.35);
+    } },
 ];
 
 // ---------- ASCENSO's key-Shift abilities ----------
@@ -1800,6 +2054,48 @@ const SHIFT_ABILITIES = [
       p.effects.mantoLuz = Math.max(p.effects.mantoLuz||0, 1.5); // dedicated field — reusing 'shadow' would
       // wrongly show Picaro's "Paso Sombrío" tooltip and only grant +15% instead of the advertised +40%
       addParticles(p.x,p.y,'#fff3c4',24,180,0.45);
+    } },
+  { id:'coronaSolar', name:'Corona Solar', icon:'🌞', cd:16, color:'#ffdb6a',
+    desc:'Libera un estallido de luz alrededor tuyo, dañando a todo lo cercano',
+    cast: p=>{
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<170) dealDamageToTarget(t, computeDamage(24), 'shift');
+      });
+      addParticles(p.x,p.y,'#ffdb6a',26,200,0.5);
+      spawnShockwave(p.x,p.y,'#ffdb6a',170,0.4);
+      shake(8);
+    } },
+  { id:'bendicionRadiante', name:'Bendición Radiante', icon:'✨', cd:24, color:'#fff3c4',
+    desc:'Cura el 45% de tu vida máxima y te vuelve inmune por un instante',
+    cast: p=>{
+      p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.45);
+      p.invuln = Math.max(p.invuln, 1.0);
+      addParticles(p.x,p.y,'#fff3c4',28,190,0.5);
+    } },
+  { id:'alasDelAlba', name:'Alas del Alba', icon:'🕊', cd:18, color:'#ffe9b0',
+    desc:'Dash largo e invulnerable que golpea todo en tu camino',
+    cast: p=>{
+      const dashDist=260, steps=8;
+      const b = arenaBounds();
+      const hitSet=new Set();
+      p.invuln = Math.max(p.invuln, 0.5);
+      for(let i=1;i<=steps;i++){
+        p.x = clamp(p.x+p.facingX*(dashDist/steps), b.x+p.radius, b.x+b.w-p.radius);
+        p.y = clamp(p.y+p.facingY*(dashDist/steps), b.y+p.radius, b.y+b.h-p.radius);
+        [...game.enemies, ...bossTargets()].forEach(t=>{
+          if(!hitSet.has(t) && dist(p.x,p.y,t.x,t.y)<60+t.radius){
+            hitSet.add(t);
+            dealDamageToTarget(t, computeDamage(18), 'shift');
+          }
+        });
+      }
+      addParticles(p.x,p.y,'#ffe9b0',20,180,0.4);
+    } },
+  { id:'ojoDelMediodia', name:'Ojo del Mediodía', icon:'☉', cd:26, color:'#ffcf6a',
+    desc:'Por 5s, tu daño aumenta considerablemente',
+    cast: p=>{
+      p.potionEffects.dmg = Math.max(p.potionEffects.dmg, 5);
+      addParticles(p.x,p.y,'#ffcf6a',22,180,0.45);
     } },
 ];
 
@@ -2332,6 +2628,14 @@ function freshPlayerStats(heroDef){
     charLevel:1, // starts at 1 each run, rises as the player descends (see levelUpCharacterTo)
     iceSlideTimer:0, slideVX:0, slideVY:0, freezeMeter:0, frozenTimer:0, frozenBurnTick:0,
     spinTimer:0, spinTick:0,
+    parryWindow:0, parryCharge:false, // Dorian (Duelista)
+    lastHookTarget:null, // Torque (Arponero)
+    runeStacks:0, // Skald (Caballero Rúnico)
+    chainCount:0, chainWindow:0, // Seren (Danzante de Cuchillas)
+    mountTimer:0, mountTrampleTick:0, // Rowan (Jinete Espectral)
+    rewindHistory:[], rewindSampleTimer:0, // Tempus (Crononauta)
+    songIndex:0, // Lira (Bardo)
+    stoneTimer:0, stoneElapsed:0, // Anselm (Peregrino de Piedra)
   };
   const hpUp = progress.homeUpgrades.hp||0;
   const goldUp = progress.homeUpgrades.gold||0;
@@ -2410,8 +2714,8 @@ function newGame(){
     player: freshPlayerStats(selectedHero),
     world: computeWorldBounds(),
     camera: {x:0, y:0},
-    enemies:[], projectiles:[], hazards:[], particles:[], goldOrbs:[], chests:[], swings:[], relicPickups:[], utilityChests:[],
-    altar:null, boss:null, bossCountdown:null, portal:null, pet:null, sacrificeAltar:null, merchant:null,
+    enemies:[], projectiles:[], hazards:[], particles:[], goldOrbs:[], chests:[], swings:[], relicPickups:[], utilityChests:[], mines:[], pack:[], pendingBursts:[],
+    altar:null, boss:null, bossCountdown:null, portal:null, pet:null, gravityWell:null, slowZone:null, vortex:null, sacrificeAltar:null, merchant:null,
     phase:'combat', // combat | shopping | bossIntro | boss | portal | clear
     spawnQueue:[],
     stagesSinceMirror:0, stagesSinceTwin:0, // bad-luck protection so these bosses can't stay hidden by pure RNG
@@ -2764,8 +3068,8 @@ function startStage(i){
   game.player.hp = game.player.maxHp; // full heal on every floor transition, including floor 1
   game.player._reactiveShieldUsedThisFloor = false;
   game.player._ghostStepUsed = {};
-  game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[];
-  game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.sacrificeAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
+  game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[]; game.mines=[];
+  game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.pack=[]; game.gravityWell=null; game.slowZone=null; game.pendingBursts=[]; game.vortex=null; game.sacrificeAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
   game.phase='combat';
 
   const route = game.pendingRoute || 'blood';
@@ -3157,8 +3461,8 @@ function enterAscensoFloor(i){
   game.player.hp = game.player.maxHp;
   game.player._reactiveShieldUsedThisFloor = false;
   game.player._ghostStepUsed = {};
-  game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[];
-  game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.sacrificeAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
+  game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[]; game.mines=[];
+  game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.pack=[]; game.gravityWell=null; game.slowZone=null; game.pendingBursts=[]; game.vortex=null; game.sacrificeAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
   const def = bossKind ? BOSS_DEFS[bossKind] : null;
   game.currentStage = { key:'ascenso', name: def ? def.name : 'Piso en construcción', floor:i+1 };
   $('hud-stage-eyebrow').textContent = `Piso ${i+1} / ${ASCENSO_MAX_FLOOR} · Ascenso`;
@@ -3557,6 +3861,40 @@ function update(dt){
   p.qLockTimer = Math.max(0,(p.qLockTimer||0)-dt);
   p.eLockTimer = Math.max(0,(p.eLockTimer||0)-dt);
   p.iceSlideTimer = Math.max(0,(p.iceSlideTimer||0)-dt);
+  p.parryWindow = Math.max(0,(p.parryWindow||0)-dt); // Dorian: parry-stance window, see doAbilityQ/hitPlayer
+  p.chainWindow = Math.max(0,(p.chainWindow||0)-dt); // Seren: dash-chain window
+  if(p.chainWindow<=0) p.chainCount = 0;
+  // Rowan: mount duration + periodic trample tick while mounted
+  if(p.mountTimer>0){
+    p.mountTimer -= dt;
+    p.mountTrampleTick = (p.mountTrampleTick||0) - dt;
+    if(p.mountTrampleTick<=0){
+      p.mountTrampleTick = 0.25;
+      const b = arenaBounds();
+      game.enemies.forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<p.radius+t.radius+6){
+          dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.6), 'q');
+          const ang = Math.atan2(t.y-p.y,t.x-p.x);
+          t.x = clamp(t.x+Math.cos(ang)*40, b.x+t.radius, b.x+b.w-t.radius);
+          t.y = clamp(t.y+Math.sin(ang)*40, b.y+t.radius, b.y+b.h-t.radius);
+        }
+      });
+    }
+    if(p.mountTimer<=0){ p.speedMult /= 1.6; p.mountTimer = 0; }
+  }
+  // Tempus: sample position/hp history for Rebobinado (E)
+  p.rewindSampleTimer = (p.rewindSampleTimer||0) - dt;
+  if(p.rewindSampleTimer<=0){
+    p.rewindSampleTimer = 0.1;
+    p.rewindHistory = p.rewindHistory || [];
+    p.rewindHistory.push({x:p.x, y:p.y, hp:p.hp, t:performance.now()});
+    if(p.rewindHistory.length>40) p.rewindHistory.shift();
+  }
+  // Anselm: petrified duration — E's shatter damage scales with how long you held the form
+  if(p.stoneTimer>0){
+    p.stoneTimer -= dt;
+    p.stoneElapsed = (p.stoneElapsed||0) + dt;
+  }
   if(!(game.boss && game.boss.blizzardActive)) p.freezeMeter = Math.max(0,(p.freezeMeter||0)-dt*60); // melts fast once the blizzard itself ends
   if(p.frozenTimer>0){
     // Cero Absoluto: locked in ice, taking steady damage until it breaks (mashing WASD speeds
@@ -3607,6 +3945,10 @@ function update(dt){
   }
   if(p.spinTimer>0){
     // Giro Salvaje: rooted in place for the whole 3s channel, spinning where you stand
+    mx=0; my=0;
+  }
+  if(p.stoneTimer>0){
+    // Anselm (Peregrino de Piedra): rooted while petrified — see hitPlayer for the reflect-on-hit
     mx=0; my=0;
   }
   if(p.iceSlideTimer>0){
@@ -3681,6 +4023,8 @@ function update(dt){
   updateProjectiles(dt);
   // --- hazards ---
   updateHazards(dt);
+  // --- mines (Mecha) ---
+  updateMines(dt);
   // --- gold orbs ---
   updateGoldOrbs(dt);
   updateRelicPickups(dt);
@@ -3693,6 +4037,11 @@ function update(dt){
   updateAfterimages(dt);
   // --- pet (summoner) ---
   if(game.pet) updatePet(dt);
+  updatePack(dt);
+  updateGravityWell(dt);
+  updateSlowZone(dt);
+  updatePendingBursts(dt);
+  updateVortex(dt);
   // --- chests bob/interact ---
   if(game.phase==='shopping') updateChests(dt);
   // --- altar prompt ---
@@ -4308,6 +4657,183 @@ function doAbilityQ(){
       dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*mult), 'q');
       addParticles(nearest.x,nearest.y,'#8a6fd8',16,180,0.3);
     }
+  } else if(id==='torque'){
+    // hookshot: only the common-enemy wave gets pulled/stunned (bosses stay put, same convention
+    // as coloso's/centinela's crowd control) — but it still needs to work in a boss fight where
+    // there are no common enemies left, so it just does nothing if none are in the cone that turn
+    let nearest=null, nearestD=460;
+    game.enemies.forEach(t=>{
+      const d = dist(p.x,p.y,t.x,t.y);
+      if(d>=nearestD) return;
+      const ang = Math.atan2(t.y-p.y,t.x-p.x);
+      let diff = Math.abs(ang-p.facing); if(diff>Math.PI) diff=Math.PI*2-diff;
+      if(diff > (35*Math.PI/180)) return;
+      nearest = t; nearestD = d;
+    });
+    if(nearest){
+      const b = arenaBounds();
+      const ang = Math.atan2(nearest.y-p.y, nearest.x-p.x);
+      const pullDist = Math.min(nearestD-50, 220);
+      if(pullDist>0){
+        nearest.x = clamp(nearest.x - Math.cos(ang)*pullDist, b.x+nearest.radius, b.x+b.w-nearest.radius);
+        nearest.y = clamp(nearest.y - Math.sin(ang)*pullDist, b.y+nearest.radius, b.y+b.h-nearest.radius);
+      }
+      nearest.stunTimer = Math.max(nearest.stunTimer||0, 1.0);
+      dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*1.3), 'q');
+      addParticles(nearest.x,nearest.y,'#4fae9c',14,170,0.3);
+      p.lastHookTarget = nearest;
+    }
+  } else if(id==='frey'){
+    const targets = [...game.enemies, ...bossTargets()];
+    let nearest=null, nearestD=340;
+    targets.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearest=t; nearestD=d; } });
+    if(nearest){
+      // bosses only get a brief chill (their stunTimer is fully respected by updateBoss, but a
+      // full multi-second lock would trivialize a boss fight) — common enemies get the real freeze
+      const isBoss = bossTargets().includes(nearest);
+      nearest.stunTimer = Math.max(nearest.stunTimer||0, isBoss?0.9:2.2);
+      dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*1.1), 'q');
+      addParticles(nearest.x,nearest.y,'#8fd8ff',18,150,0.35);
+    }
+  } else if(id==='dorian'){
+    p.parryWindow = 1.1;
+    addParticles(p.x,p.y,'#e0455a',10,140,0.25);
+  } else if(id==='ferro'){
+    game.pet = { x:p.x+p.facingX*40, y:p.y+p.facingY*40, hp:1, maxHp:1, radius:16, speed:0, stationary:true,
+      dmg:Math.round(p.def.atk.dmg*1.2), atkTimer:0, atkCd:0.5, atkRange:260, color:'#c9a24a', hitFlash:0, life:16 };
+    addParticles(p.x,p.y,'#c9a24a',16,150,0.3);
+  } else if(id==='mecha'){
+    const b = arenaBounds();
+    for(let i=0;i<2;i++){
+      const dd = 40+i*46;
+      const mx = clamp(p.x+p.facingX*dd + rand(-14,14), b.x+10, b.x+b.w-10);
+      const my = clamp(p.y+p.facingY*dd + rand(-14,14), b.y+10, b.y+b.h-10);
+      game.mines.push({ x:mx, y:my, armTimer:0.35, triggerRadius:55, blastRadius:95, dmgBase:p.def.atk.dmg*1.6, life:16 });
+    }
+    addParticles(p.x,p.y,'#c96a4a',10,140,0.25);
+  } else if(id==='arakne'){
+    game.enemies.forEach(t=>{
+      const d = dist(p.x,p.y,t.x,t.y);
+      if(d>200) return;
+      const ang = Math.atan2(t.y-p.y,t.x-p.x);
+      let diff = Math.abs(ang-p.facing); if(diff>Math.PI) diff=Math.PI*2-diff;
+      if(diff > (50*Math.PI/180)) return;
+      t.slowTimer = Math.max(t.slowTimer||0, 2.5);
+      dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.9), 'q');
+    });
+    game.swings.push({ x:p.x, y:p.y, angle:p.facing, arc:(50*Math.PI/180), range:200, life:0.25, maxLife:0.25, color:'#b89cff' });
+    addParticles(p.x,p.y,'#b89cff',14,160,0.3);
+  } else if(id==='rasha'){
+    if(game.pack.length < 4){
+      game.pack.push({ x:p.x+rand(-20,20), y:p.y+rand(-20,20), hp:1, maxHp:1, radius:11, speed:290,
+        dmg:Math.round(p.def.atk.dmg*0.55), atkTimer:0, atkCd:0.5, color:'#e0a24a', hitFlash:0, life:16 });
+      addParticles(p.x,p.y,'#e0a24a',10,140,0.25);
+    } else {
+      game.pack.forEach(m=> m.life = Math.min(m.life+6, 16));
+      addParticles(p.x,p.y,'#e0a24a',14,150,0.3);
+    }
+  } else if(id==='marlow'){
+    game.pet = { x:p.x+p.facingX*70, y:p.y+p.facingY*70, hp:1, maxHp:1, radius:13, speed:0, stationary:true,
+      dmg:0, atkTimer:9999, atkCd:9999, atkRange:0, color:'#c98fd8', hitFlash:0, life:14 };
+    addParticles(p.x,p.y,'#c98fd8',12,140,0.25);
+  } else if(id==='orbis'){
+    game.gravityWell = { x:p.x+p.facingX*180, y:p.y+p.facingY*180, r:170, timer:2.2, dmgBase:p.def.atk.dmg*0.35, tick:0 };
+    addParticles(game.gravityWell.x, game.gravityWell.y, '#8a5fd8', 14, 150, 0.3);
+  } else if(id==='skald'){
+    p.runeStacks = Math.min((p.runeStacks||0)+1, 5);
+    p.potionEffects.dmg = Math.max(p.potionEffects.dmg, 4);
+    addParticles(p.x,p.y,'#b08d57',10+p.runeStacks*2,150,0.3);
+  } else if(id==='morbus'){
+    const targets = [...game.enemies, ...bossTargets()];
+    let nearest=null, nearestD=360;
+    targets.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearest=t; nearestD=d; } });
+    if(nearest){
+      if(game.enemies.includes(nearest)){
+        nearest.plagueTimer = Math.max(nearest.plagueTimer||0, 5);
+        nearest.plagueTick = 0;
+        nearest.plagueDmgBase = p.def.atk.dmg*0.5;
+        addParticles(nearest.x,nearest.y,'#7ad14a',12,140,0.3);
+      } else {
+        dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*1.6), 'q');
+        addParticles(nearest.x,nearest.y,'#7ad14a',14,150,0.3);
+      }
+    }
+  } else if(id==='tempus'){
+    game.slowZone = { x:p.x+p.facingX*160, y:p.y+p.facingY*160, r:150, timer:4 };
+    addParticles(game.slowZone.x, game.slowZone.y, '#5fc9e6', 14, 140, 0.3);
+  } else if(id==='seren'){
+    const dashDist=170, steps=5;
+    const b = arenaBounds();
+    let hitAny=false;
+    for(let i=1;i<=steps;i++){
+      p.x = clamp(p.x+p.facingX*(dashDist/steps), b.x+p.radius, b.x+b.w-p.radius);
+      p.y = clamp(p.y+p.facingY*(dashDist/steps), b.y+p.radius, b.y+b.h-p.radius);
+    }
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<60+t.radius){
+        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.3), 'q');
+        hitAny=true;
+      }
+    });
+    p.chainCount = hitAny ? Math.min((p.chainCount||0)+1, 3) : 0;
+    p.chainWindow = hitAny ? 1.2 : 0;
+    p.invuln = Math.max(p.invuln, 0.15);
+    addParticles(p.x,p.y,'#ff8fd0',14,180,0.3);
+  } else if(id==='rowan'){
+    if(!(p.mountTimer>0)) p.speedMult = (p.speedMult||1) * 1.6;
+    p.mountTimer = 3.5;
+    p.mountTrampleTick = 0;
+    addParticles(p.x,p.y,'#d9c98f',14,150,0.3);
+  } else if(id==='talus'){
+    for(let i=1;i<=4;i++){
+      game.pendingBursts.push({ x:p.x+p.facingX*i*68, y:p.y+p.facingY*i*68, timer:0.55, radius:55, dmgBase:p.def.atk.dmg*1.3 });
+    }
+    addParticles(p.x,p.y,'#c9a878',10,140,0.25);
+  } else if(id==='lira'){
+    p.songIndex = ((p.songIndex||0)+1)%3;
+    if(p.songIndex===0){
+      p.potionEffects.dmg = Math.max(p.potionEffects.dmg, 6);
+      addParticles(p.x,p.y,'#ffcb6a',12,150,0.3);
+    } else if(p.songIndex===1){
+      p.potionEffects.spd = Math.max(p.potionEffects.spd, 6);
+      addParticles(p.x,p.y,'#6affd0',12,150,0.3);
+    } else {
+      p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.06);
+      addParticles(p.x,p.y,'#ff9ad1',12,150,0.3);
+    }
+  } else if(id==='amara'){
+    let nearest=null, nearestD=320;
+    game.enemies.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearest=t; nearestD=d; } });
+    if(nearest){
+      const idx = game.enemies.indexOf(nearest);
+      if(idx>=0) game.enemies.splice(idx,1);
+      game.pack.push({ x:nearest.x, y:nearest.y, hp:1, maxHp:1, radius:nearest.radius||14,
+        speed:(nearest.def && nearest.def.speed)||220, dmg:Math.round(p.def.atk.dmg*0.7),
+        atkTimer:0, atkCd:0.5, color:'#9c6fd8', hitFlash:0, life:8, possessed:true });
+      p.invuln = Math.max(p.invuln, 0.25);
+      addParticles(nearest.x,nearest.y,'#9c6fd8',18,180,0.35);
+    } else {
+      p.shield = Math.max(p.shield, 40);
+      addParticles(p.x,p.y,'#9c6fd8',12,140,0.3);
+    }
+  } else if(id==='midas'){
+    const cost = Math.min(game.gold, 40);
+    if(cost>=20){
+      game.gold -= cost;
+      p.shield = Math.max(p.shield, cost*1.8);
+      addParticles(p.x,p.y,'#ffd24a',14,160,0.3);
+      spawnToast(`💰 -${cost} oro → escudo`);
+    } else {
+      addParticles(p.x,p.y,'#ffd24a',8,120,0.2);
+      spawnToast('No tenés suficiente oro (mínimo 20)');
+    }
+  } else if(id==='borea'){
+    game.vortex = { x:p.x, y:p.y, r:140, timer:4, storedDmg:0 };
+    addParticles(p.x,p.y,'#a8e0ff',14,150,0.3);
+  } else if(id==='anselm'){
+    p.stoneTimer = 2.5;
+    p.stoneElapsed = 0;
+    addParticles(p.x,p.y,'#9c9c9c',14,140,0.25);
   }
   addParticles(p.x,p.y,'#fff',6,90,0.2);
 }
@@ -4478,6 +5004,313 @@ function doAbilityE(){
       p.effects.shadow = Math.max(p.effects.shadow||0, 1);
       addParticles(p.x,p.y,'#8a6fd8',16,160,0.35);
     }
+  } else if(id==='torque'){
+    const origin = (p.lastHookTarget && p.lastHookTarget.hp>0) ? p.lastHookTarget : p;
+    const ox = origin.x, oy = origin.y;
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(ox,oy,t.x,t.y) >= 170) return;
+      dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.4), 'e');
+      if(game.enemies.includes(t)) t.stunTimer = Math.max(t.stunTimer||0, 0.8);
+    });
+    addParticles(ox,oy,'#4fae9c',20,180,0.4);
+    spawnShockwave(ox,oy,'#4fae9c',170,0.35);
+    shake(4);
+  } else if(id==='frey'){
+    const targets = [...game.enemies, ...bossTargets()];
+    targets.forEach(t=>{
+      const d = dist(p.x,p.y,t.x,t.y);
+      if(d>120+t.radius) return;
+      const ang = Math.atan2(t.y-p.y,t.x-p.x);
+      let diff = Math.abs(ang-p.facing); if(diff>Math.PI) diff=Math.PI*2-diff;
+      if(diff > (75*Math.PI/180)) return;
+      const frozen = t.stunTimer>0;
+      const dmgObj = computeDamage(p.def.atk.dmg*(frozen?3.2:1.3));
+      if(frozen) dmgObj.crit = true;
+      dealDamageToTarget(t, dmgObj, 'e');
+      if(frozen){ t.stunTimer = 0; addParticles(t.x,t.y,'#ffffff',16,190,0.35); }
+    });
+    game.swings.push({ x:p.x, y:p.y, angle:p.facing, arc:(75*Math.PI/180), range:120, life:0.2, maxLife:0.2, color:'#8fd8ff' });
+    addParticles(p.x,p.y,'#8fd8ff',14,190,0.3);
+    shake(4);
+  } else if(id==='dorian'){
+    const hasCharge = !!p.parryCharge;
+    const mult = hasCharge ? 3.2 : 1.6;
+    const targets = [...game.enemies, ...bossTargets()];
+    let nearest=null, nearestD=110;
+    targets.forEach(t=>{
+      const d = dist(p.x,p.y,t.x,t.y);
+      if(d>=nearestD) return;
+      const ang = Math.atan2(t.y-p.y,t.x-p.x);
+      let diff = Math.abs(ang-p.facing); if(diff>Math.PI) diff=Math.PI*2-diff;
+      if(diff > (70*Math.PI/180)) return;
+      nearest = t; nearestD = d;
+    });
+    if(nearest){
+      const dmgObj = computeDamage(p.def.atk.dmg*mult);
+      if(hasCharge) dmgObj.crit = true;
+      dealDamageToTarget(nearest, dmgObj, 'e');
+      addParticles(nearest.x,nearest.y,'#e0455a',hasCharge?24:14,200,0.4);
+      if(hasCharge) shake(6);
+    }
+    p.parryCharge = false;
+    p.invuln = Math.max(p.invuln, 0.15);
+  } else if(id==='ferro'){
+    if(game.pet){
+      explodeAt(game.pet.x, game.pet.y, 130, computeDamage(p.def.atk.dmg*1.8));
+      addParticles(game.pet.x,game.pet.y,'#c9a24a',24,200,0.4);
+      game.pet.life = Math.min(game.pet.life+6, 20); // overcharge also tops the turret's timer back up
+      shake(4);
+    } else {
+      p.shield = Math.max(p.shield, 55);
+      addParticles(p.x,p.y,'#c9a24a',18,160,0.35);
+    }
+  } else if(id==='mecha'){
+    if(game.mines.length){
+      [...game.mines].forEach(m=>{ explodeAt(m.x, m.y, m.blastRadius, computeDamage(m.dmgBase)); });
+      game.mines = [];
+      shake(5);
+    } else {
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<110) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.2), 'e');
+      });
+      addParticles(p.x,p.y,'#c96a4a',14,150,0.3);
+    }
+  } else if(id==='arakne'){
+    const dashDist=200, steps=6;
+    const b = arenaBounds();
+    const hitSet = new Set();
+    for(let i=1;i<=steps;i++){
+      p.x = clamp(p.x+p.facingX*(dashDist/steps), b.x+p.radius, b.x+b.w-p.radius);
+      p.y = clamp(p.y+p.facingY*(dashDist/steps), b.y+p.radius, b.y+b.h-p.radius);
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(!hitSet.has(t) && dist(p.x,p.y,t.x,t.y) < 60+t.radius){
+          hitSet.add(t);
+          const webbed = t.slowTimer>0;
+          dealDamageToTarget(t, computeDamage(p.def.atk.dmg*(webbed?2.4:1.4)), 'e');
+        }
+      });
+    }
+    p.invuln = Math.max(p.invuln, 0.2);
+    addParticles(p.x,p.y,'#b89cff',16,190,0.35);
+    shake(3);
+  } else if(id==='rasha'){
+    if(game.pack.length){
+      [...game.pack].forEach(m=>{
+        explodeAt(m.x, m.y, 80, computeDamage(p.def.atk.dmg*1.3));
+        addParticles(m.x,m.y,'#e0a24a',14,170,0.3);
+      });
+      game.pack = [];
+      shake(5);
+    } else {
+      p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.1);
+      addParticles(p.x,p.y,'#e0a24a',14,150,0.3);
+    }
+  } else if(id==='marlow'){
+    if(game.pet){
+      const tx=game.pet.x, ty=game.pet.y;
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        const d = dist(tx,ty,t.x,t.y);
+        if(d>=150) return;
+        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.6), 'e');
+        if(game.enemies.includes(t)){
+          const ang = Math.atan2(p.y-t.y,p.x-t.x);
+          const b = arenaBounds();
+          t.x = clamp(t.x+Math.cos(ang)*90, b.x+t.radius, b.x+b.w-t.radius);
+          t.y = clamp(t.y+Math.sin(ang)*90, b.y+t.radius, b.y+b.h-t.radius);
+          t.stunTimer = Math.max(t.stunTimer||0, 0.7);
+        }
+      });
+      addParticles(tx,ty,'#c98fd8',20,180,0.4);
+      spawnShockwave(tx,ty,'#c98fd8',150,0.35);
+      game.pet = null;
+      shake(4);
+    } else {
+      p.shield = Math.max(p.shield, 50);
+      addParticles(p.x,p.y,'#c98fd8',16,150,0.3);
+    }
+  } else if(id==='orbis'){
+    const w = game.gravityWell;
+    if(w){
+      const b = arenaBounds();
+      game.enemies.forEach(t=>{
+        const d = dist(w.x,w.y,t.x,t.y);
+        if(d>=w.r+40) return;
+        const ang = Math.atan2(t.y-w.y,t.x-w.x);
+        t.x = clamp(t.x+Math.cos(ang)*160, b.x+t.radius, b.x+b.w-t.radius);
+        t.y = clamp(t.y+Math.sin(ang)*160, b.y+t.radius, b.y+b.h-t.radius);
+        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.8), 'e');
+      });
+      bossTargets().forEach(t=>{
+        if(dist(w.x,w.y,t.x,t.y)<w.r+40) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.8), 'e');
+      });
+      addParticles(w.x,w.y,'#8a5fd8',26,220,0.45);
+      spawnShockwave(w.x,w.y,'#8a5fd8',w.r+40,0.4);
+      game.gravityWell = null;
+      shake(6);
+    } else {
+      p.shield = Math.max(p.shield, 55);
+      addParticles(p.x,p.y,'#8a5fd8',16,160,0.3);
+    }
+  } else if(id==='skald'){
+    const stacks = p.runeStacks||0;
+    if(stacks>0){
+      const mult = 0.8 + stacks*0.5;
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<160) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult), 'e');
+      });
+      addParticles(p.x,p.y,'#b08d57',16+stacks*4,200,0.4);
+      spawnShockwave(p.x,p.y,'#b08d57',160,0.35);
+      p.runeStacks = 0;
+      shake(3+stacks);
+    } else {
+      p.shield = Math.max(p.shield, 40);
+      addParticles(p.x,p.y,'#b08d57',14,150,0.3);
+    }
+  } else if(id==='morbus'){
+    let dealt = 0;
+    game.enemies.forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<130){
+        t.plagueTimer = Math.max(t.plagueTimer||0, 4);
+        t.plagueTick = 0;
+        t.plagueDmgBase = p.def.atk.dmg*0.45;
+        dealt += p.def.atk.dmg*0.3; // credited toward the self-heal now, even though it actually lands over time
+      }
+    });
+    bossTargets().forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<130){
+        const dmgObj = computeDamage(p.def.atk.dmg*1.3);
+        dealDamageToTarget(t, dmgObj, 'e');
+        dealt += dmgObj.value;
+      }
+    });
+    p.hp = Math.min(p.maxHp, p.hp + dealt*0.5);
+    addParticles(p.x,p.y,'#7ad14a',20,180,0.4);
+    shake(3);
+  } else if(id==='tempus'){
+    const hist = p.rewindHistory||[];
+    const targetTime = performance.now()-2500;
+    let best=null;
+    for(let i=0;i<hist.length;i++){ if(hist[i].t<=targetTime) best=hist[i]; }
+    if(best){
+      const b = arenaBounds();
+      p.x = clamp(best.x, b.x+p.radius, b.x+b.w-p.radius);
+      p.y = clamp(best.y, b.y+p.radius, b.y+b.h-p.radius);
+      if(best.hp>p.hp) p.hp = Math.min(p.maxHp, p.hp + (best.hp-p.hp)*0.5);
+      p.invuln = Math.max(p.invuln, 0.35);
+      addParticles(p.x,p.y,'#5fc9e6',22,190,0.4);
+    } else {
+      p.invuln = Math.max(p.invuln, 0.25); // not enough history yet — still a brief safety blink
+      addParticles(p.x,p.y,'#5fc9e6',14,150,0.3);
+    }
+  } else if(id==='seren'){
+    const stacks = p.chainCount||0;
+    const mult = 1.2 + stacks*0.7;
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<130) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult), 'e');
+    });
+    addParticles(p.x,p.y,'#ff8fd0',16+stacks*4,200,0.4);
+    spawnShockwave(p.x,p.y,'#ff8fd0',130,0.3);
+    p.chainCount = 0; p.chainWindow = 0;
+    shake(3+stacks);
+  } else if(id==='rowan'){
+    const mounted = p.mountTimer>0;
+    const mult = mounted ? 2.6 : 1.3;
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<150) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult), 'e');
+    });
+    addParticles(p.x,p.y,'#d9c98f',mounted?24:14,200,0.4);
+    spawnShockwave(p.x,p.y,'#d9c98f',150,0.35);
+    if(mounted){ p.speedMult /= 1.6; p.mountTimer = 0; }
+    shake(mounted?6:3);
+  } else if(id==='talus'){
+    const targets = [...game.enemies, ...bossTargets()];
+    let nearest=null, nearestD=420;
+    targets.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearest=t; nearestD=d; } });
+    p.invuln = Math.max(p.invuln, 0.4);
+    if(nearest){
+      const b = arenaBounds();
+      const ang = Math.atan2(nearest.y-p.y, nearest.x-p.x);
+      const arriveDist = Math.max(nearestD-50, 0);
+      p.x = clamp(p.x+Math.cos(ang)*arriveDist, b.x+p.radius, b.x+b.w-p.radius);
+      p.y = clamp(p.y+Math.sin(ang)*arriveDist, b.y+p.radius, b.y+b.h-p.radius);
+      dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*2.2), 'e');
+      if(game.enemies.includes(nearest)) nearest.stunTimer = Math.max(nearest.stunTimer||0, 0.6);
+      addParticles(p.x,p.y,'#c9a878',22,190,0.4);
+      spawnShockwave(p.x,p.y,'#c9a878',90,0.3);
+      shake(5);
+    } else {
+      addParticles(p.x,p.y,'#c9a878',14,150,0.3);
+    }
+  } else if(id==='lira'){
+    const idx = p.songIndex||0;
+    if(idx===0){
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<150) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*2.2), 'e');
+      });
+      addParticles(p.x,p.y,'#ffcb6a',20,190,0.4);
+    } else if(idx===1){
+      p.speedBurstTimer = Math.max(p.speedBurstTimer||0, 3);
+      p.invuln = Math.max(p.invuln, 0.2);
+      addParticles(p.x,p.y,'#6affd0',18,180,0.35);
+    } else {
+      p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.22);
+      addParticles(p.x,p.y,'#ff9ad1',20,190,0.4);
+    }
+    spawnShockwave(p.x,p.y,'#ffe08a',150,0.3);
+    shake(3);
+  } else if(id==='amara'){
+    const possessed = game.pack.filter(m=>m.possessed);
+    if(possessed.length){
+      possessed.forEach(m=>{
+        explodeAt(m.x, m.y, 110, computeDamage(p.def.atk.dmg*2.4));
+        addParticles(m.x,m.y,'#9c6fd8',22,200,0.4);
+      });
+      game.pack = game.pack.filter(m=>!m.possessed);
+      shake(5);
+    } else {
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<110) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.3), 'e');
+      });
+      addParticles(p.x,p.y,'#9c6fd8',14,150,0.3);
+    }
+  } else if(id==='midas'){
+    let converted = 0;
+    for(let i=game.projectiles.length-1;i>=0;i--){
+      const pr = game.projectiles[i];
+      if(pr.owner==='enemy' && dist(p.x,p.y,pr.x,pr.y)<160){
+        game.goldOrbs.push({ x:pr.x, y:pr.y, value:Math.round(rand(2,5)), vx:rand(-40,40), vy:rand(-40,40) });
+        game.projectiles.splice(i,1);
+        converted++;
+      }
+    }
+    if(converted>0){
+      addParticles(p.x,p.y,'#ffd24a',10+converted*3,170,0.35);
+      spawnShockwave(p.x,p.y,'#ffd24a',160,0.3);
+    } else {
+      game.gold += 8;
+      addParticles(p.x,p.y,'#ffd24a',10,140,0.3);
+    }
+  } else if(id==='borea'){
+    const v = game.vortex;
+    const bonus = v ? v.storedDmg*0.8 : 0;
+    const mult = 1.3 + (bonus/Math.max(1,p.def.atk.dmg));
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<170) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult), 'e');
+    });
+    addParticles(p.x,p.y,'#a8e0ff',20+(v?10:0),200,0.4);
+    spawnShockwave(p.x,p.y,'#a8e0ff',170,0.35);
+    if(v) game.vortex = null;
+    shake(v?5:3);
+  } else if(id==='anselm'){
+    const heldTime = p.stoneElapsed||0;
+    const mult = 1.2 + Math.min(heldTime,4)*0.6;
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<160) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult), 'e');
+    });
+    addParticles(p.x,p.y,'#9c9c9c',18+Math.round(heldTime*4),200,0.4);
+    spawnShockwave(p.x,p.y,'#9c9c9c',160,0.35);
+    p.stoneTimer = 0; p.stoneElapsed = 0;
+    shake(4+Math.round(Math.min(heldTime,4)));
   }
 }
 
@@ -4562,28 +5395,30 @@ function doInteract(){
 }
 
 /* ---------- enemies ---------- */
-function updatePet(dt){
-  const pet = game.pet;
+function stepPetAI(pet, dt){
+  // shared chase/attack AI — used by the single-slot game.pet (Silvano/Ferro/Ilusionista/Marlow)
+  // and by game.pack, Rasha's array of several simultaneous critters
   const p = game.player;
-  pet.life -= dt;
   pet.hitFlash = Math.max(0, pet.hitFlash-dt);
   pet.atkTimer = Math.max(0, pet.atkTimer-dt);
-  if(pet.life<=0){ game.pet = null; return; }
+  const atkRange = pet.atkRange||34; // Ferro's turret passes a much bigger range than the default melee pets
   const targets = [...game.enemies, ...bossTargets()];
   let nearest=null, nearestD=Infinity;
   targets.forEach(t=>{ const d=dist(pet.x,pet.y,t.x,t.y); if(d<nearestD){ nearestD=d; nearest=t; } });
-  if(nearest && nearestD<420){
-    if(nearestD>34){
-      const ang = Math.atan2(nearest.y-pet.y,nearest.x-pet.x);
-      pet.x += Math.cos(ang)*pet.speed*dt;
-      pet.y += Math.sin(ang)*pet.speed*dt;
-    } else if(pet.atkTimer<=0){
+  if(nearest && nearestD<Math.max(420,atkRange)){
+    if(nearestD>atkRange){
+      if(!pet.stationary){
+        const ang = Math.atan2(nearest.y-pet.y,nearest.x-pet.x);
+        pet.x += Math.cos(ang)*pet.speed*dt;
+        pet.y += Math.sin(ang)*pet.speed*dt;
+      }
+    } else if(pet.atkTimer<=0 && pet.dmg>0){
       pet.atkTimer = pet.atkCd;
       pet.hitFlash = 0.12;
       dealDamageToTarget(nearest, computeDamage(pet.dmg), 'pet');
-      addParticles(nearest.x,nearest.y,'#5bbf7a',5,110,0.18);
+      addParticles(nearest.x,nearest.y,pet.color||'#5bbf7a',5,110,0.18);
     }
-  } else {
+  } else if(!pet.stationary){
     const d = dist(pet.x,pet.y,p.x,p.y);
     if(d>70){
       const ang = Math.atan2(p.y-pet.y,p.x-pet.x);
@@ -4594,6 +5429,126 @@ function updatePet(dt){
   const b = arenaBounds();
   pet.x = clamp(pet.x, b.x+pet.radius, b.x+b.w-pet.radius);
   pet.y = clamp(pet.y, b.y+pet.radius, b.y+b.h-pet.radius);
+}
+function updatePet(dt){
+  const pet = game.pet;
+  pet.life -= dt;
+  if(pet.life<=0){ game.pet = null; return; }
+  stepPetAI(pet, dt);
+}
+function updatePack(dt){
+  for(let i=game.pack.length-1;i>=0;i--){
+    const m = game.pack[i];
+    m.life -= dt;
+    if(m.life<=0){ game.pack.splice(i,1); continue; }
+    stepPetAI(m, dt);
+  }
+}
+
+// Orbis (Gravimante): a single persistent pull zone, only ever one active at a time
+function updateGravityWell(dt){
+  const w = game.gravityWell;
+  if(!w) return;
+  w.timer -= dt; w.tick -= dt;
+  if(w.timer<=0){ game.gravityWell = null; return; }
+  game.enemies.forEach(t=>{
+    const d = dist(w.x,w.y,t.x,t.y);
+    if(d<w.r && d>4){
+      const ang = Math.atan2(w.y-t.y,w.x-t.x);
+      const b = arenaBounds();
+      t.x = clamp(t.x+Math.cos(ang)*140*dt, b.x+t.radius, b.x+b.w-t.radius);
+      t.y = clamp(t.y+Math.sin(ang)*140*dt, b.y+t.radius, b.y+b.h-t.radius);
+    }
+  });
+  if(w.tick<=0){
+    w.tick = 0.4;
+    game.enemies.forEach(t=>{ if(dist(w.x,w.y,t.x,t.y)<w.r) dealDamageToTarget(t, computeDamage(w.dmgBase), 'q'); });
+  }
+}
+function drawGravityWell(){
+  const w = game.gravityWell;
+  if(!w) return;
+  ctx.save();
+  ctx.translate(w.x,w.y);
+  ctx.globalAlpha = 0.32+Math.sin(performance.now()/200)*0.1;
+  ctx.strokeStyle = '#8a5fd8'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0,0,w.r,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha *= 0.5;
+  ctx.beginPath(); ctx.arc(0,0,w.r*0.55,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+// Tempus (Crononauta): a single persistent slow field, only one active at a time
+function updateSlowZone(dt){
+  const z = game.slowZone;
+  if(!z) return;
+  z.timer -= dt;
+  if(z.timer<=0){ game.slowZone = null; return; }
+  game.enemies.forEach(t=>{
+    if(dist(z.x,z.y,t.x,t.y)<z.r) t.slowTimer = Math.max(t.slowTimer||0, 0.3);
+  });
+}
+function drawSlowZone(){
+  const z = game.slowZone;
+  if(!z) return;
+  ctx.save();
+  ctx.translate(z.x,z.y);
+  ctx.globalAlpha = 0.2+Math.sin(performance.now()/300)*0.05;
+  ctx.fillStyle = '#5fc9e6';
+  ctx.beginPath(); ctx.arc(0,0,z.r,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = '#5fc9e6'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0,0,z.r,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+// Talus (Terramante): telegraphed delayed bursts (his Q's ground-spike line)
+function updatePendingBursts(dt){
+  for(let i=game.pendingBursts.length-1;i>=0;i--){
+    const b = game.pendingBursts[i];
+    b.timer -= dt;
+    if(b.timer<=0){
+      explodeAt(b.x, b.y, b.radius, computeDamage(b.dmgBase));
+      game.pendingBursts.splice(i,1);
+    }
+  }
+}
+function drawPendingBursts(){
+  game.pendingBursts.forEach(b=>{
+    ctx.save();
+    ctx.translate(b.x,b.y);
+    ctx.globalAlpha = 0.35+Math.sin(performance.now()/90)*0.15;
+    ctx.strokeStyle = '#c9633a'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0,0,b.radius,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+  });
+}
+
+// Borea (Domadora de Vientos): a single persistent vortex that eats enemy projectiles and banks
+// their damage for E to release
+function updateVortex(dt){
+  const v = game.vortex;
+  if(!v) return;
+  v.timer -= dt;
+  if(v.timer<=0){ game.vortex = null; return; }
+  for(let i=game.projectiles.length-1;i>=0;i--){
+    const pr = game.projectiles[i];
+    if(pr.owner==='enemy' && dist(v.x,v.y,pr.x,pr.y)<v.r){
+      v.storedDmg += pr.dmg || 6;
+      game.projectiles.splice(i,1);
+      addParticles(pr.x,pr.y,'#a8e0ff',4,80,0.15);
+    }
+  }
+}
+function drawVortex(){
+  const v = game.vortex;
+  if(!v) return;
+  ctx.save();
+  ctx.translate(v.x,v.y);
+  ctx.globalAlpha = 0.3+Math.sin(performance.now()/150)*0.1;
+  ctx.strokeStyle = '#a8e0ff'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0,0,v.r,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
 }
 
 function drawPet(pet){
@@ -4617,6 +5572,24 @@ function updateEnemies(dt){
     if(en.stunTimer>0){ en.stunTimer -= dt; return; }
     if(en.slowTimer>0){ en.slowTimer -= dt; en.speedMult = 0.5; } else { en.speedMult = 1; }
     if(en.poisonTimer>0){ en.poisonTimer-=dt; if(Math.floor(en.poisonTimer*10)%3===0){} }
+    // Morbus (Médico de la Plaga): DOT that spreads to nearby uninfected enemies each tick, with a
+    // shrinking timer on each jump so a single cast can't chain forever across a whole room
+    if(en.plagueTimer>0){
+      en.plagueTimer -= dt; en.plagueTick = (en.plagueTick||0) - dt;
+      if(en.plagueTick<=0){
+        en.plagueTick = 0.5;
+        dealDamageToTarget(en, computeDamage(en.plagueDmgBase||3), 'plague');
+        addParticles(en.x,en.y,'#7ad14a',4,80,0.15);
+        if(en.plagueTimer>0.6){
+          const spreadTarget = game.enemies.find(o=>o!==en && !(o.plagueTimer>0) && dist(en.x,en.y,o.x,o.y)<90);
+          if(spreadTarget){
+            spreadTarget.plagueTimer = en.plagueTimer*0.6;
+            spreadTarget.plagueTick = 0;
+            spreadTarget.plagueDmgBase = en.plagueDmgBase;
+          }
+        }
+      }
+    }
     const d = dist(en.x,en.y,p.x,p.y);
     const def = en.def;
     const spd = def.speed*(en.speedMult||1);
@@ -4787,6 +5760,36 @@ function hitPlayer(dmg){
     spawnToast('¡Escudo de Reacción! Absorbiste el golpe entero');
     addParticles(p.x,p.y,'#8ec9ff',18,180,0.4);
     shake(5);
+    return;
+  }
+  // Dorian (Duelista): parry stance — a hit taken during the window is fully absorbed, blasts
+  // nearby enemies, and grants a Contragolpe charge for E. Checked here (same slot as the
+  // reactiveShield relic above) so it can fully cancel the hit before damage/reduction applies.
+  if(p.parryWindow>0){
+    p.parryWindow = 0;
+    p.parryCharge = true;
+    p.invuln = 0.3;
+    addParticles(p.x,p.y,'#e0455a',20,190,0.4);
+    spawnShockwave(p.x,p.y,'#e0455a',130,0.3);
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<130){
+        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.5), 'q');
+        if(game.enemies.includes(t)) t.stunTimer = Math.max(t.stunTimer||0, 0.8);
+      }
+    });
+    shake(5);
+    return;
+  }
+  // Anselm (Peregrino de Piedra): fully immune while petrified, reflects to anything close and has
+  // a chance to stun it — checked every hit during the window (not consumed after one, unlike Dorian's)
+  if(p.stoneTimer>0){
+    addParticles(p.x,p.y,'#9c9c9c',10,140,0.25);
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<90){
+        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.7), 'q');
+        if(game.enemies.includes(t) && Math.random()<0.35) t.stunTimer = Math.max(t.stunTimer||0, 0.5);
+      }
+    });
     return;
   }
   const wallBonus = (p.effects.wall>0 ? 0.25 : 0) + (p.potionEffects.def>0 ? 0.30 : 0);
@@ -12746,6 +13749,34 @@ function updateHazards(dt){
   }
 }
 
+/* ---------- mines (Mecha, Zapador): player-placed, only ever hurt enemies/bosses, mirrors the
+   hazard system above but deliberately kept separate since hazards are wired to hitPlayer() ---------- */
+function updateMines(dt){
+  for(let i=game.mines.length-1;i>=0;i--){
+    const m = game.mines[i];
+    m.life -= dt;
+    if(m.armTimer>0) m.armTimer -= dt;
+    if(m.life<=0){ game.mines.splice(i,1); continue; }
+    if(m.armTimer>0) continue;
+    const targets = [...game.enemies, ...bossTargets()];
+    const triggered = targets.some(t=> dist(m.x,m.y,t.x,t.y) < m.triggerRadius+(t.radius||16));
+    if(triggered){
+      explodeAt(m.x, m.y, m.blastRadius, computeDamage(m.dmgBase));
+      game.mines.splice(i,1);
+    }
+  }
+}
+function drawMine(m){
+  ctx.save();
+  ctx.translate(m.x,m.y);
+  const armed = m.armTimer<=0;
+  ctx.globalAlpha = armed ? (0.65+Math.sin(performance.now()/160)*0.3) : 0.5;
+  ctx.fillStyle = armed ? '#ff6a3d' : '#5a4a3a';
+  ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#2a1c14'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.restore();
+}
+
 /* ---------- gold orbs ---------- */
 function updateGoldOrbs(dt){
   const p = game.player;
@@ -13095,6 +14126,7 @@ function render(){
   if(game.portal) drawPortal(game.portal);
   // ground hazards (fire patches etc)
   game.hazards.forEach(h=>drawHazard(h));
+  game.mines.forEach(m=>drawMine(m));
   // chests
   game.chests.forEach(c=>drawChest(c));
   // gold orbs
@@ -13108,6 +14140,11 @@ function render(){
   // enemies
   game.enemies.forEach(en=>drawEnemy(en));
   if(game.pet) drawPet(game.pet);
+  game.pack.forEach(m=>drawPet(m));
+  drawGravityWell();
+  drawSlowZone();
+  drawPendingBursts();
+  drawVortex();
   // boss
   if(game.boss && game.boss.telegraph) drawBossTelegraphIndicator(game.boss);
   if(game.boss) drawBoss(game.boss);
@@ -14707,7 +15744,7 @@ function drawBossEyes(r, color){
   ctx.restore();
 }
 
-// ---- shared design for every non-guardian boss ----
+// ---- shared design for every non-guardian boss (variant 0 of 4 — see GENERIC_BOSS_VARIANTS) ----
 function drawGenericBossBody(boss){
   const r = boss.radius, color = boss.def.color;
   ctx.save();
@@ -14726,6 +15763,87 @@ function drawGenericBossBody(boss){
   ctx.strokeStyle = '#0a0710'; ctx.lineWidth = 3; ctx.stroke();
   drawBossEyes(r, color);
   ctx.restore();
+}
+// ---- variant 1: Bulto Acorazado — thick body, overlapping armor plates, no spikes ----
+function drawBossVariantArmored(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-20);
+  ctx.beginPath(); ctx.arc(0,0,r*0.95,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#0a0710'; ctx.lineWidth=3; ctx.stroke();
+  ctx.fillStyle = shadeColor(color,-45);
+  ctx.strokeStyle = '#0a0710'; ctx.lineWidth=1.5;
+  for(let i=0;i<5;i++){
+    const a = (i/5)*Math.PI*2 + Math.PI/10;
+    ctx.save();
+    ctx.rotate(a);
+    ctx.beginPath();
+    ctx.rect(-r*0.22, -r*1.02, r*0.44, r*0.4);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  drawBossEyes(r*0.7, color);
+  ctx.restore();
+}
+// ---- variant 2: Espectro Errante — translucent, tattered wavy edge, hazy outer halo ----
+function drawBossVariantSpectral(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.globalAlpha = 0.78;
+  ctx.shadowColor=color; ctx.shadowBlur=24;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath();
+  ctx.moveTo(0,-r);
+  const waves=8;
+  for(let i=1;i<=waves;i++){
+    const a = -Math.PI/2 + (i/waves)*Math.PI*2;
+    const rr = r*(i%2===0?1.0:0.72);
+    ctx.lineTo(Math.cos(a)*rr, Math.sin(a)*rr);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.globalAlpha = 0.35;
+  ctx.beginPath(); ctx.arc(0,r*0.15,r*1.15,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 0.78;
+  drawBossEyes(r*0.8, '#ffffff');
+  ctx.restore();
+}
+// ---- variant 3: Bestia Feral — hunched body with jutting fangs/claws ----
+function drawBossVariantFeral(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-10);
+  ctx.beginPath();
+  ctx.moveTo(0,-r*0.7);
+  ctx.quadraticCurveTo(r*0.95,-r*0.5,r*0.9,r*0.2);
+  ctx.quadraticCurveTo(r*0.7,r*1.0,0,r*0.85);
+  ctx.quadraticCurveTo(-r*0.7,r*1.0,-r*0.9,r*0.2);
+  ctx.quadraticCurveTo(-r*0.95,-r*0.5,0,-r*0.7);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#0a0710'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.fillStyle = '#e8e0cf';
+  [-1,1].forEach(side=>{
+    ctx.beginPath();
+    ctx.moveTo(side*r*0.3, r*0.6);
+    ctx.lineTo(side*r*0.65, r*1.15);
+    ctx.lineTo(side*r*0.15, r*0.75);
+    ctx.closePath(); ctx.fill();
+  });
+  drawBossEyes(r*0.75, color);
+  ctx.restore();
+}
+const GENERIC_BOSS_VARIANTS = [drawGenericBossBody, drawBossVariantArmored, drawBossVariantSpectral, drawBossVariantFeral];
+// deterministic per-boss variant pick from its kind string, so the same floor/Ascenso boss always
+// renders the same way across visits instead of flickering between variants
+function bossVariantIndex(boss){
+  let h=0;
+  const s = boss.kind||'';
+  for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i))>>>0;
+  return h % GENERIC_BOSS_VARIANTS.length;
 }
 
 // ---- 1. Guardián de Hueso — bone crown, skull core, ribcage arcs ----
@@ -14976,7 +16094,8 @@ const GUARDIAN_BODY_DRAWERS = {
 };
 function drawBossBody(boss){
   const fn = GUARDIAN_BODY_DRAWERS[boss.kind];
-  if(fn) fn(boss); else drawGenericBossBody(boss);
+  if(fn){ fn(boss); return; }
+  GENERIC_BOSS_VARIANTS[bossVariantIndex(boss)](boss);
 }
 
 function drawBoss(boss){
