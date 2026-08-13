@@ -365,6 +365,22 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 @keyframes bossFillDrift{ from{ background-position:0 0; } to{ background-position:120px 0; } }
 @keyframes bossArcFlicker{ 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
 
+/* ---------- enraged (phase 2, <50% HP) — the whole bar gets angrier ---------- */
+.boss-hp.enraged .boss-hp-plate{
+  animation: bossEnrageEdge 0.7s ease-in-out infinite;
+}
+@keyframes bossEnrageEdge{
+  0%,100%{ box-shadow: inset 0 0 0 1px rgba(120,90,60,0.35), inset 0 2px 6px rgba(0,0,0,0.7), 0 6px 22px -6px rgba(0,0,0,0.8), 0 0 14px 2px rgba(255,40,40,0.25); }
+  50%{ box-shadow: inset 0 0 0 1px rgba(255,90,60,0.55), inset 0 2px 6px rgba(0,0,0,0.7), 0 6px 22px -6px rgba(0,0,0,0.8), 0 0 26px 6px rgba(255,40,40,0.55); }
+}
+.boss-hp.enraged .boss-bar-fill{
+  background: linear-gradient(90deg, #6a0d0d, #ff2f2f 30%, var(--ember) 65%, #ffdf6a 100%);
+  box-shadow:0 0 16px 3px rgba(255,60,40,0.75);
+}
+.boss-hp.enraged .boss-bar-fill::after{ animation-duration: 1s; }
+.boss-hp.enraged .boss-bar-arc{ animation-duration: 0.28s; width:44px; }
+.boss-hp.enraged .name{ color:#ff8a6a; text-shadow:0 0 14px rgba(255,60,40,0.75), 0 2px 2px rgba(0,0,0,0.8); }
+
 .boss-hp-emblem{
   position:absolute; top:11px; right:-16px; z-index:2;
   width:30px; height:30px; border-radius:50%;
@@ -708,7 +724,7 @@ const HEROES = {
   paladin: {
     id:'paladin', name:'Aurelio', className:'Paladín', icon:'✝', accent:'#ffcb47', glow:'rgba(255,203,71,0.35)',
     hp:190, speed:235, atk:{cd:0.5, dmg:15, range:100, arc:76, kind:'melee'},
-    q:{name:'Escudo Sagrado', icon:'⛨', cd:9, desc:'Absorbe el próximo golpe de daño'},
+    q:{name:'Escudo Sagrado', icon:'⛨', cd:9, desc:'Absorbe el próximo golpe de daño; si te pegan en los primeros 0.4s, es un bloqueo perfecto que reinicia tus habilidades'},
     e:{name:'Golpe Divino', icon:'✜', cd:11, desc:'Cura y daña a enemigos cercanos'},
     locked:true, unlockAch:'threeBosses',
     scaling:{stat:'hp', perLevel:0.035},
@@ -733,7 +749,7 @@ const HEROES = {
     id:'coloso', name:'Grava', className:'Coloso', icon:'⛰', accent:'#9c8a6a', glow:'rgba(156,138,106,0.35)',
     hp:300, speed:205, atk:{cd:0.55, dmg:20, range:92, arc:80, kind:'melee'},
     q:{name:'Grito Ominoso', icon:'📯', cd:10, desc:'Atrae y aturde a los enemigos cercanos'},
-    e:{name:'Muro de Voluntad', icon:'⛊', cd:14, desc:'Gran escudo y más resistencia por 4s'},
+    e:{name:'Muro de Voluntad', icon:'⛊', cd:14, desc:'Gran escudo y más resistencia por 4s; un golpe perfecto en los primeros 0.35s desata una onda a tu alrededor'},
     locked:true, unlockAch:'tankyRun',
     scaling:{stat:'hp', perLevel:0.045},
   },
@@ -2636,6 +2652,7 @@ function freshPlayerStats(heroDef){
     rewindHistory:[], rewindSampleTimer:0, // Tempus (Crononauta)
     songIndex:0, // Lira (Bardo)
     stoneTimer:0, stoneElapsed:0, // Anselm (Peregrino de Piedra)
+    corruptionCurse:false, // Altar de Corrupción
   };
   const hpUp = progress.homeUpgrades.hp||0;
   const goldUp = progress.homeUpgrades.gold||0;
@@ -2725,6 +2742,7 @@ function newGame(){
     pacts: {...selectedPacts}, pendingRoute:null, routeGoldMult:1, routeEliteBoost:false, routeSpecialBuff:false,
     stats:{ bossesThisRun:0, stageReached:0, noHitBoss:false, bossTookDamage:false },
     ascenso:false, ascensoFloor:0, ascensoLight:0, ascensoLootOptions:[], ascensoLootPicked:[],
+    roomsSinceCorruption:0, // Altar de Corrupción — see corruptionAltar
   };
 }
 
@@ -2969,6 +2987,16 @@ $('btn-next-stage').addEventListener('click', ()=>{
   hideScreen('screen-clear');
   game.stageIndex++;
   syncCharacterLevel(game.player, game.stageIndex);
+  // Altar de Corrupción: the curse purges itself after 3 rooms cleared while it was active —
+  // counted here, at the same "you survived and moved on" moment as the stage index itself
+  if(game.player.corruptionCurse){
+    game.roomsSinceCorruption = (game.roomsSinceCorruption||0) + 1;
+    if(game.roomsSinceCorruption>=3){
+      game.player.corruptionCurse = false;
+      game.roomsSinceCorruption = 0;
+      spawnToast('☠ La maldición se disipa — sobreviviste 3 salas');
+    }
+  }
   showScreen('screen-stage');
   setStageIntro(game.stageIndex);
 });
@@ -3069,7 +3097,7 @@ function startStage(i){
   game.player._reactiveShieldUsedThisFloor = false;
   game.player._ghostStepUsed = {};
   game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[]; game.mines=[];
-  game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.pack=[]; game.gravityWell=null; game.slowZone=null; game.pendingBursts=[]; game.vortex=null; game.sacrificeAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
+  game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.pack=[]; game.gravityWell=null; game.slowZone=null; game.pendingBursts=[]; game.vortex=null; game.sacrificeAltar=null; game.corruptionAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
   game.phase='combat';
 
   const route = game.pendingRoute || 'blood';
@@ -3166,6 +3194,11 @@ function beginShoppingPhase(){
   });
   game.altar = { x:b.x+b.w/2, y:b.y+b.h*0.22, radius:30, active:true, pulse:0 };
   game.sacrificeAltar = { x:b.x+b.w*0.10, y:b.y+b.h*0.48, radius:24, used:false, pulse:0 };
+  // Altar de Corrupción: only offered while the player isn't already cursed by a previous one, and
+  // only some of the time — a guaranteed epic item is a big pull, the curse needs to stay a real cost
+  if(!game.player.corruptionCurse && Math.random()<0.22){
+    game.corruptionAltar = { x:b.x+b.w*0.75, y:b.y+b.h*0.30, radius:24, used:false, pulse:0 };
+  }
   if(isMerchantFloor(game.stageIndex) && !game.pacts.vultureMode){
     game.merchant = { x:b.x+b.w*0.90, y:b.y+b.h*0.48, radius:26, offers: rollMerchantOffers(game.stageIndex), pulse:0 };
     spawnToast(`Un mercader errante ofrece 3 objetos a elección.`);
@@ -3182,6 +3215,7 @@ function startBossCountdown(){
   game.altar.active=false;
   game.chests.forEach(c=>c.opened=true); // chests close once the ritual begins
   game.sacrificeAltar = null;
+  game.corruptionAltar = null;
   spawnToast('El altar se enciende...');
   shake(3);
 }
@@ -3462,7 +3496,7 @@ function enterAscensoFloor(i){
   game.player._reactiveShieldUsedThisFloor = false;
   game.player._ghostStepUsed = {};
   game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[]; game.mines=[];
-  game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.pack=[]; game.gravityWell=null; game.slowZone=null; game.pendingBursts=[]; game.vortex=null; game.sacrificeAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
+  game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.pack=[]; game.gravityWell=null; game.slowZone=null; game.pendingBursts=[]; game.vortex=null; game.sacrificeAltar=null; game.corruptionAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
   const def = bossKind ? BOSS_DEFS[bossKind] : null;
   game.currentStage = { key:'ascenso', name: def ? def.name : 'Piso en construcción', floor:i+1 };
   $('hud-stage-eyebrow').textContent = `Piso ${i+1} / ${ASCENSO_MAX_FLOOR} · Ascenso`;
@@ -3944,7 +3978,7 @@ function update(dt){
   if(keys['KeyD']) mx+=1;
   let mlen = Math.hypot(mx,my);
   if(mlen>0){ mx/=mlen; my/=mlen; }
-  const speed = Math.min(MAX_PLAYER_SPEED, (p.def.speed*p.speedMult+p.speedFlat)*(p.effects.shadow>0?1.15:1)*((p.effects.mantoLuz||0)>0?1.40:1)*(p.potionEffects.spd>0?1.30:1)*(p.slowTimer>0?p.slowFactor:1)*((p.speedBurstTimer||0)>0?1.2:1));
+  const speed = Math.min(MAX_PLAYER_SPEED, (p.def.speed*p.speedMult+p.speedFlat)*(p.effects.shadow>0?1.15:1)*((p.effects.mantoLuz||0)>0?1.40:1)*(p.potionEffects.spd>0?1.30:1)*(p.slowTimer>0?p.slowFactor:1)*((p.speedBurstTimer||0)>0?1.2:1)*(p.corruptionCurse?0.72:1));
   if(p.invertTimer>0){ mx=-mx; my=-my; } // mirrorGaze: your own reflection turns your movement against you
   if(p.frozenTimer>0){
     // Cero Absoluto: locked in a block of ice — no movement input gets through until it breaks
@@ -4506,6 +4540,7 @@ function doAbilityQ(){
     }
   } else if(id==='paladin'){
     p.shield = Math.max(p.shield, p.maxHp*0.35);
+    p.parryWindow = 0.4; // Maestría de Posturas: block a hit in the first 0.4s for the full payoff
     addParticles(p.x,p.y,'#ffcb47',20,160,0.5);
   } else if(id==='nigromante'){
     [...game.enemies, ...bossTargets()].forEach(t=>{
@@ -4894,6 +4929,7 @@ function doAbilityE(){
   } else if(id==='coloso'){
     p.shield = Math.max(p.shield, 90);
     p.effects.wall = 4;
+    p.parryWindow = 0.35; // Maestría de Posturas: block a hit right as Muro de Voluntad goes up
     addParticles(p.x,p.y,'#9c8a6a',24,180,0.45);
     shake(4);
   } else if(id==='silvano'){
@@ -5391,6 +5427,19 @@ function doInteract(){
       addParticles(game.sacrificeAltar.x, game.sacrificeAltar.y, '#e8434f', 26, 200, 0.5);
       shake(5);
     }
+    if(game.corruptionAltar && !game.corruptionAltar.used && dist(p.x,p.y,game.corruptionAltar.x,game.corruptionAltar.y)<60){
+      game.corruptionAltar.used = true;
+      const item = ITEM_POOL.epic[Math.floor(Math.random()*ITEM_POOL.epic.length)];
+      item.apply(p);
+      p.items.push(item);
+      checkSynergies(p);
+      p.corruptionCurse = true;
+      game.roomsSinceCorruption = 0; // purges automatically after 3 clean floors — see btn-next-stage
+      spawnToast(`👑 [LEGENDARIO] ${item.name} — ${item.desc}`);
+      spawnToast('☠ El altar te maldice: visión reducida y lentitud, hasta limpiar 3 salas más');
+      addParticles(game.corruptionAltar.x, game.corruptionAltar.y, '#7a2fbf', 34, 240, 0.6);
+      shake(10);
+    }
     if(game.merchant && dist(p.x,p.y,game.merchant.x,game.merchant.y)<70 && !merchantOpen){
       openMerchant();
     }
@@ -5744,12 +5793,65 @@ function updateEnemies(dt){
   }
 }
 
+// Maestría de Posturas: per-hero payoff for a perfectly-timed parry (see hitPlayer). Any hero not
+// listed here still gets the mechanic — just falls back to a small shield — so this stays cheap
+// to extend to future heroes without needing a bespoke entry for every single one.
+const PARRY_REWARDS = {
+  dorian: p=>{
+    p.parryCharge = true; // spent by Contragolpe (E) for a guaranteed-crit follow-up
+  },
+  paladin: p=>{
+    // a perfect block resets both Q and E outright — Aurelio's kit is built around a slow,
+    // deliberate rhythm rather than a stacking resource, so getting the whole rotation back
+    // immediately is the bigger payoff here
+    p.qTimer = 0; p.eTimer = 0;
+    spawnToast('✝ ¡Bloqueo perfecto! Habilidades reiniciadas');
+  },
+  coloso: p=>{
+    // Muro de Voluntad already grants a flat shield — a perfect block on top of it blasts
+    // everything around him, since the shield itself absorbs nothing when parried in time
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<180){
+        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.4), 'q');
+        if(game.enemies.includes(t)) t.stunTimer = Math.max(t.stunTimer||0, 0.8);
+      }
+    });
+    spawnShockwave(p.x,p.y,'#9c8a6a',180,0.35);
+    shake(6);
+  },
+};
+function applyParryReward(p){
+  const fn = PARRY_REWARDS[p.def.id];
+  if(fn){ fn(p); return; }
+  p.shield = Math.max(p.shield, 30);
+}
+
 function hitPlayer(dmg){
   const p = game.player;
   if(devMode) return; // dev mode: infinite HP, take no damage at all
   if(p.invuln>0) return;
   if(game && game.phase==='boss') game.stats.bossTookDamage = true;
   p.timeSinceHit = 0;
+  // Maestría de Posturas: a generic parry/perfect-block window, checked before the plain shield
+  // absorb below so a well-timed hit gets the full payoff even on heroes whose Q/E also grants a
+  // flat shield at the same moment (Paladín, Coloso) — miss the window and it just falls through
+  // to that shield like normal. Every hero gets the shared baseline (full negate + punish-nova);
+  // PARRY_REWARDS adds a bespoke bonus on top for the heroes built around this mechanic.
+  if(p.parryWindow>0){
+    p.parryWindow = 0;
+    p.invuln = Math.max(p.invuln, 0.3);
+    addParticles(p.x,p.y,p.def.accent||'#fff',20,190,0.4);
+    spawnShockwave(p.x,p.y,p.def.accent||'#fff',130,0.3);
+    [...game.enemies, ...bossTargets()].forEach(t=>{
+      if(dist(p.x,p.y,t.x,t.y)<130){
+        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.5), 'q');
+        if(game.enemies.includes(t)) t.stunTimer = Math.max(t.stunTimer||0, 0.8);
+      }
+    });
+    applyParryReward(p);
+    shake(5);
+    return;
+  }
   if(p.shield>0){
     p.shield -= dmg;
     addParticles(p.x,p.y,'#ffcb47',10,150,0.3);
@@ -5766,24 +5868,6 @@ function hitPlayer(dmg){
     p.invuln = 0.4;
     spawnToast('¡Escudo de Reacción! Absorbiste el golpe entero');
     addParticles(p.x,p.y,'#8ec9ff',18,180,0.4);
-    shake(5);
-    return;
-  }
-  // Dorian (Duelista): parry stance — a hit taken during the window is fully absorbed, blasts
-  // nearby enemies, and grants a Contragolpe charge for E. Checked here (same slot as the
-  // reactiveShield relic above) so it can fully cancel the hit before damage/reduction applies.
-  if(p.parryWindow>0){
-    p.parryWindow = 0;
-    p.parryCharge = true;
-    p.invuln = 0.3;
-    addParticles(p.x,p.y,'#e0455a',20,190,0.4);
-    spawnShockwave(p.x,p.y,'#e0455a',130,0.3);
-    [...game.enemies, ...bossTargets()].forEach(t=>{
-      if(dist(p.x,p.y,t.x,t.y)<130){
-        dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.5), 'q');
-        if(game.enemies.includes(t)) t.stunTimer = Math.max(t.stunTimer||0, 0.8);
-      }
-    });
     shake(5);
     return;
   }
@@ -5874,11 +5958,19 @@ function updateBoss(dt){
 
   if(boss.hp < boss.maxHp*0.5 && boss.phase===1){
     boss.phase=2; boss.def={...boss.def, speed:boss.def.speed*1.15};
+    // visual impact of the transition itself — the mechanical escalation (faster attack cadence,
+    // bigger pool, shorter telegraphs) already existed below, but the moment it happens had no
+    // punch of its own; .boss-hp.enraged (toggled in syncHud) intensifies the bar's fire/lightning
+    shake(9);
+    addParticles(boss.x, boss.y, '#ff2f2f', 30, 220, 0.55);
+    spawnShockwave(boss.x, boss.y, '#ff2f2f', 140, 0.4);
     if(boss.kind==='twinBoss'){
       // at half HP the Twins open their signature mega laser immediately, rather than leaving it
       // to random chance — a clear, telegraphed "things just changed" moment
       boss.forceNextAttack = 'megaLaser';
       spawnToast('¡Las Hermanas Gemelas fusionan su mirada!');
+    } else {
+      spawnToast(`⚠ ${boss.def.name} entra en furia`);
     }
   }
 
@@ -13930,6 +14022,7 @@ function updateAltarPrompt(){
     });
     if(!msg && game.altar && dist(p.x,p.y,game.altar.x,game.altar.y)<70) msg='Espacio: invocar al jefe';
     if(!msg && game.sacrificeAltar && !game.sacrificeAltar.used && dist(p.x,p.y,game.sacrificeAltar.x,game.sacrificeAltar.y)<60) msg='Espacio: sacrificar 15% HP máx por oro';
+    if(!msg && game.corruptionAltar && !game.corruptionAltar.used && dist(p.x,p.y,game.corruptionAltar.x,game.corruptionAltar.y)<60) msg='Espacio: objeto legendario a cambio de una maldición';
     if(!msg && game.merchant && dist(p.x,p.y,game.merchant.x,game.merchant.y)<70) msg = game.merchant.chosen ? 'El mercader ya no tiene nada para vos' : 'Espacio: ver la mercancía del mercader';
   } else if(game.phase==='portal'){
     if(game.portal && dist(p.x,p.y,game.portal.x,game.portal.y)<70) msg='Espacio: entrar al portal';
@@ -14040,16 +14133,19 @@ const EFFECT_DEFS = [
   { get:p=>p.eLockTimer, label:'E bloqueada', desc:'', kind:'debuff' },
   { get:p=>p.frozenTimer, label:'Congelado', desc:'presioná WASD para romper el hielo', kind:'debuff' },
   { get:p=>p.iceSlideTimer, label:'Piso resbaladizo', desc:'perdiste tracción', kind:'debuff' },
+  { get:p=> p.corruptionCurse ? Math.max(0, 3-(game.roomsSinceCorruption||0)) : 0,
+    label:'Maldición del Altar', desc:'visión reducida, -28% velocidad', kind:'debuff',
+    fmt:t=>{ const n=Math.ceil(t); return `${n} sala${n===1?'':'s'} restante${n===1?'':'s'}`; } },
 ];
 function syncEffectsPanel(p){
   const panel = $('effects-panel');
   if(!panel) return;
-  const active = EFFECT_DEFS.map(e=>({ label:e.label, desc:e.desc, kind:e.kind, t:e.get(p) })).filter(e=>e.t>0.05);
+  const active = EFFECT_DEFS.map(e=>({ label:e.label, desc:e.desc, kind:e.kind, t:e.get(p), fmt:e.fmt })).filter(e=>e.t>0.05);
   if(!active.length){ panel.innerHTML=''; return; }
   panel.innerHTML = active.map(e=>`
     <div class="effect-chip ${e.kind}">
       <span class="nm">${e.label}${e.desc?` <i>(${e.desc})</i>`:''}</span>
-      <span class="t">${e.t.toFixed(1)}s</span>
+      <span class="t">${e.fmt ? e.fmt(e.t) : e.t.toFixed(1)+'s'}</span>
     </div>
   `).join('');
 }
@@ -14102,6 +14198,7 @@ function syncHud(){
   updatePhaseNote();
   if(game.boss){
     $('boss-hp-fill').style.width = clamp(game.boss.hp/game.boss.maxHp*100,0,100)+'%';
+    $('boss-hp-wrap').classList.toggle('enraged', game.boss.phase===2);
   }
 }
 
@@ -14128,6 +14225,7 @@ function render(){
   // altar
   if(game.altar) drawAltar(game.altar);
   if(game.sacrificeAltar) drawSacrificeAltar(game.sacrificeAltar);
+  if(game.corruptionAltar) drawCorruptionAltar(game.corruptionAltar);
   if(game.merchant) drawMerchant(game.merchant);
   // portal
   if(game.portal) drawPortal(game.portal);
@@ -14750,6 +14848,16 @@ function drawArena(b){
   grad.addColorStop(1, isFinal ? 'rgba(20,0,10,0.6)' : 'rgba(0,0,0,0.55)');
   ctx.fillStyle=grad;
   ctx.fillRect(b.x,b.y,b.w,b.h);
+  // Altar de Corrupción: a tight, player-centered fog while cursed — vision drops hard, on top of
+  // (not instead of) the room's normal vignette above
+  if(game.player.corruptionCurse){
+    const p = game.player;
+    const fog = ctx.createRadialGradient(p.x,p.y,90,p.x,p.y,340);
+    fog.addColorStop(0,'rgba(10,4,16,0)');
+    fog.addColorStop(1,'rgba(6,2,10,0.94)');
+    ctx.fillStyle = fog;
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+  }
 }
 
 function drawPortal(portal){
@@ -14994,6 +15102,30 @@ function drawSacrificeAltar(a){
   ctx.beginPath(); ctx.arc(a.x,a.y,r,0,Math.PI*2); ctx.stroke();
   ctx.fillStyle='#e8434f'; ctx.font='18px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText('♦', a.x, a.y);
+  ctx.restore();
+}
+function drawCorruptionAltar(a){
+  ctx.save();
+  ctx.globalAlpha = a.used?0.3:1;
+  a.pulse += 0.035;
+  const r = 23+Math.sin(a.pulse)*5;
+  const grad = ctx.createRadialGradient(a.x,a.y,3,a.x,a.y,r+26);
+  grad.addColorStop(0,'rgba(122,47,191,0.5)');
+  grad.addColorStop(1,'rgba(122,47,191,0)');
+  ctx.fillStyle=grad;
+  ctx.beginPath(); ctx.arc(a.x,a.y,r+26,0,Math.PI*2); ctx.fill();
+  // jagged crown, distinguishes it from the round sacrifice altar at a glance
+  ctx.strokeStyle='#7a2fbf'; ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let i=0;i<8;i++){
+    const ang = (i/8)*Math.PI*2;
+    const rr = r*(i%2===0?1:0.7);
+    const x=a.x+Math.cos(ang)*rr, y=a.y+Math.sin(ang)*rr;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath(); ctx.stroke();
+  ctx.fillStyle='#7a2fbf'; ctx.font='18px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('👑', a.x, a.y);
   ctx.restore();
 }
 
