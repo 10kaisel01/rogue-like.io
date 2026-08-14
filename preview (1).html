@@ -132,6 +132,13 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 .compendium-item .body{ min-width:0; }
 .compendium-item .nm{ font-family:var(--font-title); font-size:12px; color:var(--bone); }
 .compendium-item .ds{ font-family:var(--font-mono); font-size:10px; color:var(--bone-dim); line-height:1.35; margin-top:1px; }
+.compendium-item .lore{ font-family:var(--font-body,serif); font-style:italic; font-size:10.5px; color:var(--shade); line-height:1.4; margin-top:5px; }
+.compendium-item.locked{ opacity:0.55; }
+.compendium-item.locked .ic{ color:var(--bone-dim); }
+.compendium-item.locked .nm{ color:var(--bone-dim); letter-spacing:.1em; }
+.family-card.complete{ box-shadow:0 0 0 1px var(--fc, var(--bone-dim)) inset, 0 0 16px -4px var(--fc, transparent); }
+.family-card .collect{ font-family:var(--font-mono); font-size:9.5px; color:var(--bone-dim); margin-top:6px; letter-spacing:.03em; }
+.family-card.complete .collect{ color:var(--fc, var(--gold, #ffcb47)); }
 .compendium{ padding-bottom:10px; }
 .compendium .compendium-section-title:first-child{ margin-top:4px; }
 .hero-card{
@@ -699,6 +706,209 @@ function rayToBounds(x,y,ang,b){
   return Math.max(0, tMax);
 }
 
+// Sistema Activo de Racha de Combo: any hero can register an effect that fires once their combo
+// streak crosses a threshold. `trigger` is what has to happen while at/above that streak —
+// 'melee' fires per melee hit (receives the target), 'q'/'e' fire when that ability resolves.
+// Scales to all 39 heroes for free — adding one just means adding an entry here, nothing else
+// needs to change (doBasicAttack and every ability already call triggerComboEffect).
+// Declared above HEROES/buildRoster() on purpose: buildRoster() runs once at top level as soon
+// as the script loads (to paint the character-select screen), and it reads COMBO_EFFECTS to show
+// the passive on each hero's card — so this has to exist before that call, not just before combat.
+const COMBO_EFFECTS = {
+  guerrero: { threshold:10, trigger:'melee',
+    desc:'Racha x10: tus golpes cuerpo a cuerpo aplican Hemorragia',
+    apply:(p, target)=>{
+      if(!target || !game.enemies.includes(target)) return; // the bleed DOT only works on common enemies — see updateEnemies
+      target.bleedTimer = 3;
+      target.bleedTick = Math.min(target.bleedTick||0, 0.5);
+      target.bleedDmgBase = p.def.atk.dmg*0.25;
+    } },
+  maga: { threshold:15, trigger:'e',
+    desc:'Racha x15: Parpadeo genera una onda de daño al aterrizar',
+    apply:(p)=>{
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<130) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*1.2), 'combo');
+      });
+      addParticles(p.x,p.y,'#6a8dff',20,180,0.4);
+      spawnShockwave(p.x,p.y,'#6a8dff',130,0.3);
+    } },
+  picaro: { threshold:12, trigger:'e',
+    desc:'Racha x12: Paso Sombrío deja tu próximo golpe con un súper crítico garantizado',
+    apply:(p)=>{ p.effects.shadowCrit = true; addParticles(p.x,p.y,'#d24aff',14,150,0.3); } },
+  paladin: { threshold:10, trigger:'e',
+    desc:'Racha x10: Golpe Divino también te da un escudo',
+    apply:(p)=>{ p.shield = Math.max(p.shield, 40); addParticles(p.x,p.y,'#ffcb47',16,160,0.3); } },
+  nigromante: { threshold:12, trigger:'e',
+    desc:'Racha x12: Velo de la Muerte drena mucha más vida',
+    apply:(p)=>{
+      let healed=0;
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<160){ const d=computeDamage(p.def.atk.dmg*0.6); dealDamageToTarget(t,d,'combo'); healed+=d.value*0.4; }
+      });
+      p.hp = Math.min(p.maxHp, p.hp+healed);
+      addParticles(p.x,p.y,'#8a2fbf',16,160,0.3);
+    } },
+  vidrio: { threshold:8, trigger:'q',
+    desc:'Racha x8: Golpe Fatal siempre sale como súper crítico',
+    apply:(p)=>{ p.effects.shadowCrit = true; addParticles(p.x,p.y,'#e8e8f5',14,160,0.3); } },
+  coloso: { threshold:10, trigger:'q',
+    desc:'Racha x10: Grito Ominoso aturde por mucho más tiempo',
+    apply:(p)=>{
+      game.enemies.forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<260) t.stunTimer = Math.max(t.stunTimer||0, 1.4); });
+      addParticles(p.x,p.y,'#9c8a6a',14,150,0.3);
+    } },
+  silvano: { threshold:10, trigger:'e',
+    desc:'Racha x10: Sacrificio detona con mucha más fuerza',
+    apply:(p)=>{
+      if(game.pet){ explodeAt(game.pet.x, game.pet.y, 60, computeDamage(p.def.atk.dmg*1.2)); addParticles(game.pet.x,game.pet.y,'#5bbf7a',14,160,0.3); }
+    } },
+  dual: { threshold:10, trigger:'e',
+    desc:'Racha x10: Golpe Combinado deja una onda extra a tu alrededor',
+    apply:(p)=>{
+      [...game.enemies, ...bossTargets()].forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<120) dealDamageToTarget(t, computeDamage(p.def.atkMelee.dmg*0.9), 'combo'); });
+      spawnShockwave(p.x,p.y,'#e8e8f5',120,0.3);
+    } },
+  monje: { threshold:12, trigger:'q',
+    desc:'Racha x12: Ráfaga de Golpes te cura una porción de lo que golpea',
+    apply:(p)=>{ p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.05); addParticles(p.x,p.y,'#e8e8f5',12,140,0.3); } },
+  arquera: { threshold:12, trigger:'q',
+    desc:'Racha x12: Flecha Perforante libera una ráfaga extra en cono al disparar',
+    apply:(p)=>{
+      game.enemies.forEach(t=>{
+        const ang = Math.atan2(t.y-p.y,t.x-p.x);
+        let diff = Math.abs(ang-p.facing); if(diff>Math.PI) diff=Math.PI*2-diff;
+        if(diff<0.35 && dist(p.x,p.y,t.x,t.y)<400) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.7), 'combo');
+      });
+      addParticles(p.x,p.y,'#8bffb0',10,150,0.25);
+    } },
+  elementalista: { threshold:12, trigger:'q',
+    desc:'Racha x12: Cadena de Rayos aturde brevemente a todo lo que golpea',
+    apply:(p)=>{
+      game.enemies.forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<420) t.stunTimer = Math.max(t.stunTimer||0, 0.4); });
+    } },
+  berserker: { threshold:15, trigger:'melee',
+    desc:'Racha x15: tus golpes cuerpo a cuerpo te curan un poco de vida',
+    apply:(p)=>{ p.hp = Math.min(p.maxHp, p.hp+2); } },
+  ilusionista: { threshold:10, trigger:'q',
+    desc:'Racha x10: Espejismo invoca un señuelo más resistente y agresivo',
+    apply:(p)=>{ if(game.pet){ game.pet.life = Math.min(game.pet.life+4, 20); game.pet.dmg = Math.round(game.pet.dmg*1.3); } } },
+  alquimista: { threshold:10, trigger:'q',
+    desc:'Racha x10: Frasco Corrosivo también infecta con Plaga',
+    apply:(p)=>{
+      game.enemies.forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<120){ t.plagueTimer=Math.max(t.plagueTimer||0,3); t.plagueTick=0; t.plagueDmgBase=p.def.atk.dmg*0.3; }
+      });
+    } },
+  druida: { threshold:12, trigger:'melee',
+    desc:'Racha x12: tus golpes cuerpo a cuerpo te curan un poco de vida',
+    apply:(p)=>{ p.hp = Math.min(p.maxHp, p.hp+2.5); } },
+  sangre: { threshold:10, trigger:'e',
+    desc:'Racha x10: Pacto de Sangre también duplica tu robo de vida por 5s',
+    apply:(p)=>{ p.lifestealBurstTimer = Math.max(p.lifestealBurstTimer||0, 5); addParticles(p.x,p.y,'#c9384a',14,150,0.3); } },
+  centinela: { threshold:10, trigger:'q',
+    desc:'Racha x10: Golpe Sísmico alcanza mucho más lejos',
+    apply:(p)=>{
+      game.enemies.forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<280) { dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.5), 'combo'); t.stunTimer=Math.max(t.stunTimer||0,0.5); } });
+    } },
+  cazador: { threshold:12, trigger:'e',
+    desc:'Racha x12: Salto de Sombra deja al objetivo marcado, recibe daño extra por 3s',
+    apply:(p)=>{
+      const targets=[...game.enemies, ...bossTargets()];
+      let nearest=null, nearestD=140;
+      targets.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearest=t; nearestD=d; } });
+      if(nearest){ nearest.weakenMarkTimer=3; dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*0.8), 'combo'); }
+    } },
+  torque: { threshold:10, trigger:'e',
+    desc:'Racha x10: Cadena Punitiva golpea en un radio mayor',
+    apply:(p)=>{
+      const origin = (p.lastHookTarget && p.lastHookTarget.hp>0) ? p.lastHookTarget : p;
+      [...game.enemies, ...bossTargets()].forEach(t=>{ if(dist(origin.x,origin.y,t.x,t.y)<100) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.7), 'combo'); });
+    } },
+  frey: { threshold:10, trigger:'q',
+    desc:'Racha x10: Escarcha Total congela por más tiempo',
+    apply:(p)=>{
+      const targets=[...game.enemies, ...bossTargets()];
+      let nearest=null, nearestD=340;
+      targets.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearest=t; nearestD=d; } });
+      if(nearest) nearest.stunTimer = Math.max(nearest.stunTimer||0, 0.8);
+    } },
+  dorian: { threshold:10, trigger:'e',
+    desc:'Racha x10: Contragolpe libera una onda extra a tu alrededor',
+    apply:(p)=>{
+      [...game.enemies, ...bossTargets()].forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<110) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.6), 'combo'); });
+    } },
+  ferro: { threshold:10, trigger:'q',
+    desc:'Racha x10: la Torreta sale sobrecargada, dispara más rápido',
+    apply:(p)=>{ if(game.pet) game.pet.atkCd = Math.max(0.2, game.pet.atkCd*0.6); } },
+  mecha: { threshold:10, trigger:'e',
+    desc:'Racha x10: Detonación Remota deja una explosión extra en tu posición',
+    apply:(p)=>{ explodeAt(p.x, p.y, 90, computeDamage(p.def.atk.dmg*1.1)); } },
+  arakne: { threshold:10, trigger:'e',
+    desc:'Racha x10: Embestida de Seda deja una zona de telaraña al terminar',
+    apply:(p)=>{ game.enemies.forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<110) t.slowTimer = Math.max(t.slowTimer||0, 2); }); } },
+  rasha: { threshold:10, trigger:'e',
+    desc:'Racha x10: Embestida de Jauría hace más daño',
+    apply:(p)=>{
+      [...game.enemies, ...bossTargets()].forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<140) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.5), 'combo'); });
+    } },
+  marlow: { threshold:10, trigger:'e',
+    desc:'Racha x10: Tirón de Hilo aturde por más tiempo',
+    apply:(p)=>{ game.enemies.forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<180) t.stunTimer = Math.max(t.stunTimer||0, 0.5); }); } },
+  orbis: { threshold:12, trigger:'e',
+    desc:'Racha x12: Colapso también daña a los jefes cercanos con más fuerza',
+    apply:(p)=>{ bossTargets().forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<250) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.6), 'combo'); }); } },
+  skald: { threshold:10, trigger:'e',
+    desc:'Racha x10: Detonar Runas también te cura',
+    apply:(p)=>{ p.hp = Math.min(p.maxHp, p.hp + p.maxHp*0.06); } },
+  morbus: { threshold:10, trigger:'q',
+    desc:'Racha x10: Plaga inflige un golpe de daño instantáneo además de infectar',
+    apply:(p)=>{
+      const targets=[...game.enemies, ...bossTargets()];
+      let nearest=null, nearestD=360;
+      targets.forEach(t=>{ const d=dist(p.x,p.y,t.x,t.y); if(d<nearestD){ nearest=t; nearestD=d; } });
+      if(nearest) dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*0.6), 'combo');
+    } },
+  tempus: { threshold:12, trigger:'e',
+    desc:'Racha x12: Rebobinado también te da un breve escudo',
+    apply:(p)=>{ p.shield = Math.max(p.shield, 35); } },
+  seren: { threshold:10, trigger:'e',
+    desc:'Racha x10: Giro Final deja una onda extra',
+    apply:(p)=>{ spawnShockwave(p.x,p.y,'#ff8fd0',110,0.25); [...game.enemies, ...bossTargets()].forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<110) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.5), 'combo'); }); } },
+  rowan: { threshold:10, trigger:'e',
+    desc:'Racha x10: Desmontar aturde a todo lo que golpea',
+    apply:(p)=>{ game.enemies.forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<150) t.stunTimer = Math.max(t.stunTimer||0, 0.5); }); } },
+  talus: { threshold:10, trigger:'e',
+    desc:'Racha x10: Emboscada deja una erupción extra al llegar',
+    apply:(p)=>{ game.pendingBursts.push({ x:p.x, y:p.y, timer:0.3, radius:70, dmgBase:p.def.atk.dmg*0.8 }); } },
+  lira: { threshold:12, trigger:'e',
+    desc:'Racha x12: Crescendo también te da un breve escudo',
+    apply:(p)=>{ p.shield = Math.max(p.shield, 35); } },
+  amara: { threshold:10, trigger:'e',
+    desc:'Racha x10: Autodestrucción hace más daño',
+    apply:(p)=>{
+      const possessed = game.pack.filter(m=>m.possessed);
+      possessed.forEach(m=>{ explodeAt(m.x, m.y, 50, computeDamage(p.def.atk.dmg*0.8)); });
+    } },
+  midas: { threshold:10, trigger:'q',
+    desc:'Racha x10: Toque Dorado te da un escudo extra sin costo adicional',
+    apply:(p)=>{ p.shield += 25; } },
+  borea: { threshold:10, trigger:'e',
+    desc:'Racha x10: Liberar hace más daño',
+    apply:(p)=>{
+      [...game.enemies, ...bossTargets()].forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<170) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.5), 'combo'); });
+    } },
+  anselm: { threshold:10, trigger:'e',
+    desc:'Racha x10: Romper Forma te deja un escudo residual',
+    apply:(p)=>{ p.shield = Math.max(p.shield, 30); } },
+};
+function triggerComboEffect(trigger, target){
+  const p = game.player;
+  const cfg = COMBO_EFFECTS[p.def.id];
+  if(!cfg || cfg.trigger!==trigger) return;
+  if(p.combo < cfg.threshold) return;
+  cfg.apply(p, target);
+}
+
 const HEROES = {
   guerrero: {
     id:'guerrero', name:'Bastión', className:'Guerrero', icon:'⚔', accent:'#ff6a3d', glow:'rgba(255,106,61,0.35)',
@@ -1096,6 +1306,7 @@ const progress = { unlocked:{ guerrero:true, maga:true, picaro:true, paladin:fal
   runHistory:[], skins:{}, selectedSkins:{},
   selectedUltimate:null, // which unlocked Habilidad Prohibida gets brought into the next run
   unlockedShiftAbilities:[], selectedShiftAbility:null, // ASCENSO's tecla-Shift abilities (see SHIFT_ABILITIES)
+  discoveredItems:{}, unlockedFamilyBonuses:{}, // Misterios del Compendio — lore + colecciones temáticas, forever, across every run
 };
 
 const PROGRESS_SAVE_KEY = 'descenso_progress_v1';
@@ -1119,6 +1330,8 @@ function loadProgress(){
     if(typeof saved.selectedUltimate==='string') progress.selectedUltimate = saved.selectedUltimate;
     if(Array.isArray(saved.unlockedShiftAbilities)) progress.unlockedShiftAbilities = saved.unlockedShiftAbilities;
     if(typeof saved.selectedShiftAbility==='string') progress.selectedShiftAbility = saved.selectedShiftAbility;
+    if(saved.discoveredItems) Object.assign(progress.discoveredItems, saved.discoveredItems);
+    if(saved.unlockedFamilyBonuses) Object.assign(progress.unlockedFamilyBonuses, saved.unlockedFamilyBonuses);
   }catch(e){ /* corrupted/old save — just start fresh rather than crash */ }
 }
 loadProgress(); // pulls back whatever was unlocked/earned last time, so a page refresh doesn't wipe it
@@ -1131,7 +1344,7 @@ const SAVED_RUN_KEY = 'descenso_savedrun_v1';
 function findItemById(id){
   return ITEM_POOL.common.find(it=>it.id===id) || ITEM_POOL.rare.find(it=>it.id===id) ||
     ITEM_POOL.epic.find(it=>it.id===id) || CURSED_ITEMS.find(it=>it.id===id) ||
-    Object.values(BOSS_ITEMS).find(it=>it.id===id) || null;
+    RELICS.find(it=>it.id===id) || Object.values(BOSS_ITEMS).find(it=>it.id===id) || null;
 }
 function hasSavedRun(){
   try{ return !!localStorage.getItem(SAVED_RUN_KEY); }catch(e){ return false; }
@@ -1940,13 +2153,20 @@ const HEAL_ATTACK_TYPES = new Set([
 generateFloorBosses(); // now that BOSS_DEFS/BOSS_ATTACKS exist, fill in the 90 regular-floor bosses
 
 const BOSS_ITEMS = {
-  boneGuardian: { id:'bossBone', name:'Corona de Hueso Antiguo', icon:'♛', desc:'+5% daño y +3% reducción de daño', apply:p=>{ p.dmgMult*=1.05; p.armor+=0.03; } },
-  motherWitch:  { id:'bossWitch', name:'Frasco de la Bruja Madre', icon:'☘', desc:'+2.5% robo de vida y +9 velocidad', apply:p=>{ grantLifesteal(p,0.025); p.speedFlat+=9; } },
-  abyssLord:    { id:'bossAbyss', name:'Núcleo del Abismo', icon:'⚡', desc:'+6% daño y -8% enfriamiento', apply:p=>{ p.dmgMult*=1.06; p.cdMult*=0.92; } },
-  empressOfLight:{ id:'bossEmpress', name:'Pluma Prismática', icon:'✦', desc:'+5% crítico y +18 HP máx', apply:p=>{ p.critChance+=0.05; p.maxHp+=18; p.hp+=18; } },
-  mirrorLord: { id:'bossMirror', name:'Esquirla de Espejo', icon:'◈', desc:'+4% daño y +5% enfriamiento reducido', apply:p=>{ p.dmgMult*=1.04; p.cdMult*=0.95; } },
-  twinBoss: { id:'bossTwin', name:'Lazo de las Gemelas', icon:'⚭', desc:'+2.5% robo de vida y +4% crítico', apply:p=>{ grantLifesteal(p,0.025); p.critChance+=0.04; } },
-  trueFinal: { id:'bossTrueFinal', name:'Corazón del Verdadero Abismo', icon:'☉', desc:'+7% daño, +14 velocidad y +20 HP máx', apply:p=>{ p.dmgMult*=1.07; p.speedFlat+=14; p.maxHp+=20; p.hp+=20; } },
+  boneGuardian: { id:'bossBone', name:'Corona de Hueso Antiguo', icon:'♛', desc:'+5% daño y +3% reducción de daño', apply:p=>{ p.dmgMult*=1.05; p.armor+=0.03; },
+    lore:'Tallada de las costillas del primer guardián que juró proteger la Cripta Olvidada — sigue jurando, aunque hace siglos que nadie recuerda a quién.' },
+  motherWitch:  { id:'bossWitch', name:'Frasco de la Bruja Madre', icon:'☘', desc:'+2.5% robo de vida y +9 velocidad', apply:p=>{ grantLifesteal(p,0.025); p.speedFlat+=9; },
+    lore:'El caldero de la Bruja Madre nunca se enfría del todo. Este frasco guarda un último resto, todavía tibio, todavía hambriento.' },
+  abyssLord:    { id:'bossAbyss', name:'Núcleo del Abismo', icon:'⚡', desc:'+6% daño y -8% enfriamiento', apply:p=>{ p.dmgMult*=1.06; p.cdMult*=0.92; },
+    lore:'Late como un corazón que ya no debería latir. Cuanto más cerca lo llevás, más rápido parece pensar el Abismo entero.' },
+  empressOfLight:{ id:'bossEmpress', name:'Pluma Prismática', icon:'✦', desc:'+5% crítico y +18 HP máx', apply:p=>{ p.critChance+=0.05; p.maxHp+=18; p.hp+=18; },
+    lore:'Una sola pluma de la Emperatriz basta para partir la luz en mil colores — y, si sabés mirarla bien, en mil advertencias.' },
+  mirrorLord: { id:'bossMirror', name:'Esquirla de Espejo', icon:'◈', desc:'+4% daño y +5% enfriamiento reducido', apply:p=>{ p.dmgMult*=1.04; p.cdMult*=0.95; },
+    lore:'Un fragmento del Reflejo que todavía muestra algo moviéndose del otro lado, un segundo después de que vos ya te fuiste.' },
+  twinBoss: { id:'bossTwin', name:'Lazo de las Gemelas', icon:'⚭', desc:'+2.5% robo de vida y +4% crítico', apply:p=>{ grantLifesteal(p,0.025); p.critChance+=0.04; },
+    lore:'Ni siquiera partido en dos deja de tirar hacia el mismo lado. Las Hermanas Gemelas nunca aprendieron a estar solas.' },
+  trueFinal: { id:'bossTrueFinal', name:'Corazón del Verdadero Abismo', icon:'☉', desc:'+7% daño, +14 velocidad y +20 HP máx', apply:p=>{ p.dmgMult*=1.07; p.speedFlat+=14; p.maxHp+=20; p.hp+=20; },
+    lore:'Lo que queda cuando los nueve Guardianes caen a la vez. No es un trofeo — es lo único del Abismo que sigue creyendo que puede ganar.' },
 };
 
 const ULTIMATE_ABILITIES = [
@@ -2199,27 +2419,38 @@ const ITEM_POOL = {
 };
 const CURSED_ITEMS = [
   { id:'curse_blood', name:'Pacto de Sangre Eterno', icon:'☠', desc:'+13% daño, pero -32 HP máx', cursed:true,
-    apply:p=>{ p.dmgMult*=1.13; p.maxHp=Math.max(20,p.maxHp-32); p.hp=Math.max(1,p.hp-32); } },
+    apply:p=>{ p.dmgMult*=1.13; p.maxHp=Math.max(20,p.maxHp-32); p.hp=Math.max(1,p.hp-32); },
+    lore:'Firmado con algo que ya no era del todo sangre. El pacto se cumple siempre — nunca a tu favor del todo.' },
   { id:'curse_whisper', name:'Susurro del Abismo', icon:'👁', desc:'+7% daño y +14 velocidad, pero recibís 20% más daño', cursed:true,
-    apply:p=>{ p.dmgMult*=1.07; p.speedFlat+=14; p.curseDmgTakenMult*=1.20; } },
+    apply:p=>{ p.dmgMult*=1.07; p.speedFlat+=14; p.curseDmgTakenMult*=1.20; },
+    lore:'Te promete velocidad y fuerza al oído, en una voz que suena casi como la tuya. No lo es.' },
   { id:'curse_gold', name:'Oro Maldito', icon:'🜏', desc:'+20% de oro, pero perdés 36 HP máx ya mismo', cursed:true,
-    apply:p=>{ p.goldMult+=0.2; p.maxHp=Math.max(20,p.maxHp-36); p.hp=Math.max(1,p.hp-36); } },
+    apply:p=>{ p.goldMult+=0.2; p.maxHp=Math.max(20,p.maxHp-36); p.hp=Math.max(1,p.hp-36); },
+    lore:'Cada moneda que rinde te cuesta algo que no es oro. El Abismo siempre cobra en la misma moneda: vos.' },
   { id:'curse_haste', name:'Sed de Poder', icon:'⏳', desc:'-15% enfriamiento, pero -15% daño causado', cursed:true,
-    apply:p=>{ p.cdMult*=0.85; p.dmgMult*=0.85; } },
+    apply:p=>{ p.cdMult*=0.85; p.dmgMult*=0.85; },
+    lore:'Acelera todo menos la puntería. Quien la llevó antes golpeaba rápido, y flojo, hasta el final.' },
   { id:'curse_shackle', name:'Grillete de Sombra', icon:'⛓', desc:'+34 velocidad de movimiento, pero -18% velocidad de ataque', cursed:true,
-    apply:p=>{ p.speedFlat+=34; p.cdMult*=1.18; } },
+    apply:p=>{ p.speedFlat+=34; p.cdMult*=1.18; },
+    lore:'Te deja correr como si nunca hubieras estado encadenado — pero el peso sigue ahí, tirando del brazo.' },
   { id:'curse_eye', name:'Ojo Codicioso', icon:'👁‍🗨', desc:'+30% de oro, pero -10% velocidad de movimiento', cursed:true,
-    apply:p=>{ p.goldMult+=0.3; p.speedMult*=0.90; } },
+    apply:p=>{ p.goldMult+=0.3; p.speedMult*=0.90; },
+    lore:'Ve el oro antes que vos, y se queda mirándolo un segundo de más cada vez. Ese segundo tiene un costo.' },
   { id:'curse_coldheart', name:'Corazón Frío', icon:'❄', desc:'+10% crítico, pero reduce tu robo de vida a la mitad', cursed:true,
-    apply:p=>{ p.critChance+=0.10; p.lifesteal*=0.5; } },
+    apply:p=>{ p.critChance+=0.10; p.lifesteal*=0.5; },
+    lore:'Golpea con precisión perfecta y ninguna piedad — ni siquiera la que te debería a vos mismo.' },
   { id:'curse_yoke', name:'Yugo del Poder', icon:'🔗', desc:'-18% enfriamiento de habilidades, pero -8% de armadura', cursed:true,
-    apply:p=>{ p.cdMult*=0.82; p.armor=Math.max(0,p.armor-0.08); } },
+    apply:p=>{ p.cdMult*=0.82; p.armor=Math.max(0,p.armor-0.08); },
+    lore:'Te da más poder del que podés sostener cómodamente. Se nota en cómo cruje tu guardia.' },
   { id:'curse_lastspark', name:'Última Chispa', icon:'✨', desc:'+9% crítico, pero -20% velocidad de ataque', cursed:true,
-    apply:p=>{ p.critChance+=0.09; p.cdMult*=1.20; } },
+    apply:p=>{ p.critChance+=0.09; p.cdMult*=1.20; },
+    lore:'Guarda toda su fuerza para un solo golpe perfecto, y te hace esperar cada vez a que llegue.' },
   { id:'curse_blooddebt', name:'Deuda de Sangre', icon:'🩸', desc:'+15% daño, pero cada golpe que recibís te quita 1% de tu HP máximo actual', cursed:true,
-    apply:p=>{ p.dmgMult*=1.15; p.relics.effect_bloodDebt=true; } },
+    apply:p=>{ p.dmgMult*=1.15; p.relics.effect_bloodDebt=true; },
+    lore:'Todo poder se paga. Este simplemente cobra la cuota antes de que termines de sentir el golpe.' },
   { id:'curse_dawnweight', name:'Peso del Alba', icon:'⚖', desc:'+25% de oro, pero -12 HP máx ya mismo', cursed:true,
-    apply:p=>{ p.goldMult+=0.25; p.maxHp=Math.max(20,p.maxHp-12); p.hp=Math.max(1,p.hp-12); } },
+    apply:p=>{ p.goldMult+=0.25; p.maxHp=Math.max(20,p.maxHp-12); p.hp=Math.max(1,p.hp-12); },
+    lore:'Es liviano como la luz de la mañana y pesa exactamente lo mismo que todo lo que te quita.' },
 ];
 const CURSED_CHEST_CHANCE = 0.14;
 const POTIONS = [
@@ -2230,12 +2461,18 @@ const POTIONS = [
 ];
 const UTILITY_CHEST_CHANCE = 0.05;
 const RELICS = [
-  { id:'relic_heart', name:'Corazón Eterno', icon:'❤', desc:'+50 HP máx instantáneo', apply:p=>{ p.maxHp+=50; p.hp+=50; } },
-  { id:'relic_storm', name:'Tormenta Contenida', icon:'🌩', desc:'12% de prob. de encadenar un rayo a otro enemigo cercano', apply:p=>{} },
-  { id:'relic_greed', name:'Codicia Infinita', icon:'💰', desc:'+25% de oro por el resto de la run', apply:p=>{ p.goldMult+=0.25; } },
-  { id:'relic_phoenix', name:'Pluma de Fénix', icon:'🔥', desc:'Revive una vez con 50% de vida al morir', apply:p=>{} },
-  { id:'relic_dawnFeather', name:'Pluma de Alba', icon:'🌅', desc:'Revive una vez con 30% de vida al morir', apply:p=>{} },
-  { id:'relic_doubleHeart', name:'Corazón Doble', icon:'❤️‍🔥', desc:'Duplica tu robo de vida por 8s después de derrotar a un jefe', apply:p=>{ p.relics.effect_doubleHeart=true; } },
+  { id:'relic_heart', name:'Corazón Eterno', icon:'❤', desc:'+50 HP máx instantáneo', apply:p=>{ p.maxHp+=50; p.hp+=50; },
+    lore:'Nunca dejó de latir, aunque hace mucho que nadie recuerda a quién perteneció el pecho que lo alojaba.' },
+  { id:'relic_storm', name:'Tormenta Contenida', icon:'🌩', desc:'12% de prob. de encadenar un rayo a otro enemigo cercano', apply:p=>{},
+    lore:'Un trueno atrapado hace tanto que se olvidó de cómo caer una sola vez.' },
+  { id:'relic_greed', name:'Codicia Infinita', icon:'💰', desc:'+25% de oro por el resto de la run', apply:p=>{ p.goldMult+=0.25; },
+    lore:'Cuanto más oro toca, más oro pide. Nadie que la llevó volvió a sentirse verdaderamente rico.' },
+  { id:'relic_phoenix', name:'Pluma de Fénix', icon:'🔥', desc:'Revive una vez con 50% de vida al morir', apply:p=>{},
+    lore:'Todavía tibia. El Fénix que la perdió sigue, en alguna parte del Abismo, buscando cómo recuperarla.' },
+  { id:'relic_dawnFeather', name:'Pluma de Alba', icon:'🌅', desc:'Revive una vez con 30% de vida al morir', apply:p=>{},
+    lore:'Más pálida que la del Fénix, y más fría — pero alcanza para un último aliento.' },
+  { id:'relic_doubleHeart', name:'Corazón Doble', icon:'❤️‍🔥', desc:'Duplica tu robo de vida por 8s después de derrotar a un jefe', apply:p=>{ p.relics.effect_doubleHeart=true; },
+    lore:'Late dos veces por cada vez que debería. Se dice que perteneció a alguien que se negó a morir una sola muerte.' },
 ];
 const RELIC_DROP_CHANCE = 0.35;
 
@@ -2277,6 +2514,36 @@ function checkSynergies(p){
       addParticles(p.x,p.y,'#8ec9ff',24,200,0.5);
     }
   });
+}
+// Misterios del Compendio — meta-progression, persisted forever in `progress` (unlike the
+// per-run stuff above): collecting every item in a family at least once, across any number of
+// runs, permanently unlocks a small passive applied from then on in every future run.
+const FAMILY_BONUS_DEFS = {
+  ofensiva: { label:'+2% de daño', apply:p=>{ p.dmgMult*=1.02; } },
+  vital:    { label:'+15 HP máxima', apply:p=>{ p.maxHp+=15; p.hp+=15; } },
+  mistica:  { label:'-3% de enfriamiento', apply:p=>{ p.cdMult*=0.97; } },
+  veloz:    { label:'+6 de velocidad', apply:p=>{ p.speedFlat+=6; } },
+};
+function checkFamilySetCompletion(){
+  Object.keys(ITEM_FAMILIES).forEach(fam=>{
+    if(progress.unlockedFamilyBonuses[fam]) return;
+    if(!ITEM_FAMILIES[fam].every(id=>progress.discoveredItems[id])) return;
+    progress.unlockedFamilyBonuses[fam] = true;
+    saveProgress();
+    const def = FAMILY_BONUS_DEFS[fam];
+    spawnToast(`🏆 ¡Colección completa! ${SYNERGIES[fam].name.replace('Sinergia: ','')} — bonus permanente: ${def.label}`);
+    if(game && game.player) def.apply(game.player); // applies retroactively to the run in progress too, not just future ones
+  });
+}
+// Called every time an item actually reaches the player's hands (chest, jefe, mercader, altar,
+// reliquia de élite, botín de Ascenso) — first time for a given id reveals its lore fragment and
+// checks whether that finishes off a family collection.
+function registerItemDiscovery(item){
+  if(!item || !item.id || progress.discoveredItems[item.id]) return;
+  progress.discoveredItems[item.id] = true;
+  saveProgress();
+  spawnToast(`📖 Fragmento de historia revelado: ${item.name}`);
+  checkFamilySetCompletion();
 }
 const CHEST_TIERS = {
   common: { label:'Común', costMult:1,   color:'#a89a8c', glow:'rgba(168,154,140,0.35)', wood:'#4a3620' },
@@ -2662,6 +2929,11 @@ function freshPlayerStats(heroDef){
   if(goldUp){ p.goldMult += 0.05*goldUp; }
   if(dmgUp){ p.dmgMult *= Math.pow(1.03, dmgUp); }
   if(potionUp){ p.potions.hp += potionUp; }
+  // Misterios del Compendio: any family collection completed in the past applies its permanent
+  // passive to every run from now on, same spot as the Altar del Hogar upgrades above
+  Object.keys(progress.unlockedFamilyBonuses).forEach(fam=>{
+    if(progress.unlockedFamilyBonuses[fam] && FAMILY_BONUS_DEFS[fam]) FAMILY_BONUS_DEFS[fam].apply(p);
+  });
   const skinId = progress.selectedSkins[heroDef.id];
   const skin = skinId && progress.skins[skinId] ? SKIN_PALETTES.find(s=>s.id===skinId) : null;
   p.skinAccent = skin ? skin.color : null;
@@ -2804,6 +3076,7 @@ function buildRoster(){
         <div class="hero-abilities">
           <div><span class="k">Q</span>${h.q.name} — ${h.q.desc}</div>
           <div style="margin-top:5px;"><span class="k">E</span>${h.e.name} — ${h.e.desc}</div>
+          ${COMBO_EFFECTS[h.id] ? `<div style="margin-top:5px; color:var(--gold,#ffcb47);"><span class="k" style="background:var(--gold,#ffcb47); color:#1a1420;">🔥</span>${COMBO_EFFECTS[h.id].desc}</div>` : ''}
         </div>
         ${swatchesHTML}
       `;
@@ -2895,35 +3168,48 @@ function itemFamilyOf(id){
   }
   return null;
 }
-function compendiumItemHTML(it, cursed){
+function compendiumItemHTML(it, cursed, alwaysShown){
   const fam = itemFamilyOf(it.id);
   const fcAttr = fam ? ` style="--fc:var(${FAMILY_COLOR_VAR[fam]})"` : '';
+  const discovered = alwaysShown || !!progress.discoveredItems[it.id];
+  if(!discovered){
+    return `<div class="compendium-item locked"${fcAttr}>
+        <div class="ic">?</div>
+        <div class="body"><div class="nm">???</div><div class="ds">Todavía no descubierto — encontralo en una run para revelarlo</div></div>
+      </div>`;
+  }
+  const lore = it.lore || 'Un objeto de origen incierto, hallado en las profundidades del Abismo.';
   return `<div class="compendium-item${cursed?' cursed':''}"${fcAttr}>
       <div class="ic">${it.icon}</div>
-      <div class="body"><div class="nm">${it.name}</div><div class="ds">${it.desc}</div></div>
+      <div class="body"><div class="nm">${it.name}</div><div class="ds">${it.desc}</div><div class="lore">${lore}</div></div>
     </div>`;
 }
 function buildCompendium(){
   const familiesHTML = Object.keys(ITEM_FAMILIES).map(fam=>{
     const syn = SYNERGIES[fam];
-    return `<div class="family-card" style="--fc:var(${FAMILY_COLOR_VAR[fam]})">
+    const all = ITEM_FAMILIES[fam];
+    const found = all.filter(id=>progress.discoveredItems[id]).length;
+    const complete = !!progress.unlockedFamilyBonuses[fam];
+    const bonus = FAMILY_BONUS_DEFS[fam];
+    return `<div class="family-card${complete?' complete':''}" style="--fc:var(${FAMILY_COLOR_VAR[fam]})">
         <div class="nm">${syn.name}</div>
         <div class="ds">${syn.desc}</div>
-        <div class="thr">${SYNERGY_THRESHOLD} objetos de esta familia</div>
+        <div class="thr">${SYNERGY_THRESHOLD} objetos de esta familia (en una run)</div>
+        <div class="collect">${complete?'✓ ':''}Colección: ${found}/${all.length} descubiertos${complete?` — bonus permanente activo: ${bonus.label}`:''}</div>
       </div>`;
   }).join('');
 
   const sections = [
-    ['Objetos Comunes', ITEM_POOL.common, false],
-    ['Objetos Raros', ITEM_POOL.rare, false],
-    ['Objetos Épicos', ITEM_POOL.epic, false],
-    ['Objetos Malditos · cofres malditos', CURSED_ITEMS, true],
-    [`Reliquias · caída de jefe (${Math.round(RELIC_DROP_CHANCE*100)}%)`, RELICS, false],
-    ['Objetos Únicos de Jefe', Object.values(BOSS_ITEMS), false],
-    ['Pociones de Combate', POTIONS, false],
+    ['Objetos Comunes', ITEM_POOL.common, false, false],
+    ['Objetos Raros', ITEM_POOL.rare, false, false],
+    ['Objetos Épicos', ITEM_POOL.epic, false, false],
+    ['Objetos Malditos · cofres malditos', CURSED_ITEMS, true, false],
+    [`Reliquias · caída de jefe (${Math.round(RELIC_DROP_CHANCE*100)}%)`, RELICS, false, false],
+    ['Objetos Únicos de Jefe', Object.values(BOSS_ITEMS), false, false],
+    ['Pociones de Combate', POTIONS, false, true],
   ];
-  const sectionsHTML = sections.map(([title, list, cursed])=>{
-    const itemsHTML = list.map(it=> compendiumItemHTML(it, cursed)).join('');
+  const sectionsHTML = sections.map(([title, list, cursed, alwaysShown])=>{
+    const itemsHTML = list.map(it=> compendiumItemHTML(it, cursed, alwaysShown)).join('');
     return `<div class="compendium-section-title">${title}</div><div class="compendium-grid">${itemsHTML}</div>`;
   }).join('');
 
@@ -3597,6 +3883,7 @@ function confirmAscensoLoot(){
     const it = game.ascensoLootOptions[idx];
     it.apply(p);
     p.items.push({ id:it.id, name:it.name, icon:it.icon, desc:it.desc });
+    registerItemDiscovery(it);
   });
   checkSynergies(p);
   hideScreen('screen-ascenso-loot');
@@ -3749,6 +4036,7 @@ function buyMerchantOffer(idx){
   const p = game.player;
   o.item.apply(p);
   p.items.push(o.item);
+  registerItemDiscovery(o.item);
   checkSynergies(p);
   spawnToast(`${o.item.icon} [Mercader] ${o.item.name} — ${o.item.desc}`);
   addParticles(m.x,m.y,CHEST_TIERS[o.tier].color,26,200,0.5);
@@ -4144,6 +4432,7 @@ function doBasicAttack(){
         if(diff>Math.PI) diff=Math.PI*2-diff;
         if(diff <= (atk.arc*Math.PI/180)){
           dealDamageToTarget(t, computeDamage(atk.dmg), 'melee');
+          triggerComboEffect('melee', t);
           hitAny=true;
         }
       }
@@ -4303,6 +4592,7 @@ function dealDamageToTarget(t, dmgObj, source){
   let val = dmgObj.value;
   t.hitFlash = 0.12;
   if(t===game.boss && t.stunTimer>0) val *= 1.6; // stunned after a successful core break — a real punish window
+  if(t.weakenMarkTimer>0) val *= 1.25; // Cazador (Racha x12): Salto de Sombra marks a target for bonus damage
   if(t.shieldTimer>0) val *= 0.55; // sisterCall: the twins guard each other for a few seconds
   if(t.armorHp>0){
     const absorbed = Math.min(t.armorHp, val);
@@ -4483,6 +4773,7 @@ function spawnBossDrops(boss){
     } else {
       item.apply(p);
       p.items.push(item);
+      registerItemDiscovery(item);
       checkSynergies(p);
       spawnToast(`👑 Objeto de jefe: ${item.name} — ${item.desc}`);
       addParticles(boss.x,boss.y,'#ffd54a',26,220,0.6);
@@ -4878,6 +5169,7 @@ function doAbilityQ(){
     addParticles(p.x,p.y,'#9c9c9c',14,140,0.25);
   }
   addParticles(p.x,p.y,'#fff',6,90,0.2);
+  triggerComboEffect('q');
 }
 
 function doAbilityE(){
@@ -5355,6 +5647,7 @@ function doAbilityE(){
     p.stoneTimer = 0; p.stoneElapsed = 0;
     shake(4+Math.round(Math.min(heldTime,4)));
   }
+  triggerComboEffect('e');
 }
 
 function doUltimate(){
@@ -5399,6 +5692,7 @@ function doInteract(){
             : ITEM_POOL[c.tier][Math.floor(Math.random()*ITEM_POOL[c.tier].length)];
           item.apply(p);
           p.items.push(item);
+          registerItemDiscovery(item);
           checkSynergies(p);
           if(cursed){
             spawnToast(`☠ [MALDITO] ${item.name} — ${item.desc}`);
@@ -5432,6 +5726,7 @@ function doInteract(){
       const item = ITEM_POOL.epic[Math.floor(Math.random()*ITEM_POOL.epic.length)];
       item.apply(p);
       p.items.push(item);
+      registerItemDiscovery(item);
       checkSynergies(p);
       p.corruptionCurse = true;
       game.roomsSinceCorruption = 0; // purges automatically after 3 clean floors — see btn-next-stage
@@ -5646,6 +5941,17 @@ function updateEnemies(dt){
         }
       }
     }
+    // Bastión (Guerrero): Racha de Combo x10 — a simple non-spreading bleed DOT, refreshed by
+    // each melee hit while combo stays above the threshold (see COMBO_EFFECTS above)
+    if(en.bleedTimer>0){
+      en.bleedTimer -= dt; en.bleedTick = (en.bleedTick||0) - dt;
+      if(en.bleedTick<=0){
+        en.bleedTick = 0.5;
+        dealDamageToTarget(en, computeDamage(en.bleedDmgBase||3), 'bleed');
+        addParticles(en.x,en.y,'#c9384a',4,90,0.15);
+      }
+    }
+    if(en.weakenMarkTimer>0) en.weakenMarkTimer -= dt; // Cazador (Racha x12) — see dealDamageToTarget
     const d = dist(en.x,en.y,p.x,p.y);
     const def = en.def;
     const spd = def.speed*(en.speedMult||1);
@@ -5927,6 +6233,7 @@ function updateBoss(dt){
   const b = arenaBounds();
   boss.hitFlash = Math.max(0,boss.hitFlash-dt);
   boss.shieldTimer = Math.max(0,(boss.shieldTimer||0)-dt);
+  if(boss.weakenMarkTimer>0) boss.weakenMarkTimer -= dt; // Cazador (Racha x12) — see dealDamageToTarget
   if(boss.regenTimer>0){
     boss.regenTimer -= dt;
     boss.hp = Math.min(boss.maxHp, boss.hp + (boss.regenPerSec||0)*dt);
@@ -13972,6 +14279,7 @@ function updateRelicPickups(dt){
       rp.relic.apply(p);
       p.relics[rp.relic.id] = true;
       p.items.push({ id:rp.relic.id, name:rp.relic.name, icon:rp.relic.icon, desc:rp.relic.desc });
+      registerItemDiscovery(rp.relic);
       spawnToast(`✨ Reliquia: ${rp.relic.name} — ${rp.relic.desc}`);
       addParticles(rp.x,rp.y,'#ffd54a',30,220,0.6);
       shake(6);
@@ -15334,6 +15642,13 @@ function drawEnemy(en){
     ctx.setLineDash([4,3]);
     ctx.beginPath(); ctx.arc(0,0,en.radius+4,0,Math.PI*2); ctx.stroke();
     ctx.setLineDash([]);
+  }
+  if(en.bleedTimer>0){
+    ctx.strokeStyle='rgba(201,56,74,0.7)';
+    ctx.globalAlpha = 0.5+Math.sin(performance.now()/140)*0.25;
+    ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(0,0,en.radius+3,0,Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
   }
   if(en.def.healer){
     ctx.strokeStyle='rgba(90,217,138,0.55)';
