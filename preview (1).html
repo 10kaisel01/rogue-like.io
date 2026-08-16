@@ -760,7 +760,7 @@ const COMBO_EFFECTS = {
   silvano: { threshold:10, trigger:'e',
     desc:'Racha x10: Sacrificio detona con mucha más fuerza',
     apply:(p)=>{
-      if(game.pet){ explodeAt(game.pet.x, game.pet.y, 60, computeDamage(p.def.atk.dmg*1.2)); addParticles(game.pet.x,game.pet.y,'#5bbf7a',14,160,0.3); }
+      if(game.pet){ explodeAt(game.pet.x, game.pet.y, 60, computeDamage(p.def.atk.dmg*1.2), '#5bbf7a'); }
     } },
   dual: { threshold:10, trigger:'e',
     desc:'Racha x10: Golpe Combinado deja una onda extra a tu alrededor',
@@ -842,7 +842,7 @@ const COMBO_EFFECTS = {
     apply:(p)=>{ if(game.pet) game.pet.atkCd = Math.max(0.2, game.pet.atkCd*0.6); } },
   mecha: { threshold:10, trigger:'e',
     desc:'Racha x10: Detonación Remota deja una explosión extra en tu posición',
-    apply:(p)=>{ explodeAt(p.x, p.y, 90, computeDamage(p.def.atk.dmg*1.1)); } },
+    apply:(p)=>{ explodeAt(p.x, p.y, 90, computeDamage(p.def.atk.dmg*1.1), '#c9a24a'); } },
   arakne: { threshold:10, trigger:'e',
     desc:'Racha x10: Embestida de Seda deja una zona de telaraña al terminar',
     apply:(p)=>{ game.enemies.forEach(t=>{ if(dist(p.x,p.y,t.x,t.y)<110) t.slowTimer = Math.max(t.slowTimer||0, 2); }); } },
@@ -887,7 +887,7 @@ const COMBO_EFFECTS = {
     desc:'Racha x10: Autodestrucción hace más daño',
     apply:(p)=>{
       const possessed = game.pack.filter(m=>m.possessed);
-      possessed.forEach(m=>{ explodeAt(m.x, m.y, 50, computeDamage(p.def.atk.dmg*0.8)); });
+      possessed.forEach(m=>{ explodeAt(m.x, m.y, 50, computeDamage(p.def.atk.dmg*0.8), '#9c6fd8'); });
     } },
   midas: { threshold:10, trigger:'q',
     desc:'Racha x10: Toque Dorado te da un escudo extra sin costo adicional',
@@ -3003,7 +3003,7 @@ function newGame(){
     player: freshPlayerStats(selectedHero),
     world: computeWorldBounds(),
     camera: {x:0, y:0},
-    enemies:[], projectiles:[], hazards:[], particles:[], goldOrbs:[], chests:[], swings:[], relicPickups:[], utilityChests:[], mines:[], pack:[], pendingBursts:[],
+    enemies:[], projectiles:[], hazards:[], particles:[], goldOrbs:[], chests:[], swings:[], relicPickups:[], utilityChests:[], mines:[], pack:[], pendingBursts:[], pullLines:[],
     altar:null, boss:null, bossCountdown:null, portal:null, pet:null, gravityWell:null, slowZone:null, vortex:null, sacrificeAltar:null, merchant:null,
     phase:'combat', // combat | shopping | bossIntro | boss | portal | clear
     spawnQueue:[],
@@ -3382,7 +3382,7 @@ function startStage(i){
   game.player.hp = game.player.maxHp; // full heal on every floor transition, including floor 1
   game.player._reactiveShieldUsedThisFloor = false;
   game.player._ghostStepUsed = {};
-  game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[]; game.mines=[];
+  game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[]; game.mines=[]; game.pullLines=[];
   game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.pack=[]; game.gravityWell=null; game.slowZone=null; game.pendingBursts=[]; game.vortex=null; game.sacrificeAltar=null; game.corruptionAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
   game.phase='combat';
 
@@ -3781,7 +3781,7 @@ function enterAscensoFloor(i){
   game.player.hp = game.player.maxHp;
   game.player._reactiveShieldUsedThisFloor = false;
   game.player._ghostStepUsed = {};
-  game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[]; game.mines=[];
+  game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[]; game.mines=[]; game.pullLines=[];
   game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.pack=[]; game.gravityWell=null; game.slowZone=null; game.pendingBursts=[]; game.vortex=null; game.sacrificeAltar=null; game.corruptionAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
   const def = bossKind ? BOSS_DEFS[bossKind] : null;
   game.currentStage = { key:'ascenso', name: def ? def.name : 'Piso en construcción', floor:i+1 };
@@ -4131,6 +4131,12 @@ function addDamageText(x,y,val,color,crit){
   game.particles.push({ x, y, vx:rand(-20,20), vy:-70, life:0.7, maxLife:0.7, color, type:'text',
     text:(crit?'¡':'')+Math.round(val)+(crit?'!':''), size: crit?20:15 });
 }
+// combo-streak popup shown over whatever you just hit — bigger the higher the streak, always a
+// quick 0.5s pop-and-fade so it never lingers or clutters the screen during a long fight
+function addComboPop(x,y,combo){
+  const size = clamp(10+combo*0.7, 11, 34);
+  game.particles.push({ x, y, vx:0, vy:-16, life:0.5, maxLife:0.5, color:'#ffb347', type:'combo', text:'x'+combo, size });
+}
 
 /* ============================================================
    UPDATE
@@ -4371,6 +4377,7 @@ function update(dt){
   updateSlowZone(dt);
   updatePendingBursts(dt);
   updateVortex(dt);
+  updatePullLines(dt);
   // --- chests bob/interact ---
   if(game.phase==='shopping') updateChests(dt);
   // --- altar prompt ---
@@ -4641,6 +4648,7 @@ function dealDamageToTarget(t, dmgObj, source){
   if(source!=='chain'){
     game.player.combo++;
     game.player.comboTimer = 4 + (game.player.relics.effect_persistenceSeal ? 0.3 : 0);
+    addComboPop(t.x, t.y-t.radius-24, game.player.combo);
   }
   if(source!=='chain' && game.player.relics.relic_storm && Math.random()<0.15){
     const others = [...game.enemies, ...bossTargets()].filter(o=>o!==t && dist(o.x,o.y,t.x,t.y)<150);
@@ -4862,8 +4870,10 @@ function doAbilityQ(){
       const d = dist(p.x,p.y,t.x,t.y);
       if(d<220 && d>1){
         const ang = Math.atan2(p.y-t.y,p.x-t.x);
+        const ox=t.x, oy=t.y;
         t.x += Math.cos(ang)*90; t.y += Math.sin(ang)*90;
         t.stunTimer = Math.max(t.stunTimer||0, 1.1);
+        spawnPullLine(p.x, p.y, ox, oy, '#9c8a6a');
       }
     });
     addParticles(p.x,p.y,'#9c8a6a',26,200,0.5);
@@ -5007,12 +5017,15 @@ function doAbilityQ(){
       const b = arenaBounds();
       const ang = Math.atan2(nearest.y-p.y, nearest.x-p.x);
       const pullDist = Math.min(nearestD-50, 220);
+      const ox = nearest.x, oy = nearest.y;
       if(pullDist>0){
         nearest.x = clamp(nearest.x - Math.cos(ang)*pullDist, b.x+nearest.radius, b.x+b.w-nearest.radius);
         nearest.y = clamp(nearest.y - Math.sin(ang)*pullDist, b.y+nearest.radius, b.y+b.h-nearest.radius);
       }
       nearest.stunTimer = Math.max(nearest.stunTimer||0, 1.0);
       dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*1.3), 'q');
+      spawnPullLine(p.x, p.y, ox, oy, '#4fae9c');
+      spawnPullTrail(ox, oy, nearest.x, nearest.y, '#4fae9c');
       addParticles(nearest.x,nearest.y,'#4fae9c',14,170,0.3);
       p.lastHookTarget = nearest;
     }
@@ -5226,7 +5239,7 @@ function doAbilityE(){
     shake(4);
   } else if(id==='silvano'){
     if(game.pet){
-      explodeAt(game.pet.x, game.pet.y, 130, computeDamage(p.def.atk.dmg*3));
+      explodeAt(game.pet.x, game.pet.y, 130, computeDamage(p.def.atk.dmg*3), '#5bbf7a');
       addParticles(game.pet.x,game.pet.y,'#5bbf7a',30,220,0.5);
       game.pet = null;
       shake(6);
@@ -5281,7 +5294,7 @@ function doAbilityE(){
       addParticles(p.x,p.y,'#c9a8ff',14,150,0.3);
       p.x = tx; p.y = ty;
       p.invuln = Math.max(p.invuln, 0.25);
-      explodeAt(tx,ty,110, computeDamage(p.def.atk.dmg*2));
+      explodeAt(tx,ty,110, computeDamage(p.def.atk.dmg*2), '#c9a8ff');
       game.pet = null;
       addParticles(tx,ty,'#c9a8ff',24,200,0.45);
       shake(4);
@@ -5391,7 +5404,7 @@ function doAbilityE(){
     p.invuln = Math.max(p.invuln, 0.15);
   } else if(id==='ferro'){
     if(game.pet){
-      explodeAt(game.pet.x, game.pet.y, 130, computeDamage(p.def.atk.dmg*1.8));
+      explodeAt(game.pet.x, game.pet.y, 130, computeDamage(p.def.atk.dmg*1.8), '#c9a24a');
       addParticles(game.pet.x,game.pet.y,'#c9a24a',24,200,0.4);
       game.pet.life = Math.min(game.pet.life+6, 20); // overcharge also tops the turret's timer back up
       shake(4);
@@ -5401,7 +5414,7 @@ function doAbilityE(){
     }
   } else if(id==='mecha'){
     if(game.mines.length){
-      [...game.mines].forEach(m=>{ explodeAt(m.x, m.y, m.blastRadius, computeDamage(m.dmgBase)); });
+      [...game.mines].forEach(m=>{ explodeAt(m.x, m.y, m.blastRadius, computeDamage(m.dmgBase), '#c96a4a'); });
       game.mines = [];
       shake(5);
     } else {
@@ -5431,7 +5444,7 @@ function doAbilityE(){
   } else if(id==='rasha'){
     if(game.pack.length){
       [...game.pack].forEach(m=>{
-        explodeAt(m.x, m.y, 80, computeDamage(p.def.atk.dmg*1.3));
+        explodeAt(m.x, m.y, 80, computeDamage(p.def.atk.dmg*1.3), '#e0a24a');
         addParticles(m.x,m.y,'#e0a24a',14,170,0.3);
       });
       game.pack = [];
@@ -5450,9 +5463,12 @@ function doAbilityE(){
         if(game.enemies.includes(t)){
           const ang = Math.atan2(p.y-t.y,p.x-t.x);
           const b = arenaBounds();
+          const ox=t.x, oy=t.y;
           t.x = clamp(t.x+Math.cos(ang)*90, b.x+t.radius, b.x+b.w-t.radius);
           t.y = clamp(t.y+Math.sin(ang)*90, b.y+t.radius, b.y+b.h-t.radius);
           t.stunTimer = Math.max(t.stunTimer||0, 0.7);
+          spawnPullLine(tx, ty, ox, oy, '#c98fd8');
+          spawnPullTrail(ox, oy, t.x, t.y, '#c98fd8');
         }
       });
       addParticles(tx,ty,'#c98fd8',20,180,0.4);
@@ -5597,7 +5613,7 @@ function doAbilityE(){
     const possessed = game.pack.filter(m=>m.possessed);
     if(possessed.length){
       possessed.forEach(m=>{
-        explodeAt(m.x, m.y, 110, computeDamage(p.def.atk.dmg*2.4));
+        explodeAt(m.x, m.y, 110, computeDamage(p.def.atk.dmg*2.4), '#9c6fd8');
         addParticles(m.x,m.y,'#9c6fd8',22,200,0.4);
       });
       game.pack = game.pack.filter(m=>!m.possessed);
@@ -5750,6 +5766,7 @@ function stepPetAI(pet, dt){
   // shared chase/attack AI — used by the single-slot game.pet (Silvano/Ferro/Ilusionista/Marlow)
   // and by game.pack, Rasha's array of several simultaneous critters
   const p = game.player;
+  pet.spawnAge = (pet.spawnAge||0) + dt; // drives the materialize pop-in in drawPet
   pet.hitFlash = Math.max(0, pet.hitFlash-dt);
   pet.atkTimer = Math.max(0, pet.atkTimer-dt);
   const atkRange = pet.atkRange||34; // Ferro's turret passes a much bigger range than the default melee pets
@@ -5819,6 +5836,7 @@ function updateGravityWell(dt){
 function drawGravityWell(){
   const w = game.gravityWell;
   if(!w) return;
+  const t = performance.now()/1000;
   ctx.save();
   ctx.translate(w.x,w.y);
   ctx.globalAlpha = 0.32+Math.sin(performance.now()/200)*0.1;
@@ -5826,6 +5844,23 @@ function drawGravityWell(){
   ctx.beginPath(); ctx.arc(0,0,w.r,0,Math.PI*2); ctx.stroke();
   ctx.globalAlpha *= 0.5;
   ctx.beginPath(); ctx.arc(0,0,w.r*0.55,0,Math.PI*2); ctx.stroke();
+  // inward-spiraling arms — makes the pull itself visible, not just the boundary ring
+  ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = '#c9a8ff'; ctx.lineWidth = 1.5;
+  for(let arm=0;arm<3;arm++){
+    ctx.beginPath();
+    for(let i=0;i<=20;i++){
+      const frac = i/20;
+      const ang = t*1.5 + arm*(Math.PI*2/3) + frac*Math.PI*1.8;
+      const rr = w.r*(1-frac*0.85);
+      const x=Math.cos(ang)*rr, y=Math.sin(ang)*rr;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  ctx.fillStyle='#1a0f2a';
+  ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
@@ -5842,6 +5877,7 @@ function updateSlowZone(dt){
 function drawSlowZone(){
   const z = game.slowZone;
   if(!z) return;
+  const t = performance.now()/1000;
   ctx.save();
   ctx.translate(z.x,z.y);
   ctx.globalAlpha = 0.2+Math.sin(performance.now()/300)*0.05;
@@ -5850,6 +5886,19 @@ function drawSlowZone(){
   ctx.globalAlpha = 0.5;
   ctx.strokeStyle = '#5fc9e6'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(0,0,z.r,0,Math.PI*2); ctx.stroke();
+  // slow-drifting frost motes suspended inside the field
+  ctx.fillStyle='#eafcff';
+  for(let i=0;i<6;i++){
+    const seed=i*137.5;
+    const a = (seed%360)*Math.PI/180 + t*0.3;
+    const rr = z.r*(0.2+((seed*7)%80)/100);
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath(); ctx.arc(Math.cos(a)*rr, Math.sin(a)*rr, 2, 0, Math.PI*2); ctx.fill();
+  }
+  // a faint slow clock-hand sweep, hinting at "time crawling" inside the field
+  ctx.globalAlpha=0.3;
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(t*0.4)*z.r*0.7, Math.sin(t*0.4)*z.r*0.7); ctx.stroke();
   ctx.restore();
 }
 
@@ -5859,7 +5908,7 @@ function updatePendingBursts(dt){
     const b = game.pendingBursts[i];
     b.timer -= dt;
     if(b.timer<=0){
-      explodeAt(b.x, b.y, b.radius, computeDamage(b.dmgBase));
+      explodeAt(b.x, b.y, b.radius, computeDamage(b.dmgBase), '#c96a4a');
       game.pendingBursts.splice(i,1);
     }
   }
@@ -5877,6 +5926,51 @@ function drawPendingBursts(){
 
 // Borea (Domadora de Vientos): a single persistent vortex that eats enemy projectiles and banks
 // their damage for E to release
+// Shared "hook/pull" chain visual — a slightly jagged line from puller to whatever got yanked,
+// fading fast. Used by any ability that drags an enemy toward (or away from) a point instead of
+// dealing damage in place, so the pull actually reads as a pull instead of an instant teleport.
+function spawnPullLine(x1,y1,x2,y2,color){
+  game.pullLines.push({x1,y1,x2,y2,color,life:0.22,maxLife:0.22});
+}
+function updatePullLines(dt){
+  for(let i=game.pullLines.length-1;i>=0;i--){
+    const l = game.pullLines[i];
+    l.life -= dt;
+    if(l.life<=0) game.pullLines.splice(i,1);
+  }
+}
+function drawPullLines(){
+  game.pullLines.forEach(l=>{
+    const fade = clamp(l.life/l.maxLife,0,1);
+    ctx.save();
+    ctx.globalAlpha = fade*0.85;
+    ctx.strokeStyle = l.color;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = l.color; ctx.shadowBlur = 7;
+    const segs = 5;
+    const nx = -(l.y2-l.y1), ny = (l.x2-l.x1);
+    const len = Math.hypot(nx,ny)||1;
+    ctx.beginPath();
+    for(let i=0;i<=segs;i++){
+      const t = i/segs;
+      const x = l.x1 + (l.x2-l.x1)*t;
+      const y = l.y1 + (l.y2-l.y1)*t;
+      const off = (i%2===0?0:1) * fade*4;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x+nx/len*off, y+ny/len*off);
+    }
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+// spawns a short trail of particles tracing the path an enemy just got dragged along, so the
+// motion itself reads clearly instead of the target just appearing at its new spot
+function spawnPullTrail(ox,oy,nx,ny,color){
+  for(let i=1;i<=4;i++){
+    const t=i/4;
+    addParticles(ox+(nx-ox)*t, oy+(ny-oy)*t, color, 3, 80, 0.15);
+  }
+}
+
 function updateVortex(dt){
   const v = game.vortex;
   if(!v) return;
@@ -5894,23 +5988,47 @@ function updateVortex(dt){
 function drawVortex(){
   const v = game.vortex;
   if(!v) return;
+  const t = performance.now()/1000;
   ctx.save();
   ctx.translate(v.x,v.y);
   ctx.globalAlpha = 0.3+Math.sin(performance.now()/150)*0.1;
   ctx.strokeStyle = '#a8e0ff'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.arc(0,0,v.r,0,Math.PI*2); ctx.stroke();
+  // spinning wind arcs — the suction pulling projectiles in now actually reads as wind
+  ctx.globalAlpha=0.5;
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.4;
+  for(let i=0;i<3;i++){
+    ctx.beginPath();
+    ctx.arc(0,0,v.r*(0.4+i*0.2), t*3+i*2, t*3+i*2+Math.PI*1.1);
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
   ctx.restore();
 }
 
 function drawPet(pet){
+  // used to just pop into existence at full size as a flat circle — now scales in over its first
+  // ~0.25s with a brief summoning ring, and has a soft rim-glow instead of a flat stroke
   ctx.save();
   ctx.globalAlpha = clamp(pet.life/2, 0.5, 1);
   ctx.translate(pet.x,pet.y);
+  const pop = Math.min(1, (pet.spawnAge||1)/0.25);
+  if(pop<1){
+    ctx.save();
+    ctx.globalAlpha *= (1-pop)*0.8;
+    ctx.strokeStyle = pet.color; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(0,0,pet.radius+(1-pop)*16,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.scale(pop,pop);
   ctx.fillStyle = pet.hitFlash>0 ? '#ffffff' : pet.color;
   ctx.shadowColor=pet.color; ctx.shadowBlur=10;
   ctx.beginPath(); ctx.arc(0,0,pet.radius,0,Math.PI*2); ctx.fill();
   ctx.shadowBlur=0;
   ctx.strokeStyle='#0a0710'; ctx.lineWidth=2; ctx.stroke();
+  ctx.globalAlpha *= 0.5;
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(0,0,pet.radius*0.6,0,Math.PI*2); ctx.stroke();
   ctx.restore();
 }
 
@@ -6214,7 +6332,7 @@ function hitPlayer(dmg){
   shake(4);
   // Talismán de Represalia: a chance to hit back everything nearby the instant you get hit
   if(p.relics.effect_thorns && Math.random()<0.20){
-    explodeAt(p.x,p.y,110, computeDamage(14));
+    explodeAt(p.x,p.y,110, computeDamage(14), '#c9a878');
   }
   // Escudo Especular (ultimate): while active, every hit is reflected back at the nearest target
   if(p.effects.mirrorShield>0){
@@ -14103,9 +14221,15 @@ function updateProjectiles(dt){
     if(remove) game.projectiles.splice(i,1);
   }
 }
-function explodeAt(x,y,radius,dmgObj){
-  addParticles(x,y,'#ff6a3d',18,200,0.4);
-  shake(5);
+function explodeAt(x,y,radius,dmgObj,color){
+  // used to be a flat orange particle burst with no ring — the actual blast radius was invisible,
+  // so a 60px mine and a 220px detonation looked identical. Now shows a shockwave scaled to the
+  // real radius, screen shake scales a bit with size too, and callers can pass a thematic color
+  // instead of always orange (optional — omitting it keeps the exact old look).
+  const c = color || '#ff6a3d';
+  addParticles(x,y,c,18,200,0.4);
+  spawnShockwave(x,y,c,radius,0.35);
+  shake(Math.min(5+radius*0.02, 10));
   [...game.enemies, ...bossTargets()].forEach(t=>{
     if(dist(x,y,t.x,t.y)<radius+t.radius) dealDamageToTarget(t, dmgObj, 'explode');
   });
@@ -14397,17 +14521,19 @@ function updateAfterimages(dt){
   }
 }
 function drawAfterimage(a){
+  // used to draw a flat circle + emoji icon — a leftover from the old circle-avatar look, before
+  // characters got redrawn as hooded figures. Now a glowing rim-silhouette in the class's accent
+  // color, which reads as a proper motion streak and matches every dash-type ability at once.
   const fade = clamp(a.life/a.maxLife,0,1);
   ctx.save();
   ctx.globalAlpha = fade*0.4;
+  ctx.shadowColor = a.color; ctx.shadowBlur = 10;
   ctx.fillStyle = a.color;
-  ctx.beginPath(); ctx.arc(a.x,a.y,a.radius,0,Math.PI*2); ctx.fill();
-  if(a.icon){
-    ctx.globalAlpha = fade*0.5;
-    ctx.fillStyle = '#ffffff';
-    ctx.font='14px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(a.icon, a.x, a.y+1);
-  }
+  ctx.beginPath(); ctx.arc(a.x,a.y,a.radius*0.85,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = fade*0.65;
+  ctx.strokeStyle = a.color; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(a.x,a.y,a.radius*0.85,0,Math.PI*2); ctx.stroke();
   ctx.restore();
 }
 
@@ -14558,6 +14684,7 @@ function render(){
   drawSlowZone();
   drawPendingBursts();
   drawVortex();
+  drawPullLines();
   // boss
   if(game.boss && game.boss.telegraph) drawBossTelegraphIndicator(game.boss);
   if(game.boss) drawBoss(game.boss);
@@ -15232,8 +15359,15 @@ function drawHazard(h){
     drawFireHazard(h,c);
   } else if(h.type==='poison'){
     drawPoisonHazard(h,c);
+  } else if(h.type==='ice'){
+    drawCrystalHazard(h,c);
+  } else if(h.type==='storm'){
+    drawSparkHazard(h,c);
+  } else if(h.type==='void'){
+    drawVortexHazard(h,c);
   } else {
-    // spike, ice, storm, void: same jagged crystalline silhouette, differentiated by color
+    // spike, light, solar — the shared fallback silhouette (see drawSpikeHazard for why its
+    // spike length is now clamped instead of scaling linearly with h.r)
     drawSpikeHazard(h,c);
   }
   ctx.restore();
@@ -15302,13 +15436,21 @@ function drawPoisonHazard(h,c){
 }
 
 // jagged spikes bursting up from the ground instead of a plain filled circle
+// spike/light/solar: a burst of short shards clustered around the danger zone. Length is now
+// clamped instead of scaling linearly with h.r — this is what was blowing up into a screen-filling
+// star on any hazard with a large radius (e.g. Colapso Estelar at r:150).
 function drawSpikeHazard(h,c){
   ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = c.fillB;
+  ctx.beginPath(); ctx.arc(h.x,h.y,h.r,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
   ctx.translate(h.x,h.y);
-  const n=5;
+  const n=7;
+  const maxLen = Math.min(h.r*0.7, 58);
   for(let i=0;i<n;i++){
     const ang = (i/n)*Math.PI*2 + h.x*0.013;
-    const len = h.r*(0.85+((i%3)*0.1));
+    const len = maxLen*(0.7+((i%3)*0.12));
     ctx.save();
     ctx.rotate(ang);
     const grad = ctx.createLinearGradient(0,0,0,-len);
@@ -15316,13 +15458,108 @@ function drawSpikeHazard(h,c){
     grad.addColorStop(1,'#ffffff');
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.moveTo(-h.r*0.15,0);
+    ctx.moveTo(-6,0);
     ctx.lineTo(0,-len);
-    ctx.lineTo(h.r*0.15,0);
+    ctx.lineTo(6,0);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
   }
+  ctx.restore();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = c.ring;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(h.x,h.y,h.r*0.5,0,Math.PI*2); ctx.stroke();
+}
+
+// ice: a cluster of faceted crystal shards, clamped the same way as the spikes above
+function drawCrystalHazard(h,c){
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = c.fillB;
+  ctx.beginPath(); ctx.arc(h.x,h.y,h.r,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.translate(h.x,h.y);
+  const n=6;
+  const rr = Math.min(h.r*0.55, 46);
+  for(let i=0;i<n;i++){
+    const ang = (i/n)*Math.PI*2 + h.x*0.01;
+    ctx.save();
+    ctx.rotate(ang);
+    ctx.fillStyle = c.fillA;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0,-rr);
+    ctx.lineTo(rr*0.22,-rr*0.3);
+    ctx.lineTo(rr*0.14,rr*0.15);
+    ctx.lineTo(-rr*0.14,rr*0.15);
+    ctx.lineTo(-rr*0.22,-rr*0.3);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = c.ring;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(h.x,h.y,h.r*0.5,0,Math.PI*2); ctx.stroke();
+}
+
+// storm: jagged lightning bolts crackling outward instead of solid triangles
+function drawSparkHazard(h,c){
+  ctx.save();
+  ctx.globalAlpha = 0.26;
+  ctx.fillStyle = c.fillB;
+  ctx.beginPath(); ctx.arc(h.x,h.y,h.r,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 0.9;
+  ctx.translate(h.x,h.y);
+  const n=5;
+  const len = Math.min(h.r*0.75, 55);
+  for(let i=0;i<n;i++){
+    const ang = (i/n)*Math.PI*2 + performance.now()/700 + h.x*0.01;
+    ctx.save();
+    ctx.rotate(ang);
+    ctx.strokeStyle = c.fillA;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round'; ctx.lineJoin='round';
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(len*0.35,-len*0.18);
+    ctx.lineTo(len*0.55,len*0.12);
+    ctx.lineTo(len,-len*0.1);
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = c.ring;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(h.x,h.y,h.r*0.5,0,Math.PI*2); ctx.stroke();
+}
+
+// void: a swirling vortex of counter-rotating rings pulling toward a dark center — actually fits
+// "collapse"/gravity-well flavored attacks, instead of yet another spike burst
+function drawVortexHazard(h,c){
+  const t = performance.now()/1000;
+  ctx.save();
+  ctx.globalAlpha = 0.32;
+  ctx.fillStyle = c.fillB;
+  ctx.beginPath(); ctx.arc(h.x,h.y,h.r,0,Math.PI*2); ctx.fill();
+  ctx.translate(h.x,h.y);
+  const rings=3;
+  for(let i=0;i<rings;i++){
+    const rr = Math.min(h.r,70) * (0.3+i*0.28);
+    ctx.save();
+    ctx.rotate(t*(1.4-i*0.3)*(i%2===0?1:-1));
+    ctx.strokeStyle = c.fillA;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.55-i*0.12;
+    ctx.beginPath(); ctx.arc(0,0,rr,0.4,Math.PI*1.5); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.fillStyle = '#0a0416';
+  ctx.beginPath(); ctx.arc(0,0,Math.min(h.r*0.22,16),0,Math.PI*2); ctx.fill();
   ctx.restore();
   ctx.globalAlpha = 0.4;
   ctx.strokeStyle = c.ring;
@@ -15649,6 +15886,51 @@ function drawEnemy(en){
     ctx.lineWidth=2;
     ctx.beginPath(); ctx.arc(0,0,en.radius+3,0,Math.PI*2); ctx.stroke();
     ctx.globalAlpha = 1;
+  }
+  if(en.stunTimer>0){
+    // small dizzy stars orbiting overhead — the classic "stunned" tell
+    const st = performance.now()/300;
+    ctx.fillStyle='#ffe07a'; ctx.globalAlpha=0.9;
+    for(let i=0;i<3;i++){
+      const a = st + (i/3)*Math.PI*2;
+      const sx = Math.cos(a)*en.radius*0.7, sy = -en.radius-9+Math.sin(a)*3;
+      ctx.save(); ctx.translate(sx,sy); ctx.rotate(a);
+      ctx.beginPath();
+      for(let k=0;k<4;k++){ const ka=(k/4)*Math.PI*2; ctx.lineTo(Math.cos(ka)*3, Math.sin(ka)*3); ctx.lineTo(Math.cos(ka+Math.PI/4)*1.2, Math.sin(ka+Math.PI/4)*1.2); }
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha=1;
+  } else if(en.slowTimer>0){
+    // slow drip icicles trailing below — distinct from bleed's ring, no ring here at all
+    ctx.fillStyle='rgba(159,216,255,0.75)';
+    for(let i=-1;i<=1;i++){
+      ctx.beginPath();
+      ctx.moveTo(i*en.radius*0.4-2, en.radius*0.5);
+      ctx.lineTo(i*en.radius*0.4+2, en.radius*0.5);
+      ctx.lineTo(i*en.radius*0.4, en.radius*0.5+7);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  if(en.plagueTimer>0){
+    // sickly spores drifting upward off the body
+    const pt = performance.now()/260;
+    ctx.fillStyle='rgba(122,209,74,0.7)';
+    for(let i=0;i<3;i++){
+      const off = (pt+i*1.7)%1;
+      const sx = (i-1)*en.radius*0.5;
+      const sy = en.radius*0.5 - off*en.radius*1.6;
+      ctx.globalAlpha = (1-off)*0.8;
+      ctx.beginPath(); ctx.arc(sx,sy,2,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  if(en.weakenMarkTimer>0){
+    // a small red crosshair marking it as a priority target
+    ctx.strokeStyle='rgba(232,67,79,0.85)'; ctx.lineWidth=1.6;
+    const mr = en.radius+8;
+    ctx.beginPath(); ctx.arc(0,-mr,3,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-3,-mr); ctx.lineTo(3,-mr); ctx.moveTo(0,-mr-3); ctx.lineTo(0,-mr+3); ctx.stroke();
   }
   if(en.def.healer){
     ctx.strokeStyle='rgba(90,217,138,0.55)';
@@ -16299,7 +16581,165 @@ function drawBossVariantFeral(boss){
   drawBossEyes(r*0.75, color);
   ctx.restore();
 }
-const GENERIC_BOSS_VARIANTS = [drawGenericBossBody, drawBossVariantArmored, drawBossVariantSpectral, drawBossVariantFeral];
+// ---- variant 4: Colmena Errante — insectoid core with small orbiting drones ----
+function drawBossVariantSwarm(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/1000;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-18);
+  ctx.beginPath();
+  ctx.moveTo(0,-r*0.85);
+  ctx.quadraticCurveTo(r*0.7,-r*0.5,r*0.62,r*0.15);
+  ctx.quadraticCurveTo(r*0.5,r*0.85,0,r*0.7);
+  ctx.quadraticCurveTo(-r*0.5,r*0.85,-r*0.62,r*0.15);
+  ctx.quadraticCurveTo(-r*0.7,-r*0.5,0,-r*0.85);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#0a0710'; ctx.lineWidth=2.4; ctx.stroke();
+  const n=5;
+  for(let i=0;i<n;i++){
+    const a = (i/n)*Math.PI*2 + t*1.1;
+    const rr = r*1.25;
+    const dx=Math.cos(a)*rr, dy=Math.sin(a)*rr;
+    ctx.fillStyle = color; ctx.shadowColor=color; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(dx,dy,r*0.14,0,Math.PI*2); ctx.fill();
+  }
+  ctx.shadowBlur=0;
+  drawBossEyes(r*0.7, '#ffe07a');
+  ctx.restore();
+}
+// ---- variant 5: Titán de Piedra — blocky angular slab body ----
+function drawBossVariantStoneTitan(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=14;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-22);
+  ctx.beginPath();
+  ctx.moveTo(-r*0.5,-r*0.95); ctx.lineTo(r*0.55,-r*0.8); ctx.lineTo(r*0.95,-r*0.1);
+  ctx.lineTo(r*0.7,r*0.9); ctx.lineTo(-r*0.15,r*1.0); ctx.lineTo(-r*0.9,r*0.55);
+  ctx.lineTo(-r*0.95,-r*0.3); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#0a0710'; ctx.lineWidth=3; ctx.stroke();
+  // cracks/seams across the slabs
+  ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.lineWidth=1.6;
+  ctx.beginPath(); ctx.moveTo(-r*0.5,-r*0.95); ctx.lineTo(-r*0.1,r*0.1); ctx.lineTo(r*0.7,r*0.9); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(r*0.95,-r*0.1); ctx.lineTo(-r*0.1,r*0.1); ctx.stroke();
+  drawBossEyes(r*0.65, color);
+  ctx.restore();
+}
+// ---- variant 6: Llama Errante — flickering flame silhouette ----
+function drawBossVariantFlame(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/220;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=22;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,10);
+  ctx.beginPath();
+  ctx.moveTo(0,-r*1.1);
+  ctx.quadraticCurveTo(r*0.5+Math.sin(t)*4,-r*0.4, r*0.55,r*0.15);
+  ctx.quadraticCurveTo(r*0.35,r*0.8, 0,r*0.95);
+  ctx.quadraticCurveTo(-r*0.35,r*0.8, -r*0.55,r*0.15);
+  ctx.quadraticCurveTo(-r*0.5-Math.sin(t)*4,-r*0.4, 0,-r*1.1);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#ffe07a'; ctx.globalAlpha=0.55;
+  ctx.beginPath();
+  ctx.moveTo(0,-r*0.5);
+  ctx.quadraticCurveTo(r*0.22,-r*0.1, r*0.2,r*0.35);
+  ctx.quadraticCurveTo(0,r*0.55,-r*0.2,r*0.35);
+  ctx.quadraticCurveTo(-r*0.22,-r*0.1, 0,-r*0.5);
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha=1;
+  drawBossEyes(r*0.55, '#3a1a00');
+  ctx.restore();
+}
+// ---- variant 7: Cadáver Andante — tattered asymmetric decayed body ----
+function drawBossVariantRotten(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=14;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-25);
+  ctx.beginPath();
+  ctx.moveTo(0,-r*0.9);
+  ctx.lineTo(r*0.5,-r*0.55); ctx.lineTo(r*0.35,-r*0.05); ctx.lineTo(r*0.85,r*0.3);
+  ctx.lineTo(r*0.3,r*0.95); ctx.lineTo(-r*0.2,r*0.6); ctx.lineTo(-r*0.75,r*0.9);
+  ctx.lineTo(-r*0.55,r*0.1); ctx.lineTo(-r*0.9,-r*0.25); ctx.lineTo(-r*0.3,-r*0.5);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#0a0710'; ctx.lineWidth=2.2; ctx.stroke();
+  // dark wound/decay patches
+  ctx.fillStyle='rgba(10,7,10,0.6)';
+  ctx.beginPath(); ctx.ellipse(r*0.2,r*0.1,r*0.16,r*0.11,0.4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-r*0.3,-r*0.15,r*0.12,r*0.08,-0.3,0,Math.PI*2); ctx.fill();
+  drawBossEyes(r*0.75, '#8bff6b');
+  ctx.restore();
+}
+// ---- variant 8: Coloso Mecánico — hexagonal plated body with glowing seams ----
+function drawBossVariantMech(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=14;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-28);
+  ctx.beginPath();
+  for(let i=0;i<6;i++){
+    const a = (i/6)*Math.PI*2 - Math.PI/2;
+    const x=Math.cos(a)*r, y=Math.sin(a)*r;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#0a0710'; ctx.lineWidth=2.6; ctx.stroke();
+  // glowing seam lines between the plates
+  ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.globalAlpha=0.8; ctx.shadowColor=color; ctx.shadowBlur=6;
+  for(let i=0;i<6;i++){
+    const a = (i/6)*Math.PI*2 - Math.PI/2;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*r*0.94,Math.sin(a)*r*0.94); ctx.stroke();
+  }
+  ctx.shadowBlur=0; ctx.globalAlpha=1;
+  // rivet dots
+  ctx.fillStyle='#c9c9d4';
+  for(let i=0;i<6;i++){
+    const a = (i/6)*Math.PI*2 - Math.PI/2 + Math.PI/6;
+    ctx.beginPath(); ctx.arc(Math.cos(a)*r*0.6,Math.sin(a)*r*0.6,r*0.05,0,Math.PI*2); ctx.fill();
+  }
+  drawBossEyes(r*0.7, color);
+  ctx.restore();
+}
+// ---- variant 9: Sombra Líquida — amorphous oozing blob with dripping tendrils ----
+function drawBossVariantOoze(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/500;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.globalAlpha=0.92;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath();
+  ctx.moveTo(0,-r*0.85);
+  const waves=10;
+  for(let i=1;i<=waves;i++){
+    const a = -Math.PI/2 + (i/waves)*Math.PI*2;
+    const wob = Math.sin(t+i*1.3)*r*0.08;
+    ctx.lineTo(Math.cos(a)*(r*0.9+wob), Math.sin(a)*(r*0.9+wob));
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  // dripping tendrils hanging below
+  ctx.fillStyle = color;
+  for(let i=-1;i<=1;i++){
+    const dripLen = r*(0.35+Math.abs(Math.sin(t*1.5+i))*0.25);
+    ctx.beginPath();
+    ctx.moveTo(i*r*0.35-r*0.08, r*0.7);
+    ctx.lineTo(i*r*0.35+r*0.08, r*0.7);
+    ctx.lineTo(i*r*0.35, r*0.7+dripLen);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  drawBossEyes(r*0.6, '#ffffff');
+  ctx.restore();
+}
+const GENERIC_BOSS_VARIANTS = [drawGenericBossBody, drawBossVariantArmored, drawBossVariantSpectral, drawBossVariantFeral,
+  drawBossVariantSwarm, drawBossVariantStoneTitan, drawBossVariantFlame, drawBossVariantRotten, drawBossVariantMech, drawBossVariantOoze];
 // deterministic per-boss variant pick from its kind string, so the same floor/Ascenso boss always
 // renders the same way across visits instead of flickering between variants
 function bossVariantIndex(boss){
@@ -16370,7 +16810,385 @@ function drawAscensoVariantEcho(boss){
   drawBossEyes(r*0.35, '#ffffff');
   ctx.restore();
 }
-const ASCENSO_BOSS_VARIANTS = [drawAscensoVariantShard, drawAscensoVariantSoul, drawAscensoVariantEcho];
+// ---- 4. Constelación — orbiting points linked by faint lines, star-map look ----
+function drawAscensoVariantConstellation(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/1200;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-15);
+  ctx.beginPath(); ctx.arc(0,0,r*0.5,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  const n=6, pts=[];
+  for(let i=0;i<n;i++){
+    const a=(i/n)*Math.PI*2+t;
+    pts.push([Math.cos(a)*r*0.95, Math.sin(a)*r*0.95]);
+  }
+  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1;
+  for(let i=0;i<n;i++){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(pts[i][0],pts[i][1]); ctx.stroke(); }
+  ctx.fillStyle='#ffffff';
+  pts.forEach(p=>{ ctx.beginPath(); ctx.arc(p[0],p[1],3,0,Math.PI*2); ctx.fill(); });
+  drawBossEyes(r*0.4, '#ffffff');
+  ctx.restore();
+}
+// ---- 5. Espectro de Luz — prism body splitting into color bands ----
+function drawAscensoVariantPrism(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath(); ctx.moveTo(0,-r); ctx.lineTo(r*0.7,r*0.6); ctx.lineTo(-r*0.7,r*0.6); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  const bands=['#ff6a6a','#ffcb47','#8bff6b','#6ad8ff','#c9a8ff'];
+  bands.forEach((bc,i)=>{
+    ctx.globalAlpha=0.5;
+    ctx.strokeStyle=bc; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(r*0.15+i*3,r*0.6); ctx.lineTo(r*0.3+i*7,r*1.15); ctx.stroke();
+  });
+  ctx.globalAlpha=1;
+  drawBossEyes(r*0.4, '#ffffff');
+  ctx.restore();
+}
+// ---- 6. Ánfora Estelar — glowing vessel pouring light ----
+function drawAscensoVariantUrn(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-10);
+  ctx.beginPath();
+  ctx.moveTo(-r*0.3,-r*0.9); ctx.lineTo(r*0.3,-r*0.9); ctx.lineTo(r*0.55,-r*0.2);
+  ctx.quadraticCurveTo(r*0.6,r*0.9,0,r*0.95);
+  ctx.quadraticCurveTo(-r*0.6,r*0.9,-r*0.55,-r*0.2); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#ffffff'; ctx.globalAlpha=0.5; ctx.lineWidth=1.5; ctx.stroke(); ctx.globalAlpha=1;
+  ctx.fillStyle='#fff6d0'; ctx.globalAlpha=0.6+Math.sin(performance.now()/300)*0.2;
+  ctx.beginPath(); ctx.arc(0,-r*0.9,r*0.22,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+  drawBossEyes(r*0.3, color);
+  ctx.restore();
+}
+// ---- 7. Ala Rota — a single large asymmetric wing ----
+function drawAscensoVariantWing(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.quadraticCurveTo(r*0.6,-r*0.9, r*1.3,-r*0.5);
+  ctx.quadraticCurveTo(r*0.8,-r*0.15, r*0.9,r*0.3);
+  ctx.quadraticCurveTo(r*0.35,r*0.15, 0,0);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1;
+  for(let i=1;i<=3;i++){ ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(r*(0.4+i*0.28),-r*(0.3+i*0.18)); ctx.stroke(); }
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-15);
+  ctx.beginPath(); ctx.arc(0,0,r*0.4,0,Math.PI*2); ctx.fill();
+  drawBossEyes(r*0.3, '#ffffff');
+  ctx.restore();
+}
+// ---- 8. Esfera de Cristal — faceted glass orb with internal glow ----
+function drawAscensoVariantCrystalSphere(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=20;
+  const grad = ctx.createRadialGradient(-r*0.2,-r*0.2,2,0,0,r*0.9);
+  grad.addColorStop(0,'#ffffff'); grad.addColorStop(0.5,color); grad.addColorStop(1,shadeColor(color,-30));
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : grad;
+  ctx.beginPath(); ctx.arc(0,0,r*0.85,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1;
+  for(let i=0;i<5;i++){
+    const a=(i/5)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*r*0.85,Math.sin(a)*r*0.85); ctx.stroke();
+  }
+  drawBossEyes(r*0.5, '#ffffff');
+  ctx.restore();
+}
+// ---- 9. Llama Fría — inverted icy flame, blue-white ----
+function drawAscensoVariantColdFlame(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/240;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath();
+  ctx.moveTo(0,r*1.05);
+  ctx.quadraticCurveTo(r*0.5+Math.sin(t)*3,r*0.3,r*0.5,-r*0.2);
+  ctx.quadraticCurveTo(r*0.3,-r*0.85,0,-r*0.95);
+  ctx.quadraticCurveTo(-r*0.3,-r*0.85,-r*0.5,-r*0.2);
+  ctx.quadraticCurveTo(-r*0.5-Math.sin(t)*3,r*0.3,0,r*1.05);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#ffffff'; ctx.globalAlpha=0.55;
+  ctx.beginPath(); ctx.ellipse(0,r*0.1,r*0.18,r*0.35,0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+  drawBossEyes(r*0.45, '#0a1a2a');
+  ctx.restore();
+}
+// ---- 10. Ojo Celestial — large iris with radiating lashes ----
+function drawAscensoVariantCelestialEye(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  drawSpikeCrown(r, 14, r*0.3, '#ffffff', {width:0.05, innerRFactor:0.92});
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : '#f4eef8';
+  ctx.beginPath(); ctx.arc(0,0,r*0.85,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle = color; ctx.shadowColor=color; ctx.shadowBlur=10;
+  ctx.beginPath(); ctx.arc(0,0,r*0.42,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#0a0710';
+  ctx.beginPath(); ctx.arc(0,0,r*0.18,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+// ---- 11. Portal Roto — a ring/arch with fragments floating around it ----
+function drawAscensoVariantBrokenPortal(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/900;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.strokeStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.lineWidth = r*0.22;
+  ctx.beginPath(); ctx.arc(0,0,r*0.65,0.3,Math.PI*1.75); ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#fff6ff';
+  for(let i=0;i<4;i++){
+    const a=(i/4)*Math.PI*2+t;
+    const rr=r*1.15;
+    ctx.save(); ctx.translate(Math.cos(a)*rr,Math.sin(a)*rr); ctx.rotate(a);
+    ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(4,0); ctx.lineTo(0,6); ctx.lineTo(-4,0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  drawBossEyes(r*0.3, color);
+  ctx.restore();
+}
+// ---- 12. Espina Lumínica — a single long curved thorn ----
+function drawAscensoVariantThorn(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath();
+  ctx.moveTo(0,-r*1.3);
+  ctx.quadraticCurveTo(r*0.55,-r*0.2, r*0.22,r*0.9);
+  ctx.quadraticCurveTo(0,r*0.5,-r*0.22,r*0.9);
+  ctx.quadraticCurveTo(-r*0.55,-r*0.2, 0,-r*1.3);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1; ctx.stroke();
+  drawBossEyes(r*0.35, '#ffffff');
+  ctx.restore();
+}
+// ---- 13. Marea de Almas — a wavy flowing ribbon body ----
+function drawAscensoVariantSoulTide(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/260;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.globalAlpha=0.85;
+  ctx.beginPath();
+  ctx.moveTo(-r,0);
+  for(let i=0;i<=8;i++){
+    const x=-r+i*(2*r/8);
+    const y=Math.sin(t+i*0.8)*r*0.35;
+    ctx.lineTo(x,y-r*0.3);
+  }
+  for(let i=8;i>=0;i--){
+    const x=-r+i*(2*r/8);
+    const y=Math.sin(t+i*0.8)*r*0.35;
+    ctx.lineTo(x,y+r*0.3);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha=1; ctx.shadowBlur=0;
+  drawBossEyes(r*0.35, '#ffffff');
+  ctx.restore();
+}
+// ---- 14. Corona Menor — a modest crown, a quieter echo of El Sol's ----
+function drawAscensoVariantMinorCrown(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/1400;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.save(); ctx.rotate(t);
+  drawSpikeCrown(r, 8, r*0.35, color, {width:0.09, innerRFactor:0.85});
+  ctx.restore();
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,15);
+  ctx.beginPath(); ctx.arc(0,0,r*0.75,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#ffffff'; ctx.globalAlpha=0.4; ctx.lineWidth=1.5; ctx.stroke(); ctx.globalAlpha=1;
+  drawBossEyes(r*0.65, '#ffffff');
+  ctx.restore();
+}
+// ---- 15. Fragmento Lunar — pale crescent moon ----
+function drawAscensoVariantLunar(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : '#e8e8f5';
+  ctx.beginPath();
+  ctx.arc(0,0,r*0.85,-1.1,1.1);
+  ctx.arc(r*0.3,0,r*0.6,1.15,-1.15,true);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  drawBossEyes(r*0.3, color);
+  ctx.restore();
+}
+// ---- 16. Enjambre de Luciérnagas — a cluster of tiny glowing dots forming a body ----
+function drawAscensoVariantFireflies(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/1000;
+  ctx.save();
+  ctx.globalAlpha=0.3; ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(0,0,r*0.7,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+  const n=14;
+  for(let i=0;i<n;i++){
+    const a=(i/n)*Math.PI*2*3+t;
+    const rr = r*(0.2+((i*37)%60)/100);
+    const dx=Math.cos(a)*rr, dy=Math.sin(a)*rr;
+    ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+    ctx.shadowColor=color; ctx.shadowBlur=6;
+    ctx.beginPath(); ctx.arc(dx,dy,2.6,0,Math.PI*2); ctx.fill();
+  }
+  ctx.shadowBlur=0;
+  drawBossEyes(r*0.3, '#ffffff');
+  ctx.restore();
+}
+// ---- 17. Reloj de Arena Roto — hourglass/bowtie silhouette ----
+function drawAscensoVariantHourglass(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+  ctx.beginPath();
+  ctx.moveTo(-r*0.75,-r*0.9); ctx.lineTo(r*0.75,-r*0.9); ctx.lineTo(r*0.15,0);
+  ctx.lineTo(r*0.75,r*0.9); ctx.lineTo(-r*0.75,r*0.9); ctx.lineTo(-r*0.15,0);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=1.2; ctx.stroke();
+  drawBossEyes(r*0.4, '#ffffff');
+  ctx.restore();
+}
+// ---- 18. Vela Eterna — a flame atop a slender stem ----
+function drawAscensoVariantCandle(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/220;
+  ctx.save();
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-30);
+  ctx.beginPath(); ctx.rect(-r*0.16,r*0.05,r*0.32,r*0.85); ctx.fill();
+  ctx.shadowColor=color; ctx.shadowBlur=18;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0,-r*0.95+Math.sin(t)*2);
+  ctx.quadraticCurveTo(r*0.32,-r*0.2,r*0.16,r*0.1);
+  ctx.quadraticCurveTo(0,r*0.25,-r*0.16,r*0.1);
+  ctx.quadraticCurveTo(-r*0.32,-r*0.2,0,-r*0.95+Math.sin(t)*2);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  drawBossEyes(r*0.4, '#3a1a00');
+  ctx.restore();
+}
+// ---- 19. Rosa de los Vientos — compass-star with many thin points ----
+function drawAscensoVariantWindRose(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/2000;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.save(); ctx.rotate(t);
+  drawSpikeCrown(r, 8, r*0.95, color, {width:0.035, innerRFactor:0.1});
+  ctx.restore();
+  ctx.shadowBlur=0;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-10);
+  ctx.beginPath(); ctx.arc(0,0,r*0.32,0,Math.PI*2); ctx.fill();
+  drawBossEyes(r*0.28, '#ffffff');
+  ctx.restore();
+}
+// ---- 20. Cáliz de Luz — a goblet with glow spilling over the rim ----
+function drawAscensoVariantChalice(boss){
+  const r = boss.radius, color = boss.def.color;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,-10);
+  ctx.beginPath();
+  ctx.moveTo(-r*0.55,-r*0.8); ctx.lineTo(r*0.55,-r*0.8);
+  ctx.quadraticCurveTo(r*0.5,-r*0.1,r*0.15,r*0.15);
+  ctx.lineTo(r*0.15,r*0.75); ctx.lineTo(r*0.45,r*0.95); ctx.lineTo(-r*0.45,r*0.95);
+  ctx.lineTo(-r*0.15,r*0.75); ctx.lineTo(-r*0.15,r*0.15);
+  ctx.quadraticCurveTo(-r*0.5,-r*0.1,-r*0.55,-r*0.8);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#fff6d0'; ctx.globalAlpha=0.65+Math.sin(performance.now()/280)*0.2;
+  ctx.beginPath(); ctx.ellipse(0,-r*0.78,r*0.5,r*0.14,0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1;
+  drawBossEyes(r*0.3, color);
+  ctx.restore();
+}
+// ---- 21. Pluma Cósmica — a single large drifting feather ----
+function drawAscensoVariantCosmicFeather(boss){
+  const r = boss.radius, color = boss.def.color;
+  const sway = Math.sin(performance.now()/500)*0.15;
+  ctx.save();
+  ctx.rotate(sway);
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  const grad = ctx.createLinearGradient(0,-r*1.1,0,r*0.7);
+  grad.addColorStop(0,'#ffffff'); grad.addColorStop(0.5,color); grad.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : grad;
+  ctx.beginPath();
+  ctx.moveTo(0,-r*1.1);
+  ctx.quadraticCurveTo(r*0.5,-r*0.3,r*0.28,r*0.6);
+  ctx.quadraticCurveTo(0,r*0.3,0,r*0.7);
+  ctx.quadraticCurveTo(0,r*0.3,-r*0.28,r*0.6);
+  ctx.quadraticCurveTo(-r*0.5,-r*0.3,0,-r*1.1);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0;
+  drawBossEyes(r*0.3, '#ffffff');
+  ctx.restore();
+}
+// ---- 22. Ecuación Estelar — abstract overlapping triangles ----
+function drawAscensoVariantStellarEquation(boss){
+  const r = boss.radius, color = boss.def.color;
+  const t = performance.now()/1600;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  [0,1,2].forEach(i=>{
+    ctx.save();
+    ctx.rotate(t*(i%2===0?1:-1)+i*Math.PI*2/3);
+    ctx.globalAlpha=0.55;
+    ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : color;
+    ctx.beginPath();
+    ctx.moveTo(0,-r*0.85); ctx.lineTo(r*0.75,r*0.5); ctx.lineTo(-r*0.75,r*0.5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  });
+  ctx.globalAlpha=1; ctx.shadowBlur=0;
+  drawBossEyes(r*0.3, '#ffffff');
+  ctx.restore();
+}
+// ---- 23. Nova Silenciosa — a soft pulsing ring-burst, quiet compared to the others ----
+function drawAscensoVariantSilentNova(boss){
+  const r = boss.radius, color = boss.def.color;
+  const pulse = (Math.sin(performance.now()/500)+1)/2;
+  ctx.save();
+  ctx.shadowColor=color; ctx.shadowBlur=16;
+  for(let i=0;i<3;i++){
+    ctx.globalAlpha = 0.5-i*0.14-pulse*0.1;
+    ctx.strokeStyle = color; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.arc(0,0,r*(0.45+i*0.22+pulse*0.06),0,Math.PI*2); ctx.stroke();
+  }
+  ctx.globalAlpha=1; ctx.shadowBlur=0;
+  ctx.fillStyle = boss.hitFlash>0 ? '#ffffff' : shadeColor(color,10);
+  ctx.beginPath(); ctx.arc(0,0,r*0.4,0,Math.PI*2); ctx.fill();
+  drawBossEyes(r*0.32, '#ffffff');
+  ctx.restore();
+}
+const ASCENSO_BOSS_VARIANTS = [drawAscensoVariantShard, drawAscensoVariantSoul, drawAscensoVariantEcho,
+  drawAscensoVariantConstellation, drawAscensoVariantPrism, drawAscensoVariantUrn, drawAscensoVariantWing,
+  drawAscensoVariantCrystalSphere, drawAscensoVariantColdFlame, drawAscensoVariantCelestialEye,
+  drawAscensoVariantBrokenPortal, drawAscensoVariantThorn, drawAscensoVariantSoulTide, drawAscensoVariantMinorCrown,
+  drawAscensoVariantLunar, drawAscensoVariantFireflies, drawAscensoVariantHourglass, drawAscensoVariantCandle,
+  drawAscensoVariantWindRose, drawAscensoVariantChalice, drawAscensoVariantCosmicFeather, drawAscensoVariantStellarEquation,
+  drawAscensoVariantSilentNova];
 
 // ---- El Sol (piso 100 de Ascenso) — the true final boss of the whole game, gets the most
 // elaborate treatment: rotating double corona, bright radial-gradient core, dark solar-flare eyes
@@ -16722,9 +17540,27 @@ function drawBoss(boss){
     ctx.globalAlpha = 1;
   }
   drawBossBody(boss);
+  if(boss.stunTimer>0){
+    // same dizzy-star tell as common enemies, scaled up — bosses can be stunned too (core-break
+    // punish window, or Frey/Coloso/Marlow/Rowan's briefer "chill" on a boss)
+    const st = performance.now()/300;
+    ctx.fillStyle='#ffe07a'; ctx.globalAlpha=0.9;
+    for(let i=0;i<4;i++){
+      const a = st + (i/4)*Math.PI*2;
+      const sx = Math.cos(a)*boss.radius*0.75, sy = -boss.radius-14+Math.sin(a)*4;
+      ctx.save(); ctx.translate(sx,sy); ctx.rotate(a);
+      ctx.beginPath();
+      for(let k=0;k<4;k++){ const ka=(k/4)*Math.PI*2; ctx.lineTo(Math.cos(ka)*4, Math.sin(ka)*4); ctx.lineTo(Math.cos(ka+Math.PI/4)*1.6, Math.sin(ka+Math.PI/4)*1.6); }
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha=1;
+  }
   ctx.restore();
 }
 
+// deterministic string hash, reused by both boss-body variant selection and (now) default
+// projectile shape selection — same string always maps to the same variant, no per-frame flicker
 function drawProjectile(pr){
   if(pr.shape==='shard') return drawProjShard(pr);
   if(pr.shape==='feather') return drawProjFeather(pr);
@@ -16960,8 +17796,27 @@ function drawPlayer(p){
   ctx.restore();
 
   if(p.shield>0){
-    ctx.strokeStyle='#ffcb47'; ctx.lineWidth=2.5; ctx.globalAlpha=0.8;
+    // was a flat static ring regardless of source — now a pulsing warded barrier, shared by every
+    // hero that grants a shield (Paladín, Coloso, Midas, Tempus, Lira, Anselm, the generic parry
+    // fallback, Escudo de Reacción...), so improving it once covers all of them at once
+    ctx.save();
+    const pulse = 0.5+Math.sin(performance.now()/220)*0.2;
+    ctx.globalAlpha = 0.75;
+    ctx.strokeStyle='#ffcb47'; ctx.lineWidth=2.5;
+    ctx.shadowColor='#ffcb47'; ctx.shadowBlur=10+pulse*6;
     ctx.beginPath(); ctx.arc(0,0,p.radius+7,0,Math.PI*2); ctx.stroke();
+    ctx.shadowBlur=0;
+    ctx.globalAlpha = 0.3+pulse*0.15;
+    ctx.lineWidth=1;
+    const n=6;
+    for(let i=0;i<n;i++){
+      const a=(i/n)*Math.PI*2 + performance.now()/2000;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*(p.radius+3), Math.sin(a)*(p.radius+3));
+      ctx.lineTo(Math.cos(a+Math.PI*2/n)*(p.radius+11), Math.sin(a+Math.PI*2/n)*(p.radius+11));
+      ctx.stroke();
+    }
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -16973,6 +17828,17 @@ function drawParticle(pt){
   if(pt.type==='circle'){
     ctx.fillStyle=pt.color;
     ctx.beginPath(); ctx.arc(pt.x,pt.y,pt.r,0,Math.PI*2); ctx.fill();
+  } else if(pt.type==='combo'){
+    // quick pop-in scale over the first ~0.07s, then holds full size while it fades out
+    const progress = 1-(pt.life/pt.maxLife);
+    const pop = Math.min(1, progress*7);
+    ctx.translate(pt.x,pt.y);
+    ctx.scale(pop,pop);
+    ctx.shadowColor = pt.color; ctx.shadowBlur = 8;
+    ctx.fillStyle = pt.color;
+    ctx.font = `800 ${pt.size}px ${getComputedStyle(document.documentElement).getPropertyValue('--font-mono')}`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(pt.text, 0, 0);
   } else {
     ctx.fillStyle=pt.color;
     ctx.font=`700 ${pt.size}px ${getComputedStyle(document.documentElement).getPropertyValue('--font-mono')}`;
