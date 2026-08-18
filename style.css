@@ -61,6 +61,16 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
   letter-spacing:.04em;
   line-height:1;
 }
+/* signature motif: a small rotated rune between two hairlines, echoed under every title so the
+   quieter screens (menu, clear, gameover) share the same considered touch as the boss-hp plate */
+.title-main::after{
+  content:'◈';
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  margin:16px auto 0; width:220px;
+  font-size:10px; color:var(--shade);
+  background:
+    linear-gradient(90deg, transparent, var(--line) 20%, var(--line) 80%, transparent) center/100% 1px no-repeat;
+}
 .subtitle{
   font-family:var(--font-body);
   font-style:italic;
@@ -80,16 +90,16 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
   padding:36px 20px 50px;
 }
 .menu-tabs{
-  display:flex; gap:6px; margin-top:22px; flex-wrap:wrap; justify-content:center;
-  border-bottom:1px solid var(--line); padding-bottom:0px; max-width:900px;
+  display:flex; gap:2px; margin-top:26px; flex-wrap:wrap; justify-content:center;
+  background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:8px; padding:5px; max-width:900px;
 }
 .menu-tab{
   font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
-  color:var(--bone-dim); background:transparent; border:none; border-bottom:2px solid transparent;
-  padding:12px 18px; cursor:pointer; transition:color .2s ease, border-color .2s ease;
+  color:var(--bone-dim); background:transparent; border:none; border-radius:5px;
+  padding:10px 17px; cursor:pointer; transition:color .2s ease, background .2s ease;
 }
-.menu-tab:hover{ color:var(--bone); }
-.menu-tab.active{ color:var(--shade); border-bottom-color:var(--shade); }
+.menu-tab:hover{ color:var(--bone); background:rgba(255,255,255,0.05); }
+.menu-tab.active{ color:var(--void); background:var(--shade); box-shadow:0 4px 16px -4px rgba(210,74,255,0.6); }
 .menu-tab-panel{
   width:100%; display:flex; flex-direction:column; align-items:center;
   margin-top:14px; animation:fadeIn .3s ease;
@@ -111,6 +121,7 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 .compendium-section-title{
   font-family:var(--font-mono); letter-spacing:.25em; font-size:10.5px; color:var(--bone-dim);
   text-transform:uppercase; margin:18px 0 8px; text-align:left; width:100%;
+  padding-left:14px; border-left:2px solid var(--shade-dim); display:flex; align-items:center;
 }
 .compendium-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:8px; width:100%; }
 .compendium-item{
@@ -177,6 +188,13 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 .hero-abilities{ text-align:left; font-size:12.5px; line-height:1.5; color:var(--bone-dim); border-top:1px solid var(--line); padding-top:10px; }
 .hero-abilities .k{ color:var(--accent-c); font-family:var(--font-mono); font-weight:700; margin-right:4px;}
 
+/* shared "card" depth language — every card type below used its own one-off shadow (or none),
+   which is a big part of why the UI reads as disorganized: each screen looked like a different
+   person built it. One shared inset highlight + drop shadow ties them into a single system. */
+.hero-card, .family-card, .compendium-item, .inv-item, .merchant-item, .ult-card, .route-card{
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 26px -16px rgba(0,0,0,0.7);
+}
+
 .btn{
   font-family:var(--font-title); font-weight:600; letter-spacing:.08em; text-transform:uppercase;
   font-size:14px; color:var(--void); background:var(--gold);
@@ -208,7 +226,9 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 .hud-top{
   position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-start; padding:18px 22px;
 }
-.hp-wrap{ display:flex; flex-direction:column; gap:6px; min-width:260px; }
+.hp-wrap{ display:flex; flex-direction:column; gap:6px; min-width:260px;
+  background:rgba(10,7,16,0.6); border:1px solid var(--line); border-radius:8px; padding:10px 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 24px -16px rgba(0,0,0,0.7); }
 .hero-tag{ display:flex; align-items:center; gap:8px; font-family:var(--font-title); font-size:13px; letter-spacing:.06em; color:var(--bone-dim); }
 .hero-tag b{ color:var(--bone); }
 .bar-shell{
@@ -220,7 +240,9 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 .gold-wrap{ display:flex; align-items:center; gap:8px; font-family:var(--font-mono); color:var(--gold); font-size:20px; font-weight:700; }
 .combo-wrap{ font-family:var(--font-mono); color:var(--ember); font-size:12px; font-weight:600; letter-spacing:.03em; }
 
-.stage-tag{ text-align:right; font-family:var(--font-title); }
+.stage-tag{ text-align:right; font-family:var(--font-title);
+  background:rgba(10,7,16,0.6); border:1px solid var(--line); border-radius:8px; padding:10px 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 24px -16px rgba(0,0,0,0.7); }
 .stage-tag .eyebrow{ text-align:right; margin-bottom:2px;}
 .stage-tag .name{ font-size:18px; color:var(--bone); letter-spacing:.03em; }
 .phase-note{ font-family:var(--font-mono); font-size:11px; color:var(--shade); margin-top:4px; letter-spacing:.05em; text-align:right; min-height:14px;}
@@ -420,17 +442,39 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
   width:min(560px,86vw); max-height:78vh; overflow-y:auto;
   background:linear-gradient(180deg, var(--panel-2), var(--panel));
   border:1px solid var(--line); border-radius:6px; padding:26px 28px;
-  z-index:50; box-shadow:0 30px 80px -20px rgba(0,0,0,0.8);
+  z-index:50; box-shadow:0 30px 80px -20px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.inv-panel::before{
+  content:''; position:absolute; top:0; left:0; right:0; height:2px; border-radius:6px 6px 0 0;
+  background:linear-gradient(90deg, transparent, var(--shade-dim), var(--gold), var(--shade-dim), transparent);
 }
 .inv-header{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; border-bottom:1px solid var(--line); padding-bottom:10px;}
-.inv-title{ font-family:var(--font-display); font-size:22px; color:var(--bone); }
+.inv-title{ font-family:var(--font-display); font-size:22px; color:var(--bone); position:relative; padding-left:16px; }
+.inv-title::before{ content:'◈'; position:absolute; left:0; top:2px; font-size:12px; color:var(--shade); }
 .inv-sub{ font-family:var(--font-mono); font-size:11px; color:var(--bone-dim); }
-.inv-stats{ display:grid; grid-template-columns:1fr 1fr; gap:8px 20px; margin-bottom:18px; font-family:var(--font-mono); font-size:12px; color:var(--bone-dim);}
-.inv-stats b{ color:var(--gold); }
-.inv-list{ display:flex; flex-direction:column; gap:8px; }
-.inv-item{ display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.25); border:1px solid var(--line); border-radius:3px; padding:8px 12px; }
-.inv-item .ic{ font-size:20px; width:28px; text-align:center; flex-shrink:0; }
+.inv-stats{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px; }
+.stat-chip{
+  display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.28); border:1px solid var(--line);
+  border-radius:5px; padding:7px 10px; font-family:var(--font-mono); font-size:11.5px; color:var(--bone-dim);
+}
+.stat-chip .ic{ font-size:13px; color:var(--shade); flex-shrink:0; }
+.stat-chip .lb{ flex:1; }
+.stat-chip b{ color:var(--gold); font-size:12.5px; }
+.inv-list{ display:flex; flex-direction:column; gap:7px; }
+.inv-cat-label{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.09em; text-transform:uppercase;
+  color:var(--tc,var(--bone-dim)); margin:16px 0 2px; padding-left:2px; opacity:0.85; }
+.inv-cat-label:first-child{ margin-top:2px; }
+.inv-item{ display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.25);
+  border:1px solid var(--line); border-left:3px solid var(--tc,var(--line)); border-radius:3px; padding:8px 12px;
+  transition:opacity 0.2s; }
+.inv-item.used{ opacity:0.5; }
+.inv-item .ic{ font-size:17px; width:30px; height:30px; flex-shrink:0; border-radius:50%;
+  border:1.5px solid var(--tc,var(--line)); display:flex; align-items:center; justify-content:center; }
+.inv-item .body{ flex:1; min-width:0; }
 .inv-item .nm{ font-family:var(--font-title); font-size:13px; color:var(--bone); }
+.inv-item .nm .cnt{ color:var(--gold); font-weight:700; }
+.inv-item .nm .used-tag{ font-family:var(--font-mono); font-size:9px; color:var(--bone-dim);
+  border:1px solid var(--line); border-radius:3px; padding:1px 5px; margin-left:4px; vertical-align:1px; }
 .inv-item .ds{ font-family:var(--font-mono); font-size:10.5px; color:var(--bone-dim); margin-top:2px;}
 .inv-empty{ font-family:var(--font-mono); font-size:12px; color:var(--bone-dim); text-align:center; padding:20px 0;}
 

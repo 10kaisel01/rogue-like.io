@@ -1012,7 +1012,15 @@ function stageAt(i){
   const zone = ZONES[Math.min(zoneIndex, ZONES.length-1)];
   const isGuardianFloor = (floor+1)%10===0;
   const hpMult = 1 + floor*0.24;       // steeper HP growth than before — damage scaling felt right, HP didn't
-  const dmgMult = 1 + floor*0.12;
+  // BUG (real): this used to be 1 + floor*0.12 forever, uncapped, for the whole 100-floor tower.
+  // At floor 20 that's already 3.28x a boss's base hit; floor 50 is 6.88x; floor 100 is 12.88x.
+  // Player max HP grows nowhere near that fast (character level only ticks once every 5 floors,
+  // and plenty of loot/curses actively cut max HP — see CURSED_CHEST_CHANCE), so somewhere around
+  // floor 20 a single boss hit started to outright one-shot a full-HP player. Mirrors the same
+  // ramp-then-hold shape already used for lateGameHpMult (boss durability) below, just applied to
+  // damage: unchanged through floor 20 (where none of this was reported as a problem), then grows
+  // much more gently and caps instead of climbing forever.
+  const dmgMult = floor<=19 ? 1+floor*0.12 : Math.min(4.6, 3.28+(floor-19)*0.045);
   const mult = dmgMult;                // kept for any old code still reading .mult (damage-oriented)
   const enemyHpMult = 1 + floor*0.10;  // normal (non-boss) enemies scale more gently so runs don't get out of hand
   const enemyDmgMult = 1 + floor*0.055; // damage scales noticeably slower than HP for trash mobs
@@ -1786,7 +1794,14 @@ const CURSED_ITEMS = [
     apply:p=>{ p.goldMult+=0.25; p.maxHp=Math.max(20,p.maxHp-12); p.hp=Math.max(1,p.hp-12); },
     lore:'Es liviano como la luz de la mañana y pesa exactamente lo mismo que todo lo que te quita.' },
 ];
-const CURSED_CHEST_CHANCE = 0.14;
+// Was 0.14 — every *ordinary* chest you pay for (not just the ones from the "Objetos Malditos"
+// cursed-chest path, which is opt-in) had a hidden 14% chance to hand you a cursed item instead
+// of the tier you paid for. 3 of the 11 curses cut maxHp outright (-12 to -36) and a 4th
+// (Deuda de Sangre) taxes 1% of *current* maxHp on every hit taken, uncapped and compounding —
+// over a long run that one alone can nearly halve your max HP with no visible running total.
+// Cut to 5% so curses stay a real (rare) risk on normal loot without being the main reason max HP
+// stalls out over a run. The dedicated cursed-chest content (Objetos Malditos tab) is unaffected.
+const CURSED_CHEST_CHANCE = 0.05;
 const POTIONS = [
   { id:'hp', key:'Digit1', name:'Poción de Vida', icon:'❤', desc:'Cura 25 HP al instante', color:'#e8434f' },
   { id:'def', key:'Digit2', name:'Poción de Resistencia', icon:'🛡', desc:'+30% reducción de daño por 6s', color:'#8a8f9c' },
@@ -2731,11 +2746,28 @@ function startStage(i){
   const total = Math.max(4, Math.round((6 + Math.round(i*3.6)) * routeEnemyMult));
   const specialChance = i<2 ? 0 : clamp(0.06+i*0.012, 0.06, 0.3);
   const specialKinds = ['bomber','shielded','erratic','sniper','swarmling'];
+  // BUG (real): enemies used to spawn one at a time on a fixed per-enemy delay that bottomed out
+  // at 0.22s by ~floor 19 and never got faster — so from there on, the only thing that changed
+  // with floor was the *count*, all trickling in one by one. At floor 50 that's 182 enemies fed in
+  // individually over ~40s, then however long it took to actually mop up whatever was left — the
+  // "5 minutes" feeling reported. Total enemy count is unchanged here (still `total`, same formula
+  // as before), but now it arrives in bursts whose size grows with the floor, so later floors throw
+  // real simultaneous swarms at you instead of a longer single-file line — more chaotic and dynamic
+  // per burst, without inflating spawn duration further as the tower goes on.
+  const burstSize = Math.max(1, Math.round(3 + i*0.14)); // 3 at floor 1, ~10 by floor 50, ~17 by floor 100
+  const burstGap = 1.05; // seconds of breathing room between bursts (roughly constant across the run)
   const queue=[];
-  for(let n=0;n<total;n++){
-    let kind = kinds[n%kinds.length];
-    if(Math.random()<specialChance) kind = specialKinds[Math.floor(Math.random()*specialKinds.length)];
-    queue.push({ kind, delay: n*Math.max(0.22, 0.5-i*0.015) + Math.random()*0.3 });
+  let n = 0, burstIndex = 0;
+  while(n<total){
+    const thisBurst = Math.min(burstSize, total-n);
+    for(let k=0;k<thisBurst;k++){
+      let kind = kinds[n%kinds.length];
+      if(Math.random()<specialChance) kind = specialKinds[Math.floor(Math.random()*specialKinds.length)];
+      // small jitter within the burst so everyone doesn't spawn on the exact same frame
+      queue.push({ kind, delay: burstIndex*burstGap + Math.random()*0.18 });
+      n++;
+    }
+    burstIndex++;
   }
   game.spawnQueue = queue;
   $('hud-stage-eyebrow').textContent = `Piso ${i+1} / ${TOWER_MAX_FLOOR}`;
@@ -3379,6 +3411,32 @@ function buyMerchantOffer(idx){
 $('merchant-close') && $('merchant-close').addEventListener('click', closeMerchant);
 $('merchant-reroll') && $('merchant-reroll').addEventListener('click', rerollMerchantOffers);
 
+// Category + accent color for an inventory entry — used to color-code and group the inventory
+// panel (previously every item looked identical regardless of whether it was a permanent relic,
+// a run-only stat item, or a cursed trade-off).
+function classifyItem(item){
+  if(item.cursed) return { label:'Malditos', color:'var(--blood)' };
+  if(RELICS.some(r=>r.id===item.id)) return { label:'Reliquias', color:'var(--gold)' };
+  if(Object.values(BOSS_ITEMS).some(b=>b.id===item.id)) return { label:'Objetos de Jefe', color:'var(--shade)' };
+  if(ITEM_POOL.epic.some(x=>x.id===item.id)) return { label:'Épicos', color:'#d24aff' };
+  if(ITEM_POOL.rare.some(x=>x.id===item.id)) return { label:'Raros', color:'#6a8dff' };
+  if(ITEM_POOL.common.some(x=>x.id===item.id)) return { label:'Comunes', color:'#a89a8c' };
+  return { label:'Objetos', color:'var(--line)' };
+}
+// Most items in p.items are permanent passive stat boosts with nothing left to "use" — but a
+// handful are one-shot triggers that fire once per run and then sit inert (Pluma de Fénix, Pluma
+// de Alba, Reflejo Instantáneo). Before this, the inventory list showed them identically whether
+// or not they'd already saved you, which reads as "I still have this charge" when you don't.
+// (Escudo de Reacción is deliberately excluded — it recharges every floor, so it's never really
+// "spent" for the run the way these are.)
+function itemUsedLabel(item, p){
+  if(item.id==='relic_phoenix' && p.phoenixUsed) return 'Usado';
+  if(item.id==='relic_dawnFeather' && p.dawnFeatherUsed) return 'Usado';
+  if(item.id==='e_instantreflex' && p._instantReflexUsed) return 'Usado';
+  return null;
+}
+const INV_CATEGORY_ORDER = ['Reliquias','Objetos de Jefe','Épicos','Raros','Comunes','Objetos','Malditos'];
+
 function buildInventoryPanel(){
   const p = game.player;
   // Velocidad used to show only p.speedMult as a ×multiplier, but almost every speed item
@@ -3386,14 +3444,14 @@ function buildInventoryPanel(){
   // even after stacking several speed items. Show the actual resulting move speed instead.
   const effSpeed = Math.round(Math.min(MAX_PLAYER_SPEED, p.def.speed*p.speedMult + p.speedFlat));
   $('inv-stats').innerHTML = `
-    <div>Daño: <b>×${p.dmgMult.toFixed(2)}</b></div>
-    <div>Velocidad: <b>${effSpeed}</b></div>
-    <div>Enfriamiento: <b>×${p.cdMult.toFixed(2)}</b></div>
-    <div>Armadura: <b>${Math.round(p.armor*100)}%</b></div>
-    <div>Robo de vida: <b>${Math.round(p.lifesteal*100)}%</b></div>
-    <div>Crítico: <b>${Math.round(p.critChance*100)}%</b></div>
-    <div>Regeneración: <b>${p.regen.toFixed(1)}/s</b></div>
-    <div>Oro: <b>${game.gold}</b></div>
+    <div class="stat-chip"><span class="ic">✊</span><span class="lb">Daño</span><b>×${p.dmgMult.toFixed(2)}</b></div>
+    <div class="stat-chip"><span class="ic">👢</span><span class="lb">Velocidad</span><b>${effSpeed}</b></div>
+    <div class="stat-chip"><span class="ic">☥</span><span class="lb">Enfriamiento</span><b>×${p.cdMult.toFixed(2)}</b></div>
+    <div class="stat-chip"><span class="ic">▣</span><span class="lb">Armadura</span><b>${Math.round(p.armor*100)}%</b></div>
+    <div class="stat-chip"><span class="ic">♥</span><span class="lb">Robo de vida</span><b>${Math.round(p.lifesteal*100)}%</b></div>
+    <div class="stat-chip"><span class="ic">☘</span><span class="lb">Crítico</span><b>${Math.round(p.critChance*100)}%</b></div>
+    <div class="stat-chip"><span class="ic">✚</span><span class="lb">Regeneración</span><b>${p.regen.toFixed(1)}/s</b></div>
+    <div class="stat-chip"><span class="ic">🜏</span><span class="lb">Oro</span><b>${game.gold}</b></div>
   `;
   const list = $('inv-list');
   if(!p.items.length){
@@ -3405,15 +3463,28 @@ function buildInventoryPanel(){
     if(!counts[it.id]) counts[it.id] = { item:it, n:0 };
     counts[it.id].n++;
   });
-  list.innerHTML = Object.values(counts).map(({item,n})=>`
-    <div class="inv-item">
-      <div class="ic">${item.icon}</div>
-      <div>
-        <div class="nm">${item.name}${n>1?` ×${n}`:''}</div>
-        <div class="ds">${item.desc}</div>
-      </div>
-    </div>
-  `).join('');
+  // group by category so relics/curses/tiers are easy to scan instead of one long flat list
+  const groups = {};
+  Object.values(counts).forEach(entry=>{
+    const cat = classifyItem(entry.item);
+    if(!groups[cat.label]) groups[cat.label] = { color:cat.color, entries:[] };
+    groups[cat.label].entries.push(entry);
+  });
+  list.innerHTML = INV_CATEGORY_ORDER.filter(label=>groups[label]).map(label=>{
+    const g = groups[label];
+    const items = g.entries.map(({item,n})=>{
+      const used = itemUsedLabel(item, p);
+      return `
+      <div class="inv-item${used?' used':''}" style="--tc:${g.color}">
+        <div class="ic">${item.icon}</div>
+        <div class="body">
+          <div class="nm">${item.name}${n>1?` <span class="cnt">×${n}</span>`:''}${used?` <span class="used-tag">${used}</span>`:''}</div>
+          <div class="ds">${item.desc}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="inv-cat-label" style="--tc:${g.color}">${label}</div>${items}`;
+  }).join('');
 }
 
 let lastT = 0;
@@ -6047,8 +6118,14 @@ function updateBoss(dt){
     boss.movers = boss.movers.filter(mv=>mv.alive);
   }
 
+  // dash-type attacks (charge, echoDash, etc.) now travel over real time instead of teleporting —
+  // see startBossDash/updateBossDashes above. While one is in flight it fully owns boss.x/boss.y,
+  // so the normal chase movement below has to stand down or it would fight the dash every frame.
+  updateBossDashes(dt);
+  const isDashing = !!(boss.dashes && boss.dashes.length);
+
   // movement: approach player unless telegraphing
-  if(!boss.telegraph){
+  if(!boss.telegraph && !isDashing){
     const d = dist(boss.x,boss.y,p.x,p.y);
     if(boss.hover){
       const desired = 300;
@@ -6436,7 +6513,7 @@ function updateBoss(dt){
       attackTimer *= hpSpeedMult;
       boss.attackTimer = Math.max(0.25, attackTimer); // safety floor: never lets attacks chain instantly
     }
-  } else if(boss.attackTimer<=0){
+  } else if(boss.attackTimer<=0 && !isDashing){
     pickBossAttack(boss);
   }
 }
@@ -7487,6 +7564,57 @@ function pickBossAttack(boss){
   showAttackBanner(boss, type);
 }
 
+// ---- Boss dash engine --------------------------------------------------------------------
+// Dash-type boss attacks used to move the boss the *entire* distance inside a single instant —
+// the whole for-loop of position updates ran within one frame, right when the telegraph ended —
+// which reads as a teleport (blink to the destination) rather than a dash, and gives you zero
+// real time to react to the movement itself (only to the telegraph beforehand). They now travel
+// over real time via game.boss.dashes (an array, since more than one mover — e.g. Twin Eyes — can
+// dash at once), and the hit check runs continuously along the path instead of once at the very
+// end, so stepping aside *during* the dash can actually save you. See updateBossDashes(dt),
+// called every frame from updateBoss(dt), and the movement-AI gate right below it.
+function startBossDash(mover, ang, dashDist, opts){
+  const boss = game.boss;
+  if(!boss) return null;
+  opts = opts || {};
+  if(!boss.dashes) boss.dashes = [];
+  const radius = opts.radius!==undefined ? opts.radius : (mover.radius||boss.radius);
+  const rec = {
+    mover, ang, sx:mover.x, sy:mover.y, dist:dashDist, radius,
+    dur: opts.dur!==undefined ? opts.dur : Math.max(0.14, dashDist/(opts.speed||900)),
+    t:0, dmg: opts.dmg!==undefined ? opts.dmg : boss.dmg,
+    hitPad: opts.hitPad!==undefined ? opts.hitPad : 12,
+    hit:false, steps: opts.steps||0, stepsFired:0,
+    onStep: opts.onStep||null, onComplete: opts.onComplete||null
+  };
+  boss.dashes.push(rec);
+  return rec;
+}
+
+function updateBossDashes(dt){
+  const boss = game.boss;
+  if(!boss || !boss.dashes || !boss.dashes.length) return;
+  const p = game.player;
+  const b = arenaBounds();
+  const done = [];
+  boss.dashes.forEach(d=>{
+    d.t += dt;
+    const prog = clamp(d.t/d.dur, 0, 1);
+    d.mover.x = clamp(d.sx + Math.cos(d.ang)*d.dist*prog, b.x+d.radius, b.x+b.w-d.radius);
+    d.mover.y = clamp(d.sy + Math.sin(d.ang)*d.dist*prog, b.y+d.radius, b.y+b.h-d.radius);
+    if(d.steps>0 && d.onStep){
+      const targetStep = Math.min(d.steps, Math.floor(prog*d.steps+1e-6)+1);
+      while(d.stepsFired < targetStep){ d.onStep(d.stepsFired, d.mover); d.stepsFired++; }
+    }
+    if(!d.hit && dist(d.mover.x,d.mover.y,p.x,p.y) < d.radius+p.radius+d.hitPad){
+      d.hit = true;
+      hitPlayer(d.dmg);
+    }
+    if(prog>=1){ if(d.onComplete) d.onComplete(d.mover); done.push(d); }
+  });
+  if(done.length) boss.dashes = boss.dashes.filter(d=>done.indexOf(d)===-1);
+}
+
 function resolveBossAttack(type, tg){
   const p = game.player;
   const boss = game.boss;
@@ -7495,14 +7623,11 @@ function resolveBossAttack(type, tg){
   const targetY = tg ? tg.ty : p.y;
   if(type==='charge'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=220, steps=10;
-    for(let i=0;i<steps;i++){
-      boss.x += Math.cos(ang)*(dashDist/steps);
-      boss.y += Math.sin(ang)*(dashDist/steps);
-    }
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+20) hitPlayer(boss.dmg);
-    shake(8);
-    addParticles(boss.x,boss.y,boss.def.color,16,220,0.4);
+    const dashDist=220;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg, hitPad: 14,
+      onComplete: ()=>{ shake(8); addParticles(boss.x,boss.y,boss.def.color,16,220,0.4); }
+    });
   } else if(type==='boneShards'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=7;
@@ -7594,18 +7719,16 @@ function resolveBossAttack(type, tg){
     }
     addParticles(boss.x,boss.y,'#ffb3ec',22,180,0.5);
   } else if(type==='prismDash'){
-    for(let d=0; d<3; d++){
+    const doPrismBlink = (n)=>{
+      if(n>=3){ shake(7); return; }
       const ang = Math.atan2(p.y-boss.y, p.x-boss.x) + rand(-0.5,0.5);
-      const dashDist=140, steps=6;
-      for(let i=0;i<steps;i++){
-        boss.x = clamp(boss.x+Math.cos(ang)*(dashDist/steps), b.x+boss.radius, b.x+b.w-boss.radius);
-        boss.y = clamp(boss.y+Math.sin(ang)*(dashDist/steps), b.y+boss.radius, b.y+b.h-boss.radius);
-        spawnAfterimage(boss.x, boss.y, boss.radius, boss.def.color);
-        addParticles(boss.x,boss.y,boss.def.color,3,80,0.3);
-      }
-      if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+16) hitPlayer(boss.dmg*0.6);
-    }
-    shake(7);
+      startBossDash(boss, ang, 140, {
+        dmg: boss.dmg*0.6, hitPad: 10, dur: 0.1, steps: 6,
+        onStep: ()=>{ spawnAfterimage(boss.x, boss.y, boss.radius, boss.def.color); addParticles(boss.x,boss.y,boss.def.color,3,80,0.3); },
+        onComplete: ()=>doPrismBlink(n+1)
+      });
+    };
+    doPrismBlink(0);
   } else if(type==='radiantNova'){
     const n=14;
     for(let ring=0; ring<2; ring++){
@@ -7720,15 +7843,15 @@ function resolveBossAttack(type, tg){
     }
   } else if(type==='echoDash'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
-    const dashDist=260, steps=6;
-    for(let i=0;i<steps;i++){
-      boss.x = clamp(boss.x+Math.cos(ang)*(dashDist/steps), b.x+boss.radius, b.x+b.w-boss.radius);
-      boss.y = clamp(boss.y+Math.sin(ang)*(dashDist/steps), b.y+boss.radius, b.y+b.h-boss.radius);
-      spawnAfterimage(boss.x, boss.y, boss.radius, boss.def.color);
-      if(i%2===0) game.hazards.push({ x:boss.x, y:boss.y, r:34, type:'spike', telegraph:0.15, active:0.5, tick:0, dmg:boss.dmg*0.5 });
-    }
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.7);
-    shake(6);
+    const dashDist=260;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.7, hitPad: 12, steps: 6,
+      onStep: (i)=>{
+        spawnAfterimage(boss.x, boss.y, boss.radius, boss.def.color);
+        if(i%2===0) game.hazards.push({ x:boss.x, y:boss.y, r:34, type:'spike', telegraph:0.15, active:0.5, tick:0, dmg:boss.dmg*0.5 });
+      },
+      onComplete: ()=>{ shake(6); }
+    });
   } else if(type==='twinPulse'){
     const origins = [{x:boss.x,y:boss.y}];
     if(boss.twin && boss.twin.alive) origins.push({x:boss.twin.x,y:boss.twin.y});
@@ -7919,19 +8042,10 @@ function resolveBossAttack(type, tg){
     const rammer = tg.beaconIsMain ? (boss.twin&&boss.twin.alive?boss.twin:boss) : boss;
     const angR = Math.atan2(tg.lockY-rammer.y, tg.lockX-rammer.x);
     const dashDistR = Math.max(b.w,b.h)*1.3;
-    const stepsR=14;
-    let hitDoneR=false;
-    for(let i=0;i<stepsR;i++){
-      rammer.x += Math.cos(angR)*(dashDistR/stepsR);
-      rammer.y += Math.sin(angR)*(dashDistR/stepsR);
-      if(!hitDoneR && dist(rammer.x,rammer.y,p.x,p.y) < (rammer.radius||boss.radius)+p.radius+16){
-        hitPlayer(boss.dmg*1.1); hitDoneR=true;
-      }
-    }
-    rammer.x = clamp(rammer.x, b.x+(rammer.radius||boss.radius), b.x+b.w-(rammer.radius||boss.radius));
-    rammer.y = clamp(rammer.y, b.y+(rammer.radius||boss.radius), b.y+b.h-(rammer.radius||boss.radius));
-    shake(9);
-    addParticles(rammer.x,rammer.y,boss.def.color,20,220,0.4);
+    startBossDash(rammer, angR, dashDistR, {
+      dmg: boss.dmg*1.1, hitPad: 12, speed: 1900, radius: rammer.radius||boss.radius,
+      onComplete: ()=>{ shake(9); addParticles(rammer.x,rammer.y,boss.def.color,20,220,0.4); }
+    });
     spawnToast('¡El ojo embestidor cruza la sala a toda velocidad!');
   } else if(type==='energyBond'){
     spawnToast('El cable de energía se disuelve');
@@ -8255,13 +8369,11 @@ function resolveBossAttack(type, tg){
     if(boss.twin && boss.twin.alive) chargers.push(boss.twin);
     chargers.forEach(t=>{
       const ang = Math.atan2(p.y-t.y, p.x-t.x);
-      const dashDist=170, steps=6, rad = t.radius||boss.radius*0.85;
-      for(let i=0;i<steps;i++){
-        t.x = clamp(t.x+Math.cos(ang)*(dashDist/steps), b.x+rad, b.x+b.w-rad);
-        t.y = clamp(t.y+Math.sin(ang)*(dashDist/steps), b.y+rad, b.y+b.h-rad);
-      }
-      if(dist(t.x,t.y,p.x,p.y) < rad+p.radius+14) hitPlayer(boss.dmg*0.7);
-      addParticles(t.x,t.y,'#ff9ad1',10,140,0.3);
+      const rad = t.radius||boss.radius*0.85;
+      startBossDash(t, ang, 170, {
+        dmg: boss.dmg*0.7, hitPad: 10, radius: rad,
+        onComplete: ()=>{ addParticles(t.x,t.y,'#ff9ad1',10,140,0.3); }
+      });
     });
     shake(6);
     spawnToast('Ambos ojos embisten a la vez');
@@ -10544,16 +10656,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 5: Devorador de Ecos ----
   else if(type==='devourLunge'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=200, steps=10;
-    for(let i=0;i<steps;i++){
-      boss.x += Math.cos(ang)*(dashDist/steps);
-      boss.y += Math.sin(ang)*(dashDist/steps);
-    }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+20) hitPlayer(boss.dmg*1.1);
-    shake(8);
-    addParticles(boss.x,boss.y,'#7a6a9e',18,220,0.4);
+    const dashDist=200;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*1.1, hitPad: 14,
+      onComplete: ()=>{ shake(8); addParticles(boss.x,boss.y,'#7a6a9e',18,220,0.4); }
+    });
   }
   else if(type==='echoSwarmBurst'){
     const n=10;
@@ -10695,13 +10802,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 10: Enjambre de Cenizas (rápido, muchos golpes débiles en vez de pocos fuertes) ----
   else if(type==='swarmDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=180, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#9a8ab8',16,200,0.35);
+    const dashDist=180;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#9a8ab8',16,200,0.35); }
+    });
   }
   else if(type==='swarmPepper'){
     const n=13;
@@ -10882,19 +10987,17 @@ function resolveBossAttack(type, tg){
   // ---- Piso 16: Susurro Doble (todo lo que hace, lo hace en pares) ----
   else if(type==='whisperTwinDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=170, steps=8;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.85);
-    // a second, shorter dash right after — the "twin" motif carried into the attack itself
-    const ang2 = Math.atan2(p.y-boss.y,p.x-boss.x);
-    for(let i=0;i<5;i++){ boss.x += Math.cos(ang2)*18; boss.y += Math.sin(ang2)*18; }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.85);
-    shake(7);
-    addParticles(boss.x,boss.y,'#8a4a9a',18,200,0.4);
+    startBossDash(boss, ang, 170, {
+      dmg: boss.dmg*0.85, hitPad: 12,
+      onComplete: ()=>{
+        // a second, shorter dash right after — the "twin" motif carried into the attack itself
+        const ang2 = Math.atan2(p.y-boss.y,p.x-boss.x);
+        startBossDash(boss, ang2, 90, {
+          dmg: boss.dmg*0.85, hitPad: 12, dur: 0.14,
+          onComplete: ()=>{ shake(7); addParticles(boss.x,boss.y,'#8a4a9a',18,200,0.4); }
+        });
+      }
+    });
   }
   else if(type==='doubleVolley'){
     const n=6;
@@ -11110,13 +11213,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 23: Merodeador del Ocaso (rápido, combina embestida + zarpazo inmediato) ----
   else if(type==='marauderPounce'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=210, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*1.0);
-    shake(7);
-    addParticles(boss.x,boss.y,'#b06ac0',18,210,0.38);
+    const dashDist=210;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*1.0, hitPad: 12,
+      onComplete: ()=>{ shake(7); addParticles(boss.x,boss.y,'#b06ac0',18,210,0.38); }
+    });
   }
   else if(type==='marauderRake'){
     const r = 105;
@@ -11218,20 +11319,17 @@ function resolveBossAttack(type, tg){
   // ---- Piso 27: Ceniza Errante (rápido y ligero, deja rastro de brasas al moverse) ----
   else if(type==='ashDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=210, steps=9;
-    for(let i=0;i<steps;i++){
-      boss.x += Math.cos(ang)*(dashDist/steps);
-      boss.y += Math.sin(ang)*(dashDist/steps);
-      if(i%2===0){
-        const hx = clamp(boss.x, b.x+24, b.x+b.w-24), hy = clamp(boss.y, b.y+24, b.y+b.h-24);
-        game.hazards.push({ x:hx, y:hy, r:28, type:'fire', telegraph:0.15, active:1.0, tick:0, dmg:boss.dmg*0.2 });
-      }
-    }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#c07850',16,200,0.35);
+    const dashDist=210;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12, steps: 9,
+      onStep: (i)=>{
+        if(i%2===0){
+          const hx = clamp(boss.x, b.x+24, b.x+b.w-24), hy = clamp(boss.y, b.y+24, b.y+b.h-24);
+          game.hazards.push({ x:hx, y:hy, r:28, type:'fire', telegraph:0.15, active:1.0, tick:0, dmg:boss.dmg*0.2 });
+        }
+      },
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#c07850',16,200,0.35); }
+    });
   }
   else if(type==='emberWake'){
     // crawling line of embers toward the player, same "reaching" feel as whisperCrawl (piso 7)
@@ -11342,13 +11440,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 31: Enjambre de Rescoldos (variante rápida que abre el siguiente bloque) ----
   else if(type==='swarmEmberDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=190, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#d68a4a',16,205,0.35);
+    const dashDist=190;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#d68a4a',16,205,0.35); }
+    });
   }
   else if(type==='emberSwarmField'){
     for(let i=0;i<7;i++){
@@ -11524,13 +11620,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 37: Polvo Errante (rápido y ligero, ni ceniza ni piedra) ----
   else if(type==='dustDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=215, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#8a8478',16,200,0.35);
+    const dashDist=215;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#8a8478',16,200,0.35); }
+    });
   }
   else if(type==='dustTrail'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
@@ -11772,13 +11866,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 45: Ecos Grises (cada eco repite un poco menos de sombra que el anterior) ----
   else if(type==='greyEchoDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=200, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#8a8290',16,200,0.35);
+    const dashDist=200;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#8a8290',16,200,0.35); }
+    });
   }
   else if(type==='greyEchoField'){
     for(let i=0;i<6;i++){
@@ -11961,13 +12053,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 51: Alba Errante (abre el tramo — la luz empieza a crecer de verdad) ----
   else if(type==='dawnDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=218, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#e8c888',16,205,0.35);
+    const dashDist=218;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#e8c888',16,205,0.35); }
+    });
   }
   else if(type==='dawnTrail'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
@@ -12019,13 +12109,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 53: Eco Dorado (cada eco brilla un poco más que el anterior) ----
   else if(type==='goldenEchoDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=205, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#e0b858',16,200,0.35);
+    const dashDist=205;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#e0b858',16,200,0.35); }
+    });
   }
   else if(type==='goldenEchoField'){
     for(let i=0;i<6;i++){
@@ -12139,13 +12227,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 57: Enjambre Dorado (cientos de chispas que ya no recuerdan haber sido sombra) ----
   else if(type==='swarmGoldenDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=195, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#f0d068',16,205,0.35);
+    const dashDist=195;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#f0d068',16,205,0.35); }
+    });
   }
   else if(type==='goldenSwarmField'){
     for(let i=0;i<7;i++){
@@ -12265,13 +12351,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 61: Centinela Dorado (abre el tramo final antes del ecuador del camino) ----
   else if(type==='sentinelDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=220, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#ffe088',16,208,0.35);
+    const dashDist=220;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#ffe088',16,208,0.35); }
+    });
   }
   else if(type==='sentinelTrail'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
@@ -12360,13 +12444,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 64: Eco Solar (cada eco es un poco más brillante que la fuente) ----
   else if(type==='solarEchoDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=210, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#ffe068',16,205,0.35);
+    const dashDist=210;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#ffe068',16,205,0.35); }
+    });
   }
   else if(type==='solarEchoField'){
     for(let i=0;i<6;i++){
@@ -12390,13 +12472,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 65: Enjambre de Llamas (ya no quedan cenizas, solo llama pura y en movimiento) ----
   else if(type==='swarmBlazeDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=198, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#ffb848',16,208,0.35);
+    const dashDist=198;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#ffb848',16,208,0.35); }
+    });
   }
   else if(type==='blazeSwarmField'){
     for(let i=0;i<7;i++){
@@ -12580,13 +12660,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 71: Enjambre de Flare (abre el tramo — cada vez menos falta para la cima) ----
   else if(type==='swarmFlareDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=200, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#ffcc58',16,210,0.35);
+    const dashDist=200;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#ffcc58',16,210,0.35); }
+    });
   }
   else if(type==='flareSwarmField'){
     for(let i=0;i<7;i++){
@@ -12699,13 +12777,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 75: Eco del Cenit (marca los tres cuartos del camino — cada eco es puro mediodía) ----
   else if(type==='zenithEchoDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=212, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#ffe868',16,207,0.35);
+    const dashDist=212;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#ffe868',16,207,0.35); }
+    });
   }
   else if(type==='zenithEchoField'){
     for(let i=0;i<6;i++){
@@ -12889,13 +12965,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 81: Enjambre Cegador (abre la recta final — cada chispa ya es casi Sol) ----
   else if(type==='swarmBlindDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=202, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#fffac8',16,212,0.35);
+    const dashDist=202;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#fffac8',16,212,0.35); }
+    });
   }
   else if(type==='blindSwarmField'){
     for(let i=0;i<7;i++){
@@ -13008,13 +13082,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 85: Eco Ascendente (cada eco sube un poco más que el anterior, sin cansarse nunca) ----
   else if(type==='ascEchoDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=214, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#fffad0',16,209,0.35);
+    const dashDist=214;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#fffad0',16,209,0.35); }
+    });
   }
   else if(type==='ascEchoField'){
     for(let i=0;i<6;i++){
@@ -13198,13 +13270,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 91: Enjambre de la Cumbre (abre el tramo final — ya no hay más tramos después) ----
   else if(type==='swarmSummitDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=204, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#ffffff',16,214,0.35);
+    const dashDist=204;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#ffffff',16,214,0.35); }
+    });
   }
   else if(type==='summitSwarmField'){
     for(let i=0;i<7;i++){
@@ -13317,13 +13387,11 @@ function resolveBossAttack(type, tg){
   // ---- Piso 95: Eco del Portal (el último eco antes del silencio total del Sol) ----
   else if(type==='portalEchoDash'){
     const ang = Math.atan2(p.y-boss.y,p.x-boss.x);
-    const dashDist=216, steps=9;
-    for(let i=0;i<steps;i++){ boss.x += Math.cos(ang)*(dashDist/steps); boss.y += Math.sin(ang)*(dashDist/steps); }
-    boss.x = clamp(boss.x, b.x+boss.radius, b.x+b.w-boss.radius);
-    boss.y = clamp(boss.y, b.y+boss.radius, b.y+b.h-boss.radius);
-    if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+18) hitPlayer(boss.dmg*0.9);
-    shake(6);
-    addParticles(boss.x,boss.y,'#fffffb',16,211,0.35);
+    const dashDist=216;
+    startBossDash(boss, ang, dashDist, {
+      dmg: boss.dmg*0.9, hitPad: 12,
+      onComplete: ()=>{ shake(6); addParticles(boss.x,boss.y,'#fffffb',16,211,0.35); }
+    });
   }
   else if(type==='portalEchoField'){
     for(let i=0;i<6;i++){
