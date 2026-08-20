@@ -5750,6 +5750,30 @@ function hitPlayer(dmg){
 }
 
 /* ---------- boss AI ---------- */
+// ---- Boss delayed-action scheduler ---------------------------------------------------------
+// Companion to the dash engine above, but for non-movement follow-ups: lets a single attack play
+// out as "do this now, then a beat later do that" (a warning tremor before a collapse, a return
+// volley after the first one, a second wave of spikes) instead of everything resolving in one
+// instant call. This is what makes a move read as a real multi-stage sequence rather than one
+// flat burst — the same kind of shape guardian attacks already had, now available to any move.
+function scheduleBossAction(delay, fn){
+  const boss = game.boss;
+  if(!boss) return;
+  if(!boss.scheduled) boss.scheduled = [];
+  boss.scheduled.push({ t:delay, fn });
+}
+function updateScheduledBossActions(dt){
+  const boss = game.boss;
+  if(!boss || !boss.scheduled || !boss.scheduled.length) return;
+  const remaining = [];
+  boss.scheduled.forEach(s=>{
+    s.t -= dt;
+    if(s.t<=0){ if(game.boss===boss) s.fn(); }
+    else remaining.push(s);
+  });
+  boss.scheduled = remaining;
+}
+
 function updateBoss(dt){
   const p = game.player;
   const boss = game.boss;
@@ -6122,6 +6146,7 @@ function updateBoss(dt){
   // see startBossDash/updateBossDashes above. While one is in flight it fully owns boss.x/boss.y,
   // so the normal chase movement below has to stand down or it would fight the dash every frame.
   updateBossDashes(dt);
+  updateScheduledBossActions(dt);
   const isDashing = !!(boss.dashes && boss.dashes.length);
 
   // movement: approach player unless telegraphing
@@ -7639,11 +7664,20 @@ function resolveBossAttack(type, tg){
     addParticles(boss.x,boss.y,boss.def.color,14,150,0.4);
     shake(5);
   } else if(type==='summon'){
+    addParticles(boss.x,boss.y,boss.def.color,14,90,0.3);
+    spawnShockwave(boss.x,boss.y,boss.def.color,60,0.3);
     for(let i=0;i<2;i++){
       const ang = Math.random()*Math.PI*2;
       spawnEnemyAt(boss.def.minion, boss.x+Math.cos(ang)*70, boss.y+Math.sin(ang)*70, true);
     }
     spawnToast('El jefe invoca refuerzos');
+    scheduleBossAction(1.4, ()=>{
+      if(!game.boss) return;
+      const ang = Math.random()*Math.PI*2;
+      spawnEnemyAt(boss.def.minion, boss.x+Math.cos(ang)*70, boss.y+Math.sin(ang)*70, true);
+      addParticles(boss.x,boss.y,boss.def.color,10,80,0.25);
+      spawnToast('Un refuerzo más se levanta');
+    });
   } else if(type==='radialBurst'){
     const n=10;
     for(let i=0;i<n;i++){
@@ -8393,8 +8427,6 @@ function resolveBossAttack(type, tg){
     spawnToast('El abismo se traga los bordes de la arena');
     shake(6);
   } else if(type==='boneCross'){
-    // fire erupts in a cross from where you stood, not from the boss — a bone-flavored variant
-    // of magmaCross's shape, rooted on the target instead of the caster
     const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
     dirs.forEach(([dx,dy])=>{
       for(let k=1;k<=2;k++){
@@ -8404,8 +8436,18 @@ function resolveBossAttack(type, tg){
       }
     });
     spawnToast('Huesos brotan en cruz bajo tus pies');
+    scheduleBossAction(0.5, ()=>{
+      if(!game.boss) return;
+      const diag=[[1,1],[1,-1],[-1,1],[-1,-1]];
+      diag.forEach(([dx,dy])=>{
+        const hx = clamp(targetX+dx*45, b.x+22,b.x+b.w-22);
+        const hy = clamp(targetY+dy*45, b.y+22,b.y+b.h-22);
+        game.hazards.push({ x:hx, y:hy, r:24, type:'spike', telegraph:0.4, active:0.35, tick:0, dmg:boss.dmg*0.4 });
+      });
+      spawnToast('La cruz se completa en diagonal');
+    });
   } else if(type==='boneSpiral'){
-    // hazard points trace a bone spiral outward from your position
+    // hazard points trace a bone spiral outward, then a small burst fires from its outer end
     const n=7;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2.6;
@@ -8415,6 +8457,19 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:20, type:'spike', telegraph:0.3+i*0.09, active:0.4, tick:0, dmg:boss.dmg*0.38 });
     }
     spawnToast('Huesos giran en espiral hacia afuera');
+    scheduleBossAction(0.3+n*0.09+0.25, ()=>{
+      if(!game.boss) return;
+      const ang=(n/7)*Math.PI*2.6, rad=18+n*15;
+      const ex = clamp(targetX+Math.cos(ang)*rad, b.x+22,b.x+b.w-22);
+      const ey = clamp(targetY+Math.sin(ang)*rad, b.y+22,b.y+b.h-22);
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:ex,y:ey, vx:Math.cos(a2)*180, vy:Math.sin(a2)*180,
+          dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
+      }
+      addParticles(ex,ey,boss.def.color,10,100,0.25);
+    });
   } else if(type==='skullBarrage'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=5;
@@ -8423,6 +8478,16 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
         dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:boss.def.color, life:1.8, shape:'shard' });
     }
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<n;i++){
+        const ang = ang1+(i-(n-1)/2)*0.12;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*300, vy:Math.sin(ang)*300,
+          dmg:boss.dmg*0.42, radius:6, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
+      }
+      shake(3);
+    });
   } else if(type==='graveSpikes'){
     const n=7;
     for(let i=0;i<n;i++){
@@ -8430,6 +8495,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'spike', telegraph:0.5+Math.random()*1.0, active:0.4, tick:0, dmg:boss.dmg*0.32 });
     }
     spawnToast('Huesos brotan al azar por toda la arena');
+    scheduleBossAction(1.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:70, type:'spike', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.55 });
+      spawnToast('Un último hueso enorme cae junto al jefe');
+    });
   } else if(type==='boneWhip'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     const reach=250;
@@ -8438,19 +8508,48 @@ function resolveBossAttack(type, tg){
     if(proj>0 && proj<reach && perpDist<38) hitPlayer(boss.dmg*0.85);
     addParticles(boss.x+Math.cos(ang)*reach, boss.y+Math.sin(ang)*reach, boss.def.color,10,110,0.22);
     shake(4);
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      const proj2 = (p.x-boss.x)*Math.cos(ang2) + (p.y-boss.y)*Math.sin(ang2);
+      const perp2 = Math.hypot((p.x-boss.x)-Math.cos(ang2)*proj2, (p.y-boss.y)-Math.sin(ang2)*proj2);
+      if(proj2>0 && proj2<reach*0.85 && perp2<38) hitPlayer(boss.dmg*0.7);
+      addParticles(boss.x+Math.cos(ang2)*reach*0.85, boss.y+Math.sin(ang2)*reach*0.85, boss.def.color,10,100,0.2);
+      shake(3);
+      spawnToast('El látigo de huesos vuelve en un revés');
+    });
   } else if(type==='deathRattle'){
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Un traqueteo mortal debilita tus golpes');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:60, type:'spike', telegraph:0.35, active:0.3, tick:0, dmg:boss.dmg*0.4 });
+      spawnToast('El traqueteo termina en un golpe seco');
+    });
   } else if(type==='hauntingWail'){
     p.chillTimer = Math.max(p.chillTimer||0, 3.5);
     p.chillFactor = 1.5;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Un lamento entumece tus reflejos');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      p.chillTimer = Math.max(p.chillTimer||0, 2.2);
+      addParticles(p.x,p.y,boss.def.color,12,80,0.25);
+      spawnToast('El lamento hace eco una vez más');
+    });
   } else if(type==='cryptCollapse'){
+    // a handful of harmless pre-tremor cracks flicker before the real collapse lands
+    const cracks=3;
+    for(let i=0;i<cracks;i++){
+      const ang = Math.random()*Math.PI*2, rad = rand(30,90);
+      const hx = clamp(targetX+Math.cos(ang)*rad, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*rad, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:16, type:'spike', telegraph:0.6+Math.random()*0.3, active:0.001, tick:0, dmg:0 });
+    }
     game.hazards.push({ x:targetX, y:targetY, r:120, type:'spike', telegraph:1.3, active:0.4, tick:0, dmg:boss.dmg*1.15 });
-    spawnToast('La cripta colapsa sobre tu posición');
+    spawnToast('La cripta empieza a agrietarse antes de colapsar');
   } else if(type==='boneShrapnel'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=6;
@@ -8459,19 +8558,38 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*200, vy:Math.sin(ang)*200,
         dmg:boss.dmg*0.48, radius:7, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
     }
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      const perp = ang0+Math.PI/2;
+      [perp, perp+Math.PI].forEach(a=>{
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*230, vy:Math.sin(a)*230,
+          dmg:boss.dmg*0.4, radius:6, owner:'enemy', color:boss.def.color, life:1.8, shape:'shard' });
+      });
+      shake(2);
+    });
   } else if(type==='graveyardShift'){
-    // teleports to where you were STANDING WHEN THE ATTACK BEGAN, not your live position — so
-    // running away during the wind-up actually avoids it, instead of it re-targeting you every frame
     boss.x = clamp(targetX+rand(-40,40), b.x+boss.radius, b.x+b.w-boss.radius);
     boss.y = clamp(targetY+rand(-40,40), b.y+boss.radius, b.y+b.h-boss.radius);
     if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+20) hitPlayer(boss.dmg*0.8);
     spawnShockwave(boss.x,boss.y,boss.def.color,50,0.3);
     spawnToast('Aparece de repente junto a vos');
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      spawnShockwave(boss.x,boss.y,boss.def.color,80,0.3);
+      if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+34) hitPlayer(boss.dmg*0.4);
+    });
   } else if(type==='deathMark'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*100, vy:Math.sin(ang)*100,
       dmg:boss.dmg*0.75, radius:12, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'wisp' });
     spawnToast('Una marca mortal te persigue');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*120, vy:Math.sin(ang2)*120,
+        dmg:boss.dmg*0.55, radius:10, owner:'enemy', color:boss.def.color, life:4, homing:true, shape:'wisp' });
+      spawnToast('Una segunda marca se suelta');
+    });
   } else if(type==='skeletalSwarm'){
     const n=10;
     for(let i=0;i<n;i++){
@@ -8479,12 +8597,25 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
         dmg:boss.dmg*0.34, radius:5, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
     }
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*230, vy:Math.sin(ang)*230,
+          dmg:boss.dmg*0.3, radius:5, owner:'enemy', color:boss.def.color, life:1.4, shape:'shard' });
+      }
+    });
   } else if(type==='tombstoneSlam'){
+    // a wind-up beat before the ground actually slams
     const r=150;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.0);
-    addParticles(boss.x,boss.y,boss.def.color,22,200,0.4);
-    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
-    shake(7);
+    addParticles(boss.x,boss.y,boss.def.color,10,80,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.0);
+      addParticles(boss.x,boss.y,boss.def.color,22,200,0.4);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
+      shake(7);
+    });
   } else if(type==='ribcage'){
     const n=8;
     for(let i=0;i<n;i++){
@@ -8494,6 +8625,16 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:22, type:'spike', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
     }
     spawnToast('Una jaula de costillas se cierra a tu alrededor');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        const hx = clamp(targetX+Math.cos(ang)*55, b.x+22,b.x+b.w-22);
+        const hy = clamp(targetY+Math.sin(ang)*55, b.y+22,b.y+b.h-22);
+        game.hazards.push({ x:hx, y:hy, r:20, type:'spike', telegraph:0.35, active:0.35, tick:0, dmg:boss.dmg*0.4 });
+      }
+      spawnToast('La jaula se cierra más');
+    });
   } else if(type==='deathToll'){
     const steps=7;
     for(let i=0;i<steps;i++){
@@ -8503,21 +8644,41 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'spike', telegraph:0.25+frac*0.85, active:0.4, tick:0, dmg:boss.dmg*0.38 });
     }
     spawnToast('Un eco funesto avanza hacia vos');
+    scheduleBossAction(1.15, ()=>{
+      if(!game.boss) return;
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:targetX,y:targetY, vx:Math.cos(a2)*170, vy:Math.sin(a2)*170,
+          dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
+      }
+    });
   } else if(type==='skullStorm'){
-    [0,1,2].forEach(ring=>{
-      const n=7, speed=170+ring*60;
-      for(let i=0;i<n;i++){
-        const ang=(i/n)*Math.PI*2 + ring*0.25;
+    // three genuinely staggered rings instead of all firing on the same frame
+    const ring = (idx)=>{
+      if(!game.boss) return;
+      const nR=7, speed=170+idx*60;
+      for(let i=0;i<nR;i++){
+        const ang=(i/nR)*Math.PI*2 + idx*0.25;
         spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
           dmg:boss.dmg*0.34, radius:6, owner:'enemy', color:boss.def.color, life:1.9, shape:'shard' });
       }
-    });
-    shake(4);
+      shake(3);
+    };
+    ring(0);
+    scheduleBossAction(0.3, ()=>ring(1));
+    scheduleBossAction(0.6, ()=>ring(2));
   } else if(type==='gravebind'){
     p.slowTimer = Math.max(p.slowTimer||0, 3);
     p.slowFactor = 0.6;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Manos huesudas se aferran a tus tobillos');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      p.slowTimer = Math.max(p.slowTimer||0, 1.6);
+      addParticles(p.x,p.y,boss.def.color,10,70,0.25);
+      spawnToast('Otras manos se suman al agarre');
+    });
   } else if(type==='boneChain'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     [-0.3,0.3].forEach(off=>{
@@ -8525,25 +8686,63 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.5, radius:9, owner:'enemy', color:boss.def.color, life:4.2, homing:true, shape:'shard' });
     });
     spawnToast('Dos marcas óseas te acechan');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      [-0.55,0.55].forEach(off=>{
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2+off)*95, vy:Math.sin(ang2+off)*95,
+          dmg:boss.dmg*0.4, radius:8, owner:'enemy', color:boss.def.color, life:3.6, homing:true, shape:'shard' });
+      });
+      spawnToast('Dos marcas más se suman a la cadena');
+    });
   } else if(type==='cryptWhisper'){
     boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.08);
     addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
     spawnToast('Un susurro antiguo restaura sus fuerzas');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const r=110;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.5);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      spawnToast('El susurro se vuelve hostil');
+    });
   } else if(type==='deathsDoor'){
     game.hazards.push({ x:targetX, y:targetY, r:20, type:'spike', telegraph:0.5, active:2.0, tick:0, dmg:boss.dmg*0.45, expanding:true, expandRate:52 });
     spawnToast('Una puerta hacia la muerte se abre bajo tus pies');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      const ang = Math.random()*Math.PI*2;
+      const hx = clamp(targetX+Math.cos(ang)*90, b.x+24,b.x+b.w-24);
+      const hy = clamp(targetY+Math.sin(ang)*90, b.y+24,b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:16, type:'spike', telegraph:0.4, active:1.6, tick:0, dmg:boss.dmg*0.35, expanding:true, expandRate:44 });
+      spawnToast('Una segunda puerta se abre cerca');
+    });
   } else if(type==='rattlingBones'){
     for(let k=0;k<3;k++){
       game.hazards.push({ x:boss.x, y:boss.y, r:14+k*11, type:'spike', telegraph:0.32*(k+1), active:0.3, tick:0, dmg:boss.dmg*0.42 });
     }
     addParticles(boss.x,boss.y,boss.def.color,16,140,0.3);
     spawnToast('Sus huesos traquetean con fuerza creciente');
+    scheduleBossAction(1.05, ()=>{
+      if(!game.boss) return;
+      const m=8;
+      for(let i=0;i<m;i++){
+        const ang=(i/m)*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*210, vy:Math.sin(ang)*210,
+          dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
+      }
+      shake(5);
+    });
   } else if(type==='deathKnell'){
-    // an almost-instant single strike, the bone zone's reaction-test attack
     game.hazards.push({ x:targetX, y:targetY, r:32, type:'spike', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*1.05 });
     spawnToast('Un tañido fúnebre marca el lugar');
+    scheduleBossAction(0.55, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:targetX, y:targetY, r:44, type:'spike', telegraph:0.2, active:0.3, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('El tañido resuena una vez más');
+    });
   } else if(type==='boneVolley'){
-    // a full ring of bone shards in every direction at once, instead of boneShards' narrow forward cone
+    // a full ring of bone shards, then a second offset ring a beat later — the volley doubles up
     const n=12;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -8551,9 +8750,17 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:boss.def.color, life:2.2, shape:'shard' });
     }
     shake(5);
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
+          dmg:boss.dmg*0.42, radius:6, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
+      }
+      addParticles(boss.x,boss.y,boss.def.color,10,140,0.3);
+    });
   } else if(type==='risingSpikes'){
-    // an expanding ring of spikes starts small right at your feet and grows outward — the opposite
-    // read of boneCage's fixed ring: here you have to keep running away as it grows
+    // an expanding ring starts small at your feet, then a second ring closes in from further out
     const n=8;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -8562,18 +8769,41 @@ function resolveBossAttack(type, tg){
     }
     addParticles(targetX,targetY,boss.def.color,14,120,0.3);
     spawnToast('Espinas brotan y avanzan hacia afuera');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*70, y:targetY+Math.sin(ang)*70, r:18, type:'spike',
+          telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.45, expanding:true, expandRate:-60 });
+      }
+      spawnToast('Un segundo anillo se cierra hacia adentro');
+    });
   } else if(type==='boneArmor'){
-    // a pure self-buff: the guardian hardens, absorbing a chunk of damage before it starts losing HP again.
-    // capped (not additive) so repeated casts can't stack into permanent invulnerability
+    // a self-buff paired with a delayed retaliation burst — hardening isn't just idle
     boss.armorHp = Math.max(boss.armorHp||0, boss.maxHp*0.08);
     addParticles(boss.x,boss.y,boss.def.color,20,130,0.4);
     spawnToast('Sus huesos se endurecen');
+    scheduleBossAction(0.55, ()=>{
+      if(!game.boss) return;
+      const n=8;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*190, vy:Math.sin(ang)*190,
+          dmg:boss.dmg*0.35, radius:6, owner:'enemy', color:boss.def.color, life:1.8, shape:'shard' });
+      }
+      spawnToast('La armadura libera una descarga ósea');
+    });
   } else if(type==='boneTrap'){
-    // a single hidden trap with a short telegraph and a big hit, instead of many scattered zones
+    // two inert decoy telegraphs plus the one real trap — only one of the three actually detonates
+    const decoys = [ [rand(-90,90), rand(-90,90)], [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:40, type:'spike', telegraph:0.9, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:46, type:'spike', telegraph:0.9, active:0.3, tick:0, dmg:boss.dmg*1.3 });
-    spawnToast('Algo se oculta bajo el polvo...');
+    spawnToast('Algo se oculta bajo el polvo... ¿pero dónde?');
   } else if(type==='toxicSpores'){
-    // a slow drifting cloud instead of a stationary pool — the danger creeps toward you over time
+    // a slow drifting cloud, then a second smaller puff drifts out toward wherever you moved
     const n=6;
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     for(let i=0;i<n;i++){
@@ -8582,9 +8812,17 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.35, radius:11, owner:'enemy', color:'#8bff6b', life:3.4, poison:true, shape:'wisp' });
     }
     spawnToast('Esporas tóxicas flotan hacia vos');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<4;i++){
+        const ang = ang1 + (i-1.5)*0.2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*85, vy:Math.sin(ang)*85,
+          dmg:boss.dmg*0.3, radius:9, owner:'enemy', color:'#8bff6b', life:2.8, poison:true, shape:'wisp' });
+      }
+    });
   } else if(type==='swampGrasp'){
-    // vines erupt in a tight cluster right under you with almost no warning — a quick punish
-    // instead of a zone you can see coming from far away
+    // vines erupt in a tight cluster right under you, then a wider ring catches anyone who dodged out
     const n=5;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -8592,14 +8830,29 @@ function resolveBossAttack(type, tg){
         telegraph:0.35, active:0.4, tick:0, dmg:boss.dmg*0.55 });
     }
     spawnToast('Enredaderas brotan bajo tus pies');
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      const n2=7;
+      for(let i=0;i<n2;i++){
+        const ang=(i/n2)*Math.PI*2;
+        game.hazards.push({ x:targetX+Math.cos(ang)*80, y:targetY+Math.sin(ang)*80, r:20, type:'spike',
+          telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.4 });
+      }
+      spawnToast('Más enredaderas brotan más lejos');
+    });
   } else if(type==='witchesBlessing'){
-    // a single big self-heal — a defensive move rather than another way to hurt you
+    // a big self-heal, punished a beat later by a retaliation burst if you stay close
     boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.12);
     addParticles(boss.x,boss.y,'#7fd98f',22,140,0.4);
     spawnToast('El pantano restaura sus fuerzas');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      const r=110;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.5);
+      spawnShockwave(boss.x,boss.y,'#7fd98f',r,0.3);
+      spawnToast('La bendición se descarga violentamente');
+    });
   } else if(type==='hexTrail'){
-    // a poison trail snakes from the witch toward your position, arriving segment by segment as if
-    // something were crawling across the floor toward you
     const steps=7;
     for(let i=0;i<steps;i++){
       const frac = i/(steps-1);
@@ -8608,12 +8861,25 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:26, type:'poison', telegraph:0.25+frac*0.9, active:0.8, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Algo repta hacia vos entre el lodo');
+    scheduleBossAction(1.25, ()=>{
+      if(!game.boss) return;
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:targetX,y:targetY, vx:Math.cos(a2)*160, vy:Math.sin(a2)*160,
+          dmg:boss.dmg*0.28, radius:6, owner:'enemy', color:boss.def.color, life:1.6, poison:true, shape:'wisp' });
+      }
+    });
   } else if(type==='mudSlow'){
-    // slows you directly, no projectile needed — the mud itself is the attack
     p.slowTimer = Math.max(p.slowTimer||0, 3);
     p.slowFactor = 0.62;
     addParticles(p.x,p.y,'#7fd98f',14,90,0.35);
     spawnToast('El barro se aferra a tus piernas');
+    scheduleBossAction(0.85, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:55, type:'poison', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('El lodo bajo tus pies estalla');
+    });
   } else if(type==='bogBurst'){
     const n=10;
     for(let i=0;i<n;i++){
@@ -8621,6 +8887,14 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*190, vy:Math.sin(ang)*190,
         dmg:boss.dmg*0.42, radius:8, owner:'enemy', color:boss.def.color, life:3.0, poison:true, shape:'wisp' });
     }
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*160, vy:Math.sin(ang)*160,
+          dmg:boss.dmg*0.32, radius:7, owner:'enemy', color:boss.def.color, life:2.6, poison:true, shape:'wisp' });
+      }
+    });
   } else if(type==='leechSwarm'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     [-0.3,0.3].forEach(off=>{
@@ -8628,23 +8902,57 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.45, radius:8, owner:'enemy', color:boss.def.color, life:4, homing:true, shape:'wisp' });
     });
     spawnToast('Sanguijuelas te acechan desde el lodo');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      [-0.5,0.5].forEach(off=>{
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2+off)*85, vy:Math.sin(ang2+off)*85,
+          dmg:boss.dmg*0.35, radius:7, owner:'enemy', color:boss.def.color, life:3.5, homing:true, shape:'wisp' });
+      });
+      spawnToast('Más sanguijuelas emergen');
+    });
   } else if(type==='witchesCurse'){
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Una maldición debilita tus golpes');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:58, type:'poison', telegraph:0.35, active:0.3, tick:0, dmg:boss.dmg*0.38 });
+      spawnToast('La maldición se descarga');
+    });
   } else if(type==='numbTonic'){
     p.chillTimer = Math.max(p.chillTimer||0, 3.5);
     p.chillFactor = 1.5;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Un tónico entumece tus reflejos');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      p.chillTimer = Math.max(p.chillTimer||0, 2.0);
+      addParticles(p.x,p.y,boss.def.color,12,80,0.25);
+      spawnToast('El tónico hace efecto una vez más');
+    });
   } else if(type==='rootSnare'){
+    // two inert decoy roots plus the one real snare — only one of the three actually detonates
+    const decoys = [ [rand(-90,90), rand(-90,90)], [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'poison', telegraph:0.85, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:42, type:'poison', telegraph:0.85, active:0.3, tick:0, dmg:boss.dmg*1.0 });
     spawnToast('Raíces se ocultan bajo el lodo');
   } else if(type==='quicksand'){
     game.hazards.push({ x:targetX, y:targetY, r:60, type:'poison', telegraph:0.6, active:1.4, tick:0, dmg:boss.dmg*0.35 });
     p.slowTimer = Math.max(p.slowTimer||0, 1.4);
     spawnToast('El suelo se vuelve arena movediza');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      const ang = Math.random()*Math.PI*2;
+      const hx = clamp(targetX+Math.cos(ang)*80, b.x+24,b.x+b.w-24);
+      const hy = clamp(targetY+Math.sin(ang)*80, b.y+24,b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:40, type:'poison', telegraph:0.4, active:1.0, tick:0, dmg:boss.dmg*0.28 });
+      spawnToast('Una segunda zona de arena se abre cerca');
+    });
   } else if(type==='poisonBrew'){
     const n=6;
     for(let i=0;i<n;i++){
@@ -8652,17 +8960,39 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:26, type:'poison', telegraph:0.5+Math.random()*1.0, active:0.5, tick:0, dmg:boss.dmg*0.32 });
     }
     spawnToast('Frascos de veneno caen por toda la arena');
+    scheduleBossAction(1.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:65, type:'poison', telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último frasco enorme cae junto al jefe');
+    });
   } else if(type==='witchsEye'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*100, vy:Math.sin(ang)*100,
       dmg:boss.dmg*0.75, radius:12, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'wisp' });
     spawnToast('Un ojo maldito te vigila y te persigue');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*115, vy:Math.sin(ang2)*115,
+        dmg:boss.dmg*0.55, radius:10, owner:'enemy', color:boss.def.color, life:4, homing:true, shape:'wisp' });
+      spawnToast('Un segundo ojo se abre y te sigue');
+    });
   } else if(type==='cauldronBubble'){
     for(let k=0;k<3;k++){
       game.hazards.push({ x:boss.x, y:boss.y, r:15+k*11, type:'poison', telegraph:0.33*(k+1), active:0.3, tick:0, dmg:boss.dmg*0.4 });
     }
     addParticles(boss.x,boss.y,boss.def.color,16,130,0.3);
     spawnToast('Su caldero burbujea con fuerza creciente');
+    scheduleBossAction(1.05, ()=>{
+      if(!game.boss) return;
+      const m=8;
+      for(let i=0;i<m;i++){
+        const ang=(i/m)*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*190, vy:Math.sin(ang)*190,
+          dmg:boss.dmg*0.28, radius:6, owner:'enemy', color:boss.def.color, life:1.6, poison:true, shape:'wisp' });
+      }
+      shake(4);
+    });
   } else if(type==='swampSurge'){
     const n=8;
     for(let i=0;i<n;i++){
@@ -8671,6 +9001,15 @@ function resolveBossAttack(type, tg){
         telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.42, expanding:true, expandRate:62 });
     }
     spawnToast('El pantano se hincha y avanza hacia afuera');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*70, y:targetY+Math.sin(ang)*70, r:16, type:'poison',
+          telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:-50 });
+      }
+      spawnToast('Una segunda oleada se cierra hacia adentro');
+    });
   } else if(type==='willOWisp'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=5;
@@ -8679,6 +9018,15 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*180, vy:Math.sin(ang)*180,
         dmg:boss.dmg*0.42, radius:8, owner:'enemy', color:boss.def.color, life:3.2, shape:'wisp' });
     }
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<n;i++){
+        const ang = ang1+(i-(n-1)/2)*0.42;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*210, vy:Math.sin(ang)*210,
+          dmg:boss.dmg*0.34, radius:7, owner:'enemy', color:boss.def.color, life:2.8, shape:'wisp' });
+      }
+    });
   } else if(type==='vineLine'){
     const steps=7;
     for(let i=0;i<steps;i++){
@@ -8688,6 +9036,15 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:22, type:'poison', telegraph:0.22+frac*0.8, active:0.4, tick:0, dmg:boss.dmg*0.36 });
     }
     spawnToast('Una enredadera repta hacia vos');
+    scheduleBossAction(1.1, ()=>{
+      if(!game.boss) return;
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:targetX,y:targetY, vx:Math.cos(a2)*150, vy:Math.sin(a2)*150,
+          dmg:boss.dmg*0.26, radius:6, owner:'enemy', color:boss.def.color, life:1.4, poison:true, shape:'wisp' });
+      }
+    });
   } else if(type==='venomLash'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     const reach=250;
@@ -8696,10 +9053,27 @@ function resolveBossAttack(type, tg){
     if(proj>0 && proj<reach && perpDist<38) hitPlayer(boss.dmg*0.85);
     addParticles(boss.x+Math.cos(ang)*reach, boss.y+Math.sin(ang)*reach, boss.def.color,10,110,0.22);
     shake(4);
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      const proj2 = (p.x-boss.x)*Math.cos(ang2) + (p.y-boss.y)*Math.sin(ang2);
+      const perp2 = Math.hypot((p.x-boss.x)-Math.cos(ang2)*proj2, (p.y-boss.y)-Math.sin(ang2)*proj2);
+      if(proj2>0 && proj2<reach*0.85 && perp2<38) hitPlayer(boss.dmg*0.65);
+      addParticles(boss.x+Math.cos(ang2)*reach*0.85, boss.y+Math.sin(ang2)*reach*0.85, boss.def.color,10,100,0.2);
+      shake(3);
+      spawnToast('El látigo venenoso vuelve en un revés');
+    });
   } else if(type==='shadowBrew'){
     boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.08);
     addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
     spawnToast('Bebe un brebaje que restaura sus fuerzas');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const r=100;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.45);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      spawnToast('El brebaje se vuelve tóxico al exhalar');
+    });
   } else if(type==='batSwarm'){
     const n=9;
     for(let i=0;i<n;i++){
@@ -8707,6 +9081,14 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*250, vy:Math.sin(ang)*250,
         dmg:boss.dmg*0.32, radius:5, owner:'enemy', color:boss.def.color, life:1.5, shape:'wisp' });
     }
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*220, vy:Math.sin(ang)*220,
+          dmg:boss.dmg*0.28, radius:5, owner:'enemy', color:boss.def.color, life:1.4, shape:'wisp' });
+      }
+    });
   } else if(type==='mireField'){
     const n=7;
     for(let i=0;i<n;i++){
@@ -8714,23 +9096,45 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'poison', telegraph:0.5+Math.random()*0.9, active:0.4, tick:0, dmg:boss.dmg*0.3 });
     }
     spawnToast('El lodo brota al azar por toda la arena');
+    scheduleBossAction(1.5, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:68, type:'poison', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último pozo de lodo se abre junto al jefe');
+    });
   } else if(type==='curseBind'){
     p.slowTimer = Math.max(p.slowTimer||0, 3);
     p.slowFactor = 0.6;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Una maldición se aferra a tus pasos');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      p.slowTimer = Math.max(p.slowTimer||0, 1.5);
+      addParticles(p.x,p.y,boss.def.color,10,70,0.25);
+      spawnToast('La maldición se aprieta más');
+    });
   } else if(type==='witchsMark'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*105, vy:Math.sin(ang)*105,
       dmg:boss.dmg*0.72, radius:11, owner:'enemy', color:boss.def.color, life:4.2, homing:true, shape:'wisp' });
     spawnToast('Una marca de bruja te persigue');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*95, vy:Math.sin(ang2)*95,
+        dmg:boss.dmg*0.5, radius:9, owner:'enemy', color:boss.def.color, life:3.6, homing:true, shape:'wisp' });
+      spawnToast('Una segunda marca se suma');
+    });
   } else if(type==='spectralHex'){
-    // teleports to where you were standing when the attack began, not your live position
     boss.x = clamp(targetX+rand(-40,40), b.x+boss.radius, b.x+b.w-boss.radius);
     boss.y = clamp(targetY+rand(-40,40), b.y+boss.radius, b.y+b.h-boss.radius);
     if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+20) hitPlayer(boss.dmg*0.8);
     spawnShockwave(boss.x,boss.y,boss.def.color,50,0.3);
     spawnToast('Se desvanece y aparece junto a vos');
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      spawnShockwave(boss.x,boss.y,boss.def.color,80,0.3);
+      if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+34) hitPlayer(boss.dmg*0.4);
+    });
   } else if(type==='gooBurst'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=6;
@@ -8739,7 +9143,23 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*230, vy:Math.sin(ang)*230,
         dmg:boss.dmg*0.45, radius:7, owner:'enemy', color:boss.def.color, life:2.6, poison:true, shape:'wisp' });
     }
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      const perp = ang0+Math.PI/2;
+      [perp, perp+Math.PI].forEach(a=>{
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*210, vy:Math.sin(a)*210,
+          dmg:boss.dmg*0.38, radius:6, owner:'enemy', color:boss.def.color, life:2.2, poison:true, shape:'wisp' });
+      });
+    });
   } else if(type==='plagueCloud'){
+    // a few harmless pre-tremor puffs flicker before the real plague cloud settles
+    const puffs=3;
+    for(let i=0;i<puffs;i++){
+      const ang = Math.random()*Math.PI*2, rad = rand(30,90);
+      const hx = clamp(targetX+Math.cos(ang)*rad, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*rad, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:16, type:'poison', telegraph:0.6+Math.random()*0.3, active:0.001, tick:0, dmg:0 });
+    }
     game.hazards.push({ x:targetX, y:targetY, r:110, type:'poison', telegraph:1.3, active:0.5, tick:0, dmg:boss.dmg*1.1 });
     spawnToast('Una nube de plaga se cierne sobre el lugar');
   } else if(type==='witchesRing'){
@@ -8751,9 +9171,17 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:22, type:'poison', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
     }
     spawnToast('Un aquelarre invisible se cierra a tu alrededor');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        const hx = clamp(targetX+Math.cos(ang)*55, b.x+22,b.x+b.w-22);
+        const hy = clamp(targetY+Math.sin(ang)*55, b.y+22,b.y+b.h-22);
+        game.hazards.push({ x:hx, y:hy, r:20, type:'poison', telegraph:0.35, active:0.35, tick:0, dmg:boss.dmg*0.4 });
+      }
+      spawnToast('El aquelarre se cierra más');
+    });
   } else if(type==='flameWhip'){
-    // an instant line-check lash toward you, resolving immediately rather than after a hazard delay —
-    // a completely different tempo from every ground/burst attack in this zone
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     const reach = 260;
     const proj = (p.x-boss.x)*Math.cos(ang) + (p.y-boss.y)*Math.sin(ang);
@@ -8763,6 +9191,17 @@ function resolveBossAttack(type, tg){
     addParticles(boss.x,boss.y,boss.def.color,10,120,0.25);
     addParticles(ex,ey,boss.def.color,10,120,0.25);
     shake(5);
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      const proj2 = (p.x-boss.x)*Math.cos(ang2) + (p.y-boss.y)*Math.sin(ang2);
+      const perp2 = Math.hypot((p.x-boss.x)-Math.cos(ang2)*proj2, (p.y-boss.y)-Math.sin(ang2)*proj2);
+      if(proj2>0 && proj2<reach*0.85 && perp2<40) hitPlayer(boss.dmg*0.7);
+      const ex2 = boss.x+Math.cos(ang2)*reach*0.85, ey2 = boss.y+Math.sin(ang2)*reach*0.85;
+      addParticles(ex2,ey2,boss.def.color,10,110,0.22);
+      shake(3);
+      spawnToast('El látigo de fuego vuelve en un revés');
+    });
   } else if(type==='lavaSpurt'){
     const n=8;
     for(let i=0;i<n;i++){
@@ -8770,6 +9209,14 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*250, vy:Math.sin(ang)*250,
         dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:1.7, shape:'ember' });
     }
+    scheduleBossAction(0.32, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*220, vy:Math.sin(ang)*220,
+          dmg:boss.dmg*0.34, radius:6, owner:'enemy', color:boss.def.color, life:1.5, shape:'ember' });
+      }
+    });
   } else if(type==='infernoRing'){
     const n=8;
     for(let i=0;i<n;i++){
@@ -8779,6 +9226,16 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:26, type:'fire', telegraph:0.55, active:0.4, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Un anillo de fuego se cierra a tu alrededor');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        const hx = clamp(targetX+Math.cos(ang)*55, b.x+22,b.x+b.w-22);
+        const hy = clamp(targetY+Math.sin(ang)*55, b.y+22,b.y+b.h-22);
+        game.hazards.push({ x:hx, y:hy, r:22, type:'fire', telegraph:0.35, active:0.35, tick:0, dmg:boss.dmg*0.42 });
+      }
+      spawnToast('El anillo se cierra más');
+    });
   } else if(type==='brimstoneRain'){
     const n=7;
     for(let i=0;i<n;i++){
@@ -8786,17 +9243,38 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'fire', telegraph:0.5+Math.random()*1.0, active:0.4, tick:0, dmg:boss.dmg*0.32 });
     }
     spawnToast('Azufre ardiente cae por toda la arena');
+    scheduleBossAction(1.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:70, type:'fire', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.55 });
+      spawnToast('Un último bloque de azufre cae junto al jefe');
+    });
   } else if(type==='demonRoar'){
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Un rugido demoníaco debilita tus golpes');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:58, type:'fire', telegraph:0.35, active:0.3, tick:0, dmg:boss.dmg*0.4 });
+      spawnToast('El rugido termina en una llamarada');
+    });
   } else if(type==='ashCloud'){
     p.chillTimer = Math.max(p.chillTimer||0, 3.5);
     p.chillFactor = 1.5;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Una nube de ceniza entumece tus reflejos');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      p.chillTimer = Math.max(p.chillTimer||0, 2.0);
+      addParticles(p.x,p.y,boss.def.color,12,80,0.25);
+      spawnToast('La ceniza vuelve a asentarse sobre vos');
+    });
   } else if(type==='moltenTrap'){
+    const decoys = [ [rand(-90,90), rand(-90,90)], [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:40, type:'fire', telegraph:0.85, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:44, type:'fire', telegraph:0.85, active:0.3, tick:0, dmg:boss.dmg*1.0 });
     spawnToast('Magma se oculta bajo la superficie');
   } else if(type==='cinderSwarm'){
@@ -8806,6 +9284,14 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
         dmg:boss.dmg*0.32, radius:5, owner:'enemy', color:boss.def.color, life:1.5, shape:'ember' });
     }
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*230, vy:Math.sin(ang)*230,
+          dmg:boss.dmg*0.28, radius:5, owner:'enemy', color:boss.def.color, life:1.4, shape:'ember' });
+      }
+    });
   } else if(type==='flameSurge'){
     const n=8;
     for(let i=0;i<n;i++){
@@ -8814,10 +9300,26 @@ function resolveBossAttack(type, tg){
         telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.42, expanding:true, expandRate:64 });
     }
     spawnToast('El fuego se hincha y avanza hacia afuera');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*70, y:targetY+Math.sin(ang)*70, r:16, type:'fire',
+          telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.38, expanding:true, expandRate:-52 });
+      }
+      spawnToast('Una segunda oleada se cierra hacia adentro');
+    });
   } else if(type==='infernalBond'){
     boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.08);
     addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
     spawnToast('Un pacto infernal restaura sus fuerzas');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const r=105;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.5);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      spawnToast('El pacto exige un pago');
+    });
   } else if(type==='sulfurBreath'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=3;
@@ -8827,7 +9329,20 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.7, radius:13, owner:'enemy', color:boss.def.color, life:2.6, shape:'ember' });
     }
     spawnToast('Un aliento de azufre se extiende lento');
+    scheduleBossAction(0.5, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang1)*160, vy:Math.sin(ang1)*160,
+        dmg:boss.dmg*0.55, radius:14, owner:'enemy', color:boss.def.color, life:2.2, shape:'ember' });
+    });
   } else if(type==='pyreCollapse'){
+    const cracks=3;
+    for(let i=0;i<cracks;i++){
+      const ang = Math.random()*Math.PI*2, rad = rand(30,90);
+      const hx = clamp(targetX+Math.cos(ang)*rad, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*rad, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:16, type:'fire', telegraph:0.6+Math.random()*0.3, active:0.001, tick:0, dmg:0 });
+    }
     game.hazards.push({ x:targetX, y:targetY, r:120, type:'fire', telegraph:1.3, active:0.4, tick:0, dmg:boss.dmg*1.15 });
     spawnToast('Una pira colapsa sobre el lugar');
   } else if(type==='scorchedEarth'){
@@ -8840,11 +9355,29 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:26, type:'fire', telegraph:0.25+frac*0.9, active:0.45, tick:0, dmg:boss.dmg*0.36 });
     }
     spawnToast('El suelo se quema en línea recta');
+    scheduleBossAction(1.25, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x) + Math.PI/2;
+      for(let i=0;i<5;i++){
+        const frac = i/4;
+        const hx = clamp(boss.x+Math.cos(ang1)*frac*b.w*0.3, b.x+24,b.x+b.w-24);
+        const hy = clamp(boss.y+Math.sin(ang1)*frac*b.h*0.3, b.y+24,b.y+b.h-24);
+        game.hazards.push({ x:hx, y:hy, r:22, type:'fire', telegraph:0.25+frac*0.5, active:0.4, tick:0, dmg:boss.dmg*0.3 });
+      }
+      spawnToast('Una segunda línea se quema en perpendicular');
+    });
   } else if(type==='demonEye'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*102, vy:Math.sin(ang)*102,
       dmg:boss.dmg*0.75, radius:12, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'ember' });
     spawnToast('Un ojo demoníaco te vigila y te persigue');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*118, vy:Math.sin(ang2)*118,
+        dmg:boss.dmg*0.55, radius:10, owner:'enemy', color:boss.def.color, life:4, homing:true, shape:'ember' });
+      spawnToast('Un segundo ojo se abre y te sigue');
+    });
   } else if(type==='infernalChains'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     [-0.3,0.3].forEach(off=>{
@@ -8852,6 +9385,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.5, radius:9, owner:'enemy', color:boss.def.color, life:4.2, homing:true, shape:'ember' });
     });
     spawnToast('Dos cadenas ardientes te acechan');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      [-0.55,0.55].forEach(off=>{
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2+off)*98, vy:Math.sin(ang2+off)*98,
+          dmg:boss.dmg*0.4, radius:8, owner:'enemy', color:boss.def.color, life:3.6, homing:true, shape:'ember' });
+      });
+      spawnToast('Dos cadenas más se suman');
+    });
   } else if(type==='brimstoneSpiral'){
     const n=7;
     for(let i=0;i<n;i++){
@@ -8862,19 +9404,46 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:20, type:'fire', telegraph:0.3+i*0.09, active:0.4, tick:0, dmg:boss.dmg*0.38 });
     }
     spawnToast('Fuego gira en espiral hacia afuera');
+    scheduleBossAction(0.3+n*0.09+0.25, ()=>{
+      if(!game.boss) return;
+      const ang=(n/7)*Math.PI*2.6, rad=18+n*15;
+      const ex = clamp(targetX+Math.cos(ang)*rad, b.x+22,b.x+b.w-22);
+      const ey = clamp(targetY+Math.sin(ang)*rad, b.y+22,b.y+b.h-22);
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:ex,y:ey, vx:Math.cos(a2)*180, vy:Math.sin(a2)*180,
+          dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:boss.def.color, life:1.6, shape:'ember' });
+      }
+      addParticles(ex,ey,boss.def.color,10,100,0.25);
+    });
   } else if(type==='flameWreath'){
     for(let k=0;k<3;k++){
       game.hazards.push({ x:boss.x, y:boss.y, r:15+k*11, type:'fire', telegraph:0.33*(k+1), active:0.3, tick:0, dmg:boss.dmg*0.42 });
     }
     addParticles(boss.x,boss.y,boss.def.color,16,130,0.3);
     spawnToast('Una corona de fuego pulsa con fuerza creciente');
+    scheduleBossAction(1.05, ()=>{
+      if(!game.boss) return;
+      const m=8;
+      for(let i=0;i<m;i++){
+        const ang=(i/m)*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*205, vy:Math.sin(ang)*205,
+          dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:boss.def.color, life:1.6, shape:'ember' });
+      }
+      shake(5);
+    });
   } else if(type==='hellgate'){
-    // teleports to where you were standing when the attack began, not your live position
     boss.x = clamp(targetX+rand(-40,40), b.x+boss.radius, b.x+b.w-boss.radius);
     boss.y = clamp(targetY+rand(-40,40), b.y+boss.radius, b.y+b.h-boss.radius);
     if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+20) hitPlayer(boss.dmg*0.8);
     spawnShockwave(boss.x,boss.y,boss.def.color,50,0.3);
     spawnToast('Un portal infernal lo trae junto a vos');
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      spawnShockwave(boss.x,boss.y,boss.def.color,80,0.3);
+      if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+34) hitPlayer(boss.dmg*0.4);
+    });
   } else if(type==='cinderVolley'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=5;
@@ -8883,6 +9452,15 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*205, vy:Math.sin(ang)*205,
         dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:boss.def.color, life:2.2, shape:'ember' });
     }
+    scheduleBossAction(0.42, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<n;i++){
+        const ang = ang1+(i-(n-1)/2)*0.5;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*240, vy:Math.sin(ang)*240,
+          dmg:boss.dmg*0.4, radius:6, owner:'enemy', color:boss.def.color, life:1.8, shape:'ember' });
+      }
+    });
   } else if(type==='moltenWave'){
     const steps=7;
     for(let i=0;i<steps;i++){
@@ -8892,30 +9470,51 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'fire', telegraph:0.22+frac*0.85, active:0.4, tick:0, dmg:boss.dmg*0.38 });
     }
     spawnToast('Una ola de magma avanza hacia vos');
+    scheduleBossAction(1.1, ()=>{
+      if(!game.boss) return;
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:targetX,y:targetY, vx:Math.cos(a2)*170, vy:Math.sin(a2)*170,
+          dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:boss.def.color, life:1.5, shape:'ember' });
+      }
+    });
   } else if(type==='demonicHowl'){
     p.slowTimer = Math.max(p.slowTimer||0, 3);
     p.slowFactor = 0.6;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Un aullido demoníaco entorpece tus pasos');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      p.slowTimer = Math.max(p.slowTimer||0, 1.5);
+      addParticles(p.x,p.y,boss.def.color,10,70,0.25);
+      spawnToast('Un segundo aullido se suma');
+    });
   } else if(type==='infernalCrown'){
-    [0,1,2].forEach(ring=>{
-      const n=7, speed=170+ring*60;
+    const ring = (idx)=>{
+      if(!game.boss) return;
+      const n=7, speed=170+idx*60;
       for(let i=0;i<n;i++){
-        const ang=(i/n)*Math.PI*2 + ring*0.25;
+        const ang=(i/n)*Math.PI*2 + idx*0.25;
         spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
           dmg:boss.dmg*0.34, radius:6, owner:'enemy', color:boss.def.color, life:1.9, shape:'ember' });
       }
-    });
-    shake(4);
+      shake(4);
+    };
+    ring(0);
+    scheduleBossAction(0.3, ()=>ring(1));
+    scheduleBossAction(0.6, ()=>ring(2));
   } else if(type==='demonicBlast'){
     const r=155;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.0);
-    addParticles(boss.x,boss.y,boss.def.color,22,200,0.4);
-    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
-    shake(7);
+    addParticles(boss.x,boss.y,boss.def.color,10,80,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.0);
+      addParticles(boss.x,boss.y,boss.def.color,22,200,0.4);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
+      shake(7);
+    });
   } else if(type==='cinderBurst'){
-    // a forward spread of embers, plus a couple of small fire pools dropped near the caster —
-    // combines a projectile spread with a ground hazard in one move
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=6;
     for(let i=0;i<n;i++){
@@ -8928,8 +9527,16 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:26, type:'fire', telegraph:0.5, active:1.0, tick:0, dmg:boss.dmg*0.35 });
     }
     spawnToast('Cenizas ardientes caen a su alrededor');
+    scheduleBossAction(0.55, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<4;i++){
+        const ang = ang1 + (i-1.5)*0.2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
+          dmg:boss.dmg*0.36, radius:6, owner:'enemy', color:boss.def.color, life:1.4, shape:'ember' });
+      }
+    });
   } else if(type==='emberField'){
-    // several points around you ignite one after another in a quick chain, instead of all at once
     const n=6;
     for(let i=0;i<n;i++){
       const ang = (i/n)*Math.PI*2 + rand(-0.2,0.2);
@@ -8939,24 +9546,40 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:30, type:'fire', telegraph:0.3+i*0.22, active:0.5, tick:0, dmg:boss.dmg*0.45 });
     }
     spawnToast('El fuego se enciende en cadena a tu alrededor');
+    scheduleBossAction(1.75, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:targetX, y:targetY, r:44, type:'fire', telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('El fuego converge en el centro');
+    });
   } else if(type==='moltenCore'){
-    // three pulses expanding from the boss's own body in sequence, instead of one instant ring
     for(let k=0;k<3;k++){
       game.hazards.push({ x:boss.x, y:boss.y, r:16+k*10, type:'fire', telegraph:0.35*(k+1), active:0.35, tick:0, dmg:boss.dmg*0.5 });
     }
     addParticles(boss.x,boss.y,boss.def.color,18,150,0.35);
     spawnToast('Su núcleo pulsa con calor creciente');
+    scheduleBossAction(1.15, ()=>{
+      if(!game.boss) return;
+      const m=8;
+      for(let i=0;i<m;i++){
+        const ang=(i/m)*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*200, vy:Math.sin(ang)*200,
+          dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:boss.def.color, life:1.6, shape:'ember' });
+      }
+      shake(5);
+    });
   } else if(type==='cinderRain'){
-    // many small, weak embers scattered randomly across the whole arena — a wide, sustained
-    // nuisance rather than a punishing concentrated zone
     const n=8;
     for(let i=0;i<n;i++){
       const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
       game.hazards.push({ x:hx, y:hy, r:22, type:'fire', telegraph:0.5+Math.random()*1.1, active:0.4, tick:0, dmg:boss.dmg*0.3 });
     }
     spawnToast('Ceniza ardiente llueve por toda la arena');
+    scheduleBossAction(1.8, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:66, type:'fire', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Una última brasa enorme cae junto al jefe');
+    });
   } else if(type==='thornVolley'){
-    // a tight forward spread of thorns — narrower and faster than boneVolley's full ring
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=7;
     for(let i=0;i<n;i++){
@@ -8965,24 +9588,51 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:boss.def.color, life:1.8, shape:'shard' });
     }
     shake(4);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<5;i++){
+        const ang = ang1 + (i-2)*0.15;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*280, vy:Math.sin(ang)*280,
+          dmg:boss.dmg*0.38, radius:6, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
+      }
+    });
   } else if(type==='bloomTrap'){
-    // one single large trap, not a cluster — a slower, heavier hit than swampGrasp's quick cluster
+    const decoys = [ [rand(-90,90), rand(-90,90)], [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.75, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:44, type:'light', telegraph:0.75, active:0.35, tick:0, dmg:boss.dmg*0.9 });
     spawnToast('Algo hermoso está por florecer bajo tus pies');
   } else if(type==='healingBloom'){
-    // heals over the next few seconds instead of all at once — a lasting regen rather than a lump sum
     boss.regenTimer = 4;
     boss.regenPerSec = boss.maxHp*0.025;
     addParticles(boss.x,boss.y,boss.def.color,18,120,0.35);
     spawnToast('Florece con nueva energía');
+    scheduleBossAction(1.1, ()=>{
+      if(!game.boss) return;
+      const r=100;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.4);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      spawnToast('El brote libera polen cortante');
+    });
   } else if(type==='lightTwins'){
-    // two synced homing lights that fan out and slowly converge back on you, instead of one
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     [-0.35,0.35].forEach(off=>{
       spawnProjectile({ x:boss.x, y:boss.y, vx:Math.cos(ang+off)*100, vy:Math.sin(ang+off)*100,
         dmg:boss.dmg*0.55, radius:10, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'feather' });
     });
     spawnToast('Dos luces gemelas te acechan');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      [-0.6,0.6].forEach(off=>{
+        spawnProjectile({ x:boss.x, y:boss.y, vx:Math.cos(ang2+off)*90, vy:Math.sin(ang2+off)*90,
+          dmg:boss.dmg*0.42, radius:9, owner:'enemy', color:boss.def.color, life:4, homing:true, shape:'feather' });
+      });
+      spawnToast('Dos luces más se suman');
+    });
   } else if(type==='radiantPath'){
     // a winding, curved trail of light toward you, instead of a straight line or ring
     const steps=8;
@@ -8998,7 +9648,6 @@ function resolveBossAttack(type, tg){
     }
     spawnToast('Un sendero serpenteante de luz se traza hacia vos');
   } else if(type==='petalStorm'){
-    // full 360° ring of petals, denser and slower than thornVolley's tight forward spread
     const n=10;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9007,8 +9656,15 @@ function resolveBossAttack(type, tg){
     }
     addParticles(boss.x,boss.y,boss.def.color,16,150,0.35);
     shake(5);
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*220, vy:Math.sin(ang)*220,
+          dmg:boss.dmg*0.36, radius:7, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
+      }
+    });
   } else if(type==='vineWhip'){
-    // a fast, narrow lash of thorned vines toward you — tighter and quicker than petalStorm's ring
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=5;
     for(let i=0;i<n;i++){
@@ -9017,8 +9673,16 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.55, radius:6, owner:'enemy', color:'#5ad98a', life:1.5, shape:'shard' });
     }
     shake(4);
+    scheduleBossAction(0.28, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<5;i++){
+        const ang = ang1 + (i-2)*0.09;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*330, vy:Math.sin(ang)*330,
+          dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:'#5ad98a', life:1.3, shape:'shard' });
+      }
+    });
   } else if(type==='prismShard'){
-    // a tight, fast triple bolt that pierces further than most bursts — a precise strike, not a spread
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     for(let i=-1;i<=1;i++){
       const a = ang + i*0.05;
@@ -9026,9 +9690,13 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.7, radius:6, owner:'enemy', color:'#6a8dff', life:1.4, shape:'orb' });
     }
     addParticles(boss.x,boss.y,'#6a8dff',10,140,0.25);
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*420, vy:Math.sin(ang2)*420,
+        dmg:boss.dmg*0.55, radius:6, owner:'enemy', color:'#6a8dff', life:1.3, shape:'orb' });
+    });
   } else if(type==='nectarSwarm'){
-    // many weak, slow orbs drifting outward in every direction — a lingering swarm rather than a
-    // sharp burst, meant to crowd the arena instead of hit hard
     const n=13;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9036,8 +9704,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.3, radius:9, owner:'enemy', color:'#ffcb47', life:3.4, shape:'wisp' });
     }
     spawnToast('Un enjambre de néctar se dispersa por el aire');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<7;i++){
+        const ang=(i/7)*Math.PI*2 + Math.PI/7;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*90, vy:Math.sin(ang)*90,
+          dmg:boss.dmg*0.24, radius:8, owner:'enemy', color:'#ffcb47', life:2.8, shape:'wisp' });
+      }
+    });
   } else if(type==='gildedThorns'){
-    // a wide golden ring, fewer and slower than petalStorm but each shard hits noticeably harder
     const n=8;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9046,9 +9721,15 @@ function resolveBossAttack(type, tg){
     }
     addParticles(boss.x,boss.y,'#ffcb47',18,160,0.35);
     shake(6);
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*195, vy:Math.sin(ang)*195,
+          dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:'#ffcb47', life:1.9, shape:'shard' });
+      }
+    });
   } else if(type==='dewTrap'){
-    // a loose cluster of small dew drops around your position, each individually weak but
-    // covering a wider area than a single trap
     const n=3;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9056,13 +9737,29 @@ function resolveBossAttack(type, tg){
         type:'light', telegraph:0.5, active:0.5, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Gotas de rocío brillante se condensan en el aire');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<3;i++){
+        const ang=(i/3)*Math.PI*2 + Math.PI/3;
+        game.hazards.push({ x:targetX+Math.cos(ang)*60, y:targetY+Math.sin(ang)*60, r:18,
+          type:'light', telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.3 });
+      }
+      spawnToast('Más rocío se condensa alrededor');
+    });
   } else if(type==='crystalBloom'){
-    // one heavy, slow-forming crystal — a single big hit rather than a scattered cluster
     game.hazards.push({ x:targetX, y:targetY, r:50, type:'light', telegraph:0.85, active:0.3, tick:0, dmg:boss.dmg*1.0 });
     addParticles(targetX,targetY,'#cfd6e8',14,120,0.3);
     spawnToast('Un cristal se forma bajo tus pies');
+    scheduleBossAction(1.1, ()=>{
+      if(!game.boss) return;
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:targetX,y:targetY, vx:Math.cos(a2)*170, vy:Math.sin(a2)*170,
+          dmg:boss.dmg*0.28, radius:6, owner:'enemy', color:'#cfd6e8', life:1.5, shape:'shard' });
+      }
+    });
   } else if(type==='thornCage'){
-    // a ring of spikes closes around your position, leaving the center as the only safe spot
     const n=6;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9070,6 +9767,15 @@ function resolveBossAttack(type, tg){
         type:'spike', telegraph:0.55, active:0.8, tick:0, dmg:boss.dmg*0.5 });
     }
     spawnToast('Espinas se alzan formando una jaula a tu alrededor');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*48, y:targetY+Math.sin(ang)*48, r:22,
+          type:'spike', telegraph:0.3, active:0.5, tick:0, dmg:boss.dmg*0.4 });
+      }
+      spawnToast('La jaula se cierra más');
+    });
   } else if(type==='sunbeamLine'){
     // a beam of light sweeps across the arena from one edge to the other
     const vertical = Math.random()<0.5;
@@ -9109,13 +9815,19 @@ function resolveBossAttack(type, tg){
     addParticles(boss.x,boss.y,'#ffcb47',16,140,0.3);
     spawnToast('Rayos de luz se extienden en cruz');
   } else if(type==='radianceField'){
-    // several patches of light scattered near your position, like stormField's storm-clap equivalent
     for(let i=0;i<4;i++){
       const hx = clamp(targetX+rand(-140,140), b.x+24, b.x+b.w-24);
       const hy = clamp(targetY+rand(-140,140), b.y+24, b.y+b.h-24);
       game.hazards.push({ x:hx, y:hy, r:38, type:'light', telegraph:0.55, active:1.0, tick:0, dmg:boss.dmg*0.48 });
     }
     spawnToast('Parches de resplandor florecen a tu alrededor');
+    scheduleBossAction(1.3, ()=>{
+      if(!game.boss) return;
+      const hx = clamp(targetX+rand(-100,100), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-100,100), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:44, type:'light', telegraph:0.3, active:0.6, tick:0, dmg:boss.dmg*0.4 });
+      spawnToast('Un último parche florece cerca');
+    });
   } else if(type==='lightCascade'){
     // a wide staggered wall of light sweeps in from one side, like blizzardWall but in warm light
     const vertical = Math.random()<0.5;
@@ -9131,8 +9843,6 @@ function resolveBossAttack(type, tg){
     }
     spawnToast('Una cascada de luz avanza por la arena');
   } else if(type==='tangleRoots'){
-    // roots erupt at scattered points around the arena while also slowing you directly — the
-    // danger is everywhere at once, unlike sunbeamLine's single dodgeable path
     p.slowTimer = Math.max(p.slowTimer||0, 3);
     p.slowFactor = 0.65;
     for(let i=0;i<5;i++){
@@ -9141,58 +9851,103 @@ function resolveBossAttack(type, tg){
     }
     addParticles(p.x,p.y,'#5ad98a',14,100,0.35);
     spawnToast('Raíces se enredan en tus piernas');
+    scheduleBossAction(1.7, ()=>{
+      if(!game.boss) return;
+      p.slowTimer = Math.max(p.slowTimer||0, 1.4);
+      game.hazards.push({ x:p.x, y:p.y, r:40, type:'spike', telegraph:0.25, active:0.35, tick:0, dmg:boss.dmg*0.32 });
+      spawnToast('Más raíces se aferran a vos');
+    });
   } else if(type==='mirrorBloom'){
-    // a self-centered pulse of light, smaller and faster than verdantSurge's slower bloom
     const r=130;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.8);
-    addParticles(boss.x,boss.y,boss.def.color,20,190,0.4);
-    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
-    shake(6);
+    addParticles(boss.x,boss.y,boss.def.color,10,80,0.3);
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.8);
+      addParticles(boss.x,boss.y,boss.def.color,20,190,0.4);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      shake(6);
+    });
   } else if(type==='verdantSurge'){
-    // a larger, slower self-centered eruption of vines — hits harder than mirrorBloom but is easier
-    // to see coming and run from given its size
     const r=170;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
-    addParticles(boss.x,boss.y,'#5ad98a',28,240,0.5);
-    spawnShockwave(boss.x,boss.y,'#5ad98a',r,0.4);
-    shake(8);
+    addParticles(boss.x,boss.y,'#5ad98a',12,100,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+      addParticles(boss.x,boss.y,'#5ad98a',28,240,0.5);
+      spawnShockwave(boss.x,boss.y,'#5ad98a',r,0.4);
+      shake(8);
+    });
   } else if(type==='glowWisp'){
-    // a single slow homing light that patiently tracks you — longer life than sunfireLance,
-    // built to be a persistent nuisance rather than a sudden punish
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*95, vy:Math.sin(ang)*95,
       dmg:boss.dmg*0.55, radius:10, owner:'enemy', color:boss.def.color, life:5, homing:true, shape:'wisp' });
     spawnToast('Una luz errante empieza a perseguirte');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*80, vy:Math.sin(ang2)*80,
+        dmg:boss.dmg*0.4, radius:9, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'wisp' });
+      spawnToast('Una segunda luz se une a la persecución');
+    });
   } else if(type==='sunfireLance'){
-    // a fast, direct homing bolt with a short life — punishes hesitation more than glowWisp
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*220, vy:Math.sin(ang)*220,
       dmg:boss.dmg*0.85, radius:9, owner:'enemy', color:'#ffcb47', life:2.6, homing:true, shape:'orb' });
     addParticles(boss.x,boss.y,'#ffcb47',10,130,0.25);
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*250, vy:Math.sin(ang2)*250,
+        dmg:boss.dmg*0.6, radius:8, owner:'enemy', color:'#ffcb47', life:2.2, homing:true, shape:'orb' });
+    });
   } else if(type==='lightPollen'){
-    // weakens your damage output — the pollen dulls your strikes rather than slowing your body
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,'#ffd6f0',16,100,0.35);
     spawnToast('Polen cegador se posa sobre vos');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:56, type:'light', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('El polen estalla');
+    });
   } else if(type==='witheringPetals'){
-    // slows your attack speed instead — a different flavor of debuff than lightPollen's damage cut
     p.chillTimer = Math.max(p.chillTimer||0, 3.5);
     p.chillFactor = 1.5;
     addParticles(p.x,p.y,'#a89a8c',14,90,0.3);
     spawnToast('Pétalos marchitos entorpecen tus movimientos');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      p.chillTimer = Math.max(p.chillTimer||0, 2.0);
+      addParticles(p.x,p.y,'#a89a8c',12,80,0.25);
+      spawnToast('Más pétalos marchitos caen sobre vos');
+    });
   } else if(type==='petalVeil'){
-    // a pure defensive buff: a shield of petals absorbs a portion of incoming damage briefly
     boss.shieldTimer = Math.max(boss.shieldTimer||0, 3.5);
     addParticles(boss.x,boss.y,boss.def.color,20,140,0.4);
     spawnToast('Un velo de pétalos la protege');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      const n=6;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*160, vy:Math.sin(ang)*160,
+          dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
+      }
+      spawnToast('El velo libera una ráfaga de pétalos');
+    });
   } else if(type==='gardenGuardians'){
-    // summons two wisps to fight alongside her — jardín's own summon move, distinct from cripta's
     for(let i=0;i<2;i++){
       const ang = Math.random()*Math.PI*2;
       spawnEnemyAt(boss.def.minion, boss.x+Math.cos(ang)*70, boss.y+Math.sin(ang)*70, true);
     }
     spawnToast('El jardín despierta a sus guardianes');
+    scheduleBossAction(1.4, ()=>{
+      if(!game.boss) return;
+      const ang = Math.random()*Math.PI*2;
+      spawnEnemyAt(boss.def.minion, boss.x+Math.cos(ang)*70, boss.y+Math.sin(ang)*70, true);
+      addParticles(boss.x,boss.y,boss.def.color,10,80,0.25);
+      spawnToast('Un guardián más despierta');
+    });
   } else if(type==='mirrorDecoy'){
     // a decoy fires from the point exactly opposite the boss through the arena's center, instead
     // of from the boss's own body — the danger comes from somewhere else in the room entirely
@@ -9232,14 +9987,15 @@ function resolveBossAttack(type, tg){
     shake(6);
     spawnToast('Intercambia lugares con vos');
   } else if(type==='mirrorGaze'){
-    // a pure control debuff: your own movement briefly turns against you — no damage, no hazard,
-    // just your reflection working your limbs the wrong way
     p.invertTimer = Math.max(p.invertTimer||0, 2.5);
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Tu propio reflejo confunde tus movimientos');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:52, type:'spike', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.32 });
+      spawnToast('El cristal bajo tus pies se quiebra');
+    });
   } else if(type==='fracturedBurst'){
-    // a wide, sparse fan — fewer, further-spread shards than boneVolley's ring or thornVolley's
-    // tight cone
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=5;
     for(let i=0;i<n;i++){
@@ -9247,8 +10003,16 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*200, vy:Math.sin(ang)*200,
         dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:boss.def.color, life:2.2, shape:'shard' });
     }
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<5;i++){
+        const ang = ang1 + (i-2)*0.5;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*230, vy:Math.sin(ang)*230,
+          dmg:boss.dmg*0.36, radius:6, owner:'enemy', color:boss.def.color, life:1.9, shape:'shard' });
+      }
+    });
   } else if(type==='shatterVolley'){
-    // a full 360° ring of glass shards — wider and more even than fracturedBurst's sparse forward fan
     const n=9;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9257,6 +10021,14 @@ function resolveBossAttack(type, tg){
     }
     addParticles(boss.x,boss.y,boss.def.color,16,150,0.35);
     shake(5);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*235, vy:Math.sin(ang)*235,
+          dmg:boss.dmg*0.36, radius:6, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
+      }
+    });
   } else if(type==='reflectedBarrage'){
     // fires simultaneously from the boss AND from her mirrored point across the arena's center —
     // two burst origins instead of mirrorDecoy's single decoy point
@@ -9274,7 +10046,6 @@ function resolveBossAttack(type, tg){
     addParticles(mx,my,boss.def.color,14,120,0.3);
     spawnToast('Su reflejo dispara desde el otro lado');
   } else if(type==='prismaticShards'){
-    // a tight, fast forward cone of many thin shards — narrower and quicker than shatterVolley's ring
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=6;
     for(let i=0;i<n;i++){
@@ -9283,9 +10054,16 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.5, radius:5, owner:'enemy', color:'#e8e8f5', life:1.3, shape:'shard' });
     }
     shake(4);
+    scheduleBossAction(0.25, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<6;i++){
+        const ang = ang1 + (i-2.5)*0.11;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*380, vy:Math.sin(ang)*380,
+          dmg:boss.dmg*0.38, radius:5, owner:'enemy', color:'#e8e8f5', life:1.2, shape:'shard' });
+      }
+    });
   } else if(type==='mirageSwarm'){
-    // many weak orbs spiral outward, like nectarSwarm but slightly rotated per shot to fake a
-    // shimmering, drifting swarm of afterimages
     const n=14;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2 + i*0.05;
@@ -9293,15 +10071,27 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.3, radius:8, owner:'enemy', color:'#cfd6e8', life:3.0, shape:'wisp' });
     }
     spawnToast('Un enjambre de espejismos se dispersa');
+    scheduleBossAction(0.55, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<8;i++){
+        const ang=(i/8)*Math.PI*2 - i*0.05 + Math.PI/8;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*100, vy:Math.sin(ang)*100,
+          dmg:boss.dmg*0.24, radius:7, owner:'enemy', color:'#cfd6e8', life:2.6, shape:'wisp' });
+      }
+    });
   } else if(type==='silverStrike'){
-    // two shots fired along the exact same line at different speeds, so the second arrives right
-    // behind the first — a delayed echo of a single precise strike, not a spread
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*480, vy:Math.sin(ang)*480,
       dmg:boss.dmg*0.6, radius:6, owner:'enemy', color:'#e8e8f5', life:1.1, shape:'orb' });
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*300, vy:Math.sin(ang)*300,
       dmg:boss.dmg*0.5, radius:6, owner:'enemy', color:'#e8e8f5', life:1.4, shape:'orb' });
     addParticles(boss.x,boss.y,'#e8e8f5',10,120,0.25);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*420, vy:Math.sin(ang2)*420,
+        dmg:boss.dmg*0.45, radius:6, owner:'enemy', color:'#e8e8f5', life:1.2, shape:'orb' });
+    });
   } else if(type==='mirrorMaze'){
     // a 3x3 grid of glass panels around your position, all but one cell filled — a small, precise
     // maze rather than glassRain's arena-wide grid
@@ -9317,21 +10107,26 @@ function resolveBossAttack(type, tg){
     }
     spawnToast('Paneles de cristal se alzan a tu alrededor');
   } else if(type==='shatterZone'){
-    // one single large trap that shatters under you, heavier than mirrorMaze's many small panels
+    const decoys = [ [rand(-90,90), rand(-90,90)], [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:40, type:'spike', telegraph:0.8, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:48, type:'spike', telegraph:0.8, active:0.3, tick:0, dmg:boss.dmg*1.0 });
     addParticles(targetX,targetY,'#e8e8f5',16,130,0.3);
     spawnToast('El suelo de cristal está por quebrarse');
   } else if(type==='reflectivePool'){
-    // a hazard appears both at your position and at its mirrored point across the arena's center,
-    // so the reflection itself becomes a second threat
     const cx = b.x+b.w/2, cy = b.y+b.h/2;
     const mx = clamp(2*cx-targetX, b.x+30, b.x+b.w-30), my = clamp(2*cy-targetY, b.y+30, b.y+b.h-30);
     game.hazards.push({ x:targetX, y:targetY, r:36, type:'light', telegraph:0.6, active:0.5, tick:0, dmg:boss.dmg*0.55 });
     game.hazards.push({ x:mx, y:my, r:36, type:'light', telegraph:0.6, active:0.5, tick:0, dmg:boss.dmg*0.55 });
     spawnToast('Un estanque reflectante aparece en dos lugares a la vez');
+    scheduleBossAction(0.85, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:targetX, y:targetY, r:26, type:'light', telegraph:0.25, active:0.35, tick:0, dmg:boss.dmg*0.3 });
+      game.hazards.push({ x:mx, y:my, r:26, type:'light', telegraph:0.25, active:0.35, tick:0, dmg:boss.dmg*0.3 });
+    });
   } else if(type==='glassSpikes'){
-    // a ring of spikes closes around your position, similar in shape to thornCage but sharper
-    // and faster to resolve
     const n=6;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9339,6 +10134,15 @@ function resolveBossAttack(type, tg){
         type:'spike', telegraph:0.45, active:0.6, tick:0, dmg:boss.dmg*0.5 });
     }
     spawnToast('Esquirlas de cristal se alzan en anillo');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*48, y:targetY+Math.sin(ang)*48, r:20,
+          type:'spike', telegraph:0.25, active:0.5, tick:0, dmg:boss.dmg*0.38 });
+      }
+      spawnToast('Más esquirlas se alzan más cerca');
+    });
   } else if(type==='doubleVision'){
     // two overlapping clusters offset by a short random vector — everything looks doubled and
     // slightly misaligned, forcing you to account for both
@@ -9354,14 +10158,19 @@ function resolveBossAttack(type, tg){
     });
     spawnToast('Tu visión se duplica de golpe');
   } else if(type==='distortionField'){
-    // several scattered patches of warped space near your position, like radianceField's light
-    // patches but rendered as jagged crystalline distortion
     for(let i=0;i<4;i++){
       const hx = clamp(targetX+rand(-150,150), b.x+24, b.x+b.w-24);
       const hy = clamp(targetY+rand(-150,150), b.y+24, b.y+b.h-24);
       game.hazards.push({ x:hx, y:hy, r:36, type:'spike', telegraph:0.55, active:0.9, tick:0, dmg:boss.dmg*0.45 });
     }
     spawnToast('El espacio se distorsiona a tu alrededor');
+    scheduleBossAction(1.3, ()=>{
+      if(!game.boss) return;
+      const hx = clamp(targetX+rand(-100,100), b.x+24, b.x+b.w-24);
+      const hy = clamp(targetY+rand(-100,100), b.y+24, b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:42, type:'spike', telegraph:0.3, active:0.6, tick:0, dmg:boss.dmg*0.4 });
+      spawnToast('Una última distorsión se abre cerca');
+    });
   } else if(type==='echoChamber'){
     // the same ring of danger pulses three times in place, like an echo repeating — you have to
     // stay clear of the same spot again and again instead of just once
@@ -9411,58 +10220,98 @@ function resolveBossAttack(type, tg){
     spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
     shake(6);
   } else if(type==='reflectivePulse'){
-    // a larger, simpler self-centered wave of reflected light — no accompanying shards, just a
-    // bigger single hit than mirrorShatter's combo
     const r=165;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.0);
-    addParticles(boss.x,boss.y,'#e8e8f5',26,220,0.45);
-    spawnShockwave(boss.x,boss.y,'#e8e8f5',r,0.4);
-    shake(8);
+    addParticles(boss.x,boss.y,'#e8e8f5',10,80,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.0);
+      addParticles(boss.x,boss.y,'#e8e8f5',26,220,0.45);
+      spawnShockwave(boss.x,boss.y,'#e8e8f5',r,0.4);
+      shake(8);
+    });
   } else if(type==='phantomChaser'){
-    // a single slow homing phantom with a long life — patient pursuit rather than a sudden strike
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*90, vy:Math.sin(ang)*90,
       dmg:boss.dmg*0.55, radius:10, owner:'enemy', color:'#cfd6e8', life:5, homing:true, shape:'wisp' });
     spawnToast('Un fantasma comienza a perseguirte');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*75, vy:Math.sin(ang2)*75,
+        dmg:boss.dmg*0.4, radius:9, owner:'enemy', color:'#cfd6e8', life:4.5, homing:true, shape:'wisp' });
+      spawnToast('Un segundo fantasma se une');
+    });
   } else if(type==='reflectedLance'){
-    // a fast, short-lived homing bolt — punishes hesitation, the opposite of phantomChaser's patience
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*230, vy:Math.sin(ang)*230,
       dmg:boss.dmg*0.85, radius:9, owner:'enemy', color:'#e8e8f5', life:2.4, homing:true, shape:'orb' });
     addParticles(boss.x,boss.y,'#e8e8f5',10,130,0.25);
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*260, vy:Math.sin(ang2)*260,
+        dmg:boss.dmg*0.6, radius:8, owner:'enemy', color:'#e8e8f5', life:2.1, homing:true, shape:'orb' });
+    });
   } else if(type==='hauntingReflection'){
-    // a medium-speed homing shot that lingers a moderate amount of time — sits between
-    // phantomChaser's patience and reflectedLance's urgency
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*150, vy:Math.sin(ang)*150,
       dmg:boss.dmg*0.65, radius:9, owner:'enemy', color:boss.def.color, life:3.6, homing:true, shape:'wisp' });
     spawnToast('Tu propio reflejo te persigue');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*130, vy:Math.sin(ang2)*130,
+        dmg:boss.dmg*0.5, radius:8, owner:'enemy', color:boss.def.color, life:3.2, homing:true, shape:'wisp' });
+      spawnToast('Un segundo reflejo se suma a la persecución');
+    });
   } else if(type==='disorientingGaze'){
-    // slows your attack speed — a different flavor of control than mirrorGaze's inverted movement
     p.chillTimer = Math.max(p.chillTimer||0, 3.5);
     p.chillFactor = 1.5;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Su mirada te desorienta por completo');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      p.chillTimer = Math.max(p.chillTimer||0, 2.0);
+      addParticles(p.x,p.y,boss.def.color,12,80,0.25);
+      spawnToast('La desorientación vuelve a golpearte');
+    });
   } else if(type==='shatteredFocus'){
-    // weakens your damage output instead — a third distinct control effect for this zone
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,'#e8e8f5',16,100,0.35);
     spawnToast('Tu concentración se hace añicos');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:56, type:'spike', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('Los fragmentos caen sobre vos');
+    });
   } else if(type==='silveredSkin'){
-    // a pure self-buff: her surface hardens into silvered glass, absorbing a capped chunk of
-    // damage before she starts losing HP again — same pattern as boneArmor, capped not additive
     boss.armorHp = Math.max(boss.armorHp||0, boss.maxHp*0.08);
     addParticles(boss.x,boss.y,'#e8e8f5',20,130,0.4);
     spawnToast('Su piel se cubre de plata pulida');
+    scheduleBossAction(0.55, ()=>{
+      if(!game.boss) return;
+      const n=8;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*185, vy:Math.sin(ang)*185,
+          dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:'#e8e8f5', life:1.7, shape:'shard' });
+      }
+      spawnToast('La plata libera una descarga reflejada');
+    });
   } else if(type==='mirroredEcho'){
-    // summons two spectral echoes of the zone's minion — this zone's own summon move, distinct
-    // from cripta's and jardín's
     for(let i=0;i<2;i++){
       const ang = Math.random()*Math.PI*2;
       spawnEnemyAt(boss.def.minion, boss.x+Math.cos(ang)*70, boss.y+Math.sin(ang)*70, true);
     }
     spawnToast('Ecos espectrales emergen de los espejos');
+    scheduleBossAction(1.4, ()=>{
+      if(!game.boss) return;
+      const ang = Math.random()*Math.PI*2;
+      spawnEnemyAt(boss.def.minion, boss.x+Math.cos(ang)*70, boss.y+Math.sin(ang)*70, true);
+      addParticles(boss.x,boss.y,boss.def.color,10,80,0.25);
+      spawnToast('Un eco más emerge del cristal');
+    });
   } else if(type==='boundStrike'){
     // fires from two points at once, offset to either side of the boss, as if two allies were
     // shooting in sync — a paired burst instead of a single-origin spread
@@ -9477,12 +10326,17 @@ function resolveBossAttack(type, tg){
     addParticles(boss.x,boss.y,boss.def.color,10,100,0.3);
     spawnToast('Dos proyectiles convergen desde ángulos distintos');
   } else if(type==='bondPulse'){
-    // two simultaneous pulses at two separate points near the boss, instead of one ring or a
-    // sequence of rings
     [-70,70].forEach(off=>{
       game.hazards.push({ x:boss.x+off, y:boss.y, r:55, type:'light', telegraph:0.55, active:0.4, tick:0, dmg:boss.dmg*0.5 });
     });
     spawnToast('Dos pulsos laten al mismo tiempo');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      [-40,40].forEach(off=>{
+        game.hazards.push({ x:boss.x+off, y:boss.y, r:40, type:'light', telegraph:0.25, active:0.35, tick:0, dmg:boss.dmg*0.35 });
+      });
+      spawnToast('Un segundo par de pulsos late más cerca');
+    });
   } else if(type==='twinStrike'){
     // two instant line-checks at once from slightly different angles — a doubled version of
     // flameWhip's single instant lash
@@ -9498,10 +10352,19 @@ function resolveBossAttack(type, tg){
     shake(5);
     spawnToast('Un golpe doble te alcanza desde dos ángulos');
   } else if(type==='bondedShield'){
-    // a solo defensive buff — shields itself without needing an actual twin present
     boss.shieldTimer = Math.max(boss.shieldTimer||0, 3.5);
     addParticles(boss.x,boss.y,boss.def.color,16,120,0.3);
     spawnToast('Se protege con un vínculo espiritual');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      const n=6;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*170, vy:Math.sin(ang)*170,
+          dmg:boss.dmg*0.28, radius:6, owner:'enemy', color:boss.def.color, life:1.6, shape:'orb' });
+      }
+      spawnToast('El vínculo libera una descarga protectora');
+    });
   } else if(type==='spiritLink'){
     // a tether of hazard points strung between two random locations, unrelated to the boss's or
     // your own position — a danger line drawn across the room rather than radiating from a point
@@ -9531,8 +10394,6 @@ function resolveBossAttack(type, tg){
     addParticles(boss.x,boss.y,boss.def.color,14,120,0.3);
     shake(5);
   } else if(type==='soulShards'){
-    // a single full ring from the boss's own position — the solo counterpart to twinVolley's
-    // doubled version
     const n=9;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9540,18 +10401,28 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.5, radius:7, owner:'enemy', color:'#ffb0d9', life:2.2, shape:'shard' });
     }
     addParticles(boss.x,boss.y,'#ffb0d9',14,140,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*225, vy:Math.sin(ang)*225,
+          dmg:boss.dmg*0.36, radius:6, owner:'enemy', color:'#ffb0d9', life:2, shape:'shard' });
+      }
+    });
   } else if(type==='pairedBolts'){
-    // two rapid-fire shots from the same origin, a beat apart in speed rather than offset in
-    // position — a doubled strike instead of a doubled origin
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
       dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:1.6, shape:'orb' });
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang+0.15)*260, vy:Math.sin(ang+0.15)*260,
       dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:1.6, shape:'orb' });
     addParticles(boss.x,boss.y,boss.def.color,8,100,0.2);
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2-0.15)*280, vy:Math.sin(ang2-0.15)*280,
+        dmg:boss.dmg*0.45, radius:6, owner:'enemy', color:boss.def.color, life:1.5, shape:'orb' });
+    });
   } else if(type==='spiritBurst'){
-    // many weak spirit orbs drifting outward in every direction, meant to crowd the arena rather
-    // than hit hard — this zone's version of a lingering swarm
     const n=13;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9559,8 +10430,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.3, radius:9, owner:'enemy', color:'#ffb0d9', life:3.2, shape:'wisp' });
     }
     spawnToast('Espíritus se dispersan por el santuario');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<7;i++){
+        const ang=(i/7)*Math.PI*2 + Math.PI/7;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*85, vy:Math.sin(ang)*85,
+          dmg:boss.dmg*0.24, radius:8, owner:'enemy', color:'#ffb0d9', life:2.8, shape:'wisp' });
+      }
+    });
   } else if(type==='boundArrows'){
-    // a fast, narrow forward cone — tighter and quicker than soulShards' full ring
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=5;
     for(let i=0;i<n;i++){
@@ -9569,6 +10447,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.55, radius:6, owner:'enemy', color:boss.def.color, life:1.4, shape:'shard' });
     }
     shake(4);
+    scheduleBossAction(0.26, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<5;i++){
+        const ang = ang1 + (i-2)*0.09;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*350, vy:Math.sin(ang)*350,
+          dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:boss.def.color, life:1.3, shape:'shard' });
+      }
+    });
   } else if(type==='soulTether'){
     // a tether strung between the boss and your frozen position at the moment of the attack —
     // anchored to both of you, unlike spiritLink's two random points
@@ -9580,7 +10467,6 @@ function resolveBossAttack(type, tg){
     }
     spawnToast('Un lazo espiritual se tiende entre ustedes');
   } else if(type==='kinshipRing'){
-    // a simple ring of hazards closing around your position
     const n=6;
     for(let i=0;i<n;i++){
       const ang=(i/n)*Math.PI*2;
@@ -9588,20 +10474,36 @@ function resolveBossAttack(type, tg){
         type:'light', telegraph:0.5, active:0.6, tick:0, dmg:boss.dmg*0.48 });
     }
     spawnToast('Un anillo de vínculo se cierra a tu alrededor');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*48, y:targetY+Math.sin(ang)*48, r:20,
+          type:'light', telegraph:0.28, active:0.5, tick:0, dmg:boss.dmg*0.36 });
+      }
+      spawnToast('El anillo se cierra una vez más');
+    });
   } else if(type==='dualBloom'){
-    // two soft light blooms at random points in the arena, unlike bondPulse's pair fixed just
-    // off the boss's own position
     for(let i=0;i<2;i++){
       const hx = rand(b.x+70,b.x+b.w-70), hy = rand(b.y+70,b.y+b.h-70);
       game.hazards.push({ x:hx, y:hy, r:50, type:'light', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.55 });
     }
     spawnToast('Dos florecimientos de luz brotan en el santuario');
+    scheduleBossAction(0.85, ()=>{
+      if(!game.boss) return;
+      const hx = rand(b.x+70,b.x+b.w-70), hy = rand(b.y+70,b.y+b.h-70);
+      game.hazards.push({ x:hx, y:hy, r:44, type:'light', telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.4 });
+      spawnToast('Un tercer florecimiento brota');
+    });
   } else if(type==='sharedPain'){
-    // a hazard appears both at your position and at the boss's own position at once — the pain
-    // is shared between you, quite literally
     game.hazards.push({ x:targetX, y:targetY, r:38, type:'light', telegraph:0.55, active:0.5, tick:0, dmg:boss.dmg*0.5 });
     game.hazards.push({ x:boss.x, y:boss.y, r:38, type:'light', telegraph:0.55, active:0.5, tick:0, dmg:boss.dmg*0.5 });
     spawnToast('El dolor se comparte entre ambas');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:targetX, y:targetY, r:26, type:'light', telegraph:0.25, active:0.35, tick:0, dmg:boss.dmg*0.32 });
+      game.hazards.push({ x:boss.x, y:boss.y, r:26, type:'light', telegraph:0.25, active:0.35, tick:0, dmg:boss.dmg*0.32 });
+    });
   } else if(type==='weaveTrap'){
     // a zigzagging line of small hazards woven across the arena, alternating side to side
     const n=8;
@@ -9639,85 +10541,138 @@ function resolveBossAttack(type, tg){
     }
     spawnToast('Una línea de energía se extiende hacia el muro');
   } else if(type==='soulPulse'){
-    // a self-centered pulse of spiritual energy, smaller and faster than boundSurge's slower one
     const r=125;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.8);
-    addParticles(boss.x,boss.y,boss.def.color,20,180,0.4);
-    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
-    shake(6);
+    addParticles(boss.x,boss.y,boss.def.color,10,80,0.3);
+    scheduleBossAction(0.3, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.8);
+      addParticles(boss.x,boss.y,boss.def.color,20,180,0.4);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      shake(6);
+    });
   } else if(type==='boundSurge'){
-    // a larger, slower self-centered surge — hits harder than soulPulse but gives more time to react
     const r=165;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
-    addParticles(boss.x,boss.y,'#ffb0d9',26,220,0.45);
-    spawnShockwave(boss.x,boss.y,'#ffb0d9',r,0.4);
-    shake(8);
+    addParticles(boss.x,boss.y,'#ffb0d9',12,90,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+      addParticles(boss.x,boss.y,'#ffb0d9',26,220,0.45);
+      spawnShockwave(boss.x,boss.y,'#ffb0d9',r,0.4);
+      shake(8);
+    });
   } else if(type==='spiritChaser'){
-    // a single slow homing spirit with a long life — patient pursuit
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*90, vy:Math.sin(ang)*90,
       dmg:boss.dmg*0.55, radius:10, owner:'enemy', color:boss.def.color, life:5, homing:true, shape:'wisp' });
     spawnToast('Un espíritu comienza a perseguirte');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*78, vy:Math.sin(ang2)*78,
+        dmg:boss.dmg*0.4, radius:9, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'wisp' });
+      spawnToast('Un segundo espíritu se une');
+    });
   } else if(type==='soulLance'){
-    // a fast, short-lived homing bolt — punishes hesitation more than spiritChaser's patience
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*225, vy:Math.sin(ang)*225,
       dmg:boss.dmg*0.85, radius:9, owner:'enemy', color:'#ffb0d9', life:2.5, homing:true, shape:'orb' });
     addParticles(boss.x,boss.y,'#ffb0d9',10,130,0.25);
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*250, vy:Math.sin(ang2)*250,
+        dmg:boss.dmg*0.6, radius:8, owner:'enemy', color:'#ffb0d9', life:2.2, homing:true, shape:'orb' });
+    });
   } else if(type==='kinseeker'){
-    // a medium-speed homing shot with a moderate life — sits between spiritChaser and soulLance
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*150, vy:Math.sin(ang)*150,
       dmg:boss.dmg*0.65, radius:9, owner:'enemy', color:boss.def.color, life:3.6, homing:true, shape:'wisp' });
     spawnToast('Un lazo espiritual te busca');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*135, vy:Math.sin(ang2)*135,
+        dmg:boss.dmg*0.5, radius:8, owner:'enemy', color:boss.def.color, life:3.2, homing:true, shape:'wisp' });
+      spawnToast('Un segundo lazo se suma a la búsqueda');
+    });
   } else if(type==='sharedWound'){
-    // weakens your damage output — the shared bond dulls your own strikes
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,'#ffb0d9',16,100,0.35);
     spawnToast('Una herida compartida debilita tus golpes');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:54, type:'light', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('La herida se abre de nuevo');
+    });
   } else if(type==='soulSap'){
-    // slows your attack speed instead — a different flavor of debuff than sharedWound's damage cut
     p.chillTimer = Math.max(p.chillTimer||0, 3.5);
     p.chillFactor = 1.5;
     addParticles(p.x,p.y,'#a89a8c',14,90,0.3);
     spawnToast('Tu energía es drenada lentamente');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      p.chillTimer = Math.max(p.chillTimer||0, 2.0);
+      addParticles(p.x,p.y,'#a89a8c',12,80,0.25);
+      spawnToast('El drenaje continúa una vez más');
+    });
   } else if(type==='boundCurse'){
-    // a pure control debuff: your movement briefly turns against you, as if bound to a will
-    // that isn't your own
     p.invertTimer = Math.max(p.invertTimer||0, 2.5);
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Una maldición vincula tus movimientos');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:52, type:'light', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.32 });
+      spawnToast('El vínculo se cierra con fuerza');
+    });
   } else if(type==='sharedBlessing'){
-    // heals over the next few seconds — this zone's own regen buff, distinct from bondedShield's
-    // damage-reduction shield
     boss.regenTimer = 4;
     boss.regenPerSec = boss.maxHp*0.025;
     addParticles(boss.x,boss.y,boss.def.color,18,120,0.35);
     spawnToast('Una bendición compartida la restaura');
+    scheduleBossAction(1.1, ()=>{
+      if(!game.boss) return;
+      const r=100;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.4);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      spawnToast('La bendición se descarga');
+    });
   } else if(type==='twinSpirits'){
-    // summons two wisps to fight alongside her — this zone's own summon move
     for(let i=0;i<2;i++){
       const ang = Math.random()*Math.PI*2;
       spawnEnemyAt(boss.def.minion, boss.x+Math.cos(ang)*70, boss.y+Math.sin(ang)*70, true);
     }
     spawnToast('Espíritus gemelos acuden a su llamado');
+    scheduleBossAction(1.4, ()=>{
+      if(!game.boss) return;
+      const ang = Math.random()*Math.PI*2;
+      spawnEnemyAt(boss.def.minion, boss.x+Math.cos(ang)*70, boss.y+Math.sin(ang)*70, true);
+      addParticles(boss.x,boss.y,boss.def.color,10,80,0.25);
+      spawnToast('Un tercer espíritu acude');
+    });
   } else if(type==='iceLance'){
-    // a single slow homing shard that also chills on contact — a persistent chaser instead of a
-    // burst or a zone
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*95, vy:Math.sin(ang)*95,
       dmg:boss.dmg*0.7, radius:12, owner:'enemy', color:boss.def.color, life:5, homing:true, shape:'shard',
       slow:{factor:0.6,dur:1} });
     spawnToast('Una lanza de hielo te persigue lentamente');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*115, vy:Math.sin(ang2)*115,
+        dmg:boss.dmg*0.5, radius:10, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'shard', slow:{factor:0.6,dur:0.8} });
+      spawnToast('Una segunda lanza se suma');
+    });
   } else if(type==='crystalPrison'){
-    // one heavy, slow-forming trap with a chilling aura as it crystallizes
+    const decoys = [ [rand(-90,90), rand(-90,90)], [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:38, type:'ice', telegraph:0.7, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:50, type:'ice', telegraph:0.7, active:0.35, tick:0, dmg:boss.dmg*0.7 });
     p.slowTimer = Math.max(p.slowTimer||0, 1.6);
     spawnToast('El hielo intenta encerrarte');
   } else if(type==='avalanche'){
-    // a few huge, slow, long-telegraphed blocks — the opposite tempo of frozenGround's many
-    // small random eruptions
     const n=4;
     for(let i=0;i<n;i++){
       const hx = rand(b.x+50,b.x+b.w-50), hy = rand(b.y+50,b.y+b.h-50);
@@ -9725,8 +10680,12 @@ function resolveBossAttack(type, tg){
     }
     spawnToast('Bloques de hielo caen desde arriba');
     shake(5);
+    scheduleBossAction(1.75, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:80, type:'ice', telegraph:0.35, active:0.4, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último bloque enorme cae junto al jefe');
+    });
   } else if(type==='frostBreath'){
-    // few, large, slow-moving shards instead of many fast small ones
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=3;
     for(let i=0;i<n;i++){
@@ -9735,12 +10694,22 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.7, radius:13, owner:'enemy', color:boss.def.color, life:2.6, shape:'orb', slow:{factor:0.6,dur:1} });
     }
     spawnToast('Un aliento helado se extiende lento');
+    scheduleBossAction(0.5, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang1)*150, vy:Math.sin(ang1)*150,
+        dmg:boss.dmg*0.55, radius:14, owner:'enemy', color:boss.def.color, life:2.3, shape:'orb', slow:{factor:0.55,dur:0.8} });
+    });
   } else if(type==='numbingChill'){
-    // weakens your damage output for a while — a debuff on your offense, not your movement
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Un frío entumecedor debilita tus golpes');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:56, type:'ice', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('El frío se cristaliza de golpe');
+    });
   } else if(type==='frostShards'){
     const n=9;
     for(let i=0;i<n;i++){
@@ -9750,6 +10719,14 @@ function resolveBossAttack(type, tg){
     }
     addParticles(boss.x,boss.y,boss.def.color,14,150,0.35);
     spawnToast('Esquirlas de hielo estallan en todas direcciones');
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*180, vy:Math.sin(ang)*180,
+          dmg:boss.dmg*0.36, radius:7, owner:'enemy', color:boss.def.color, life:2.1, shape:'shard' });
+      }
+    });
   } else if(type==='glacialVolley'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=5;
@@ -9759,6 +10736,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:2.2, shape:'shard' });
     }
     spawnToast('Una descarga de hielo vuela directo hacia vos');
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<n;i++){
+        const ang = ang1+(i-(n-1)/2)*0.18;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*290, vy:Math.sin(ang)*290,
+          dmg:boss.dmg*0.4, radius:6, owner:'enemy', color:boss.def.color, life:1.9, shape:'shard' });
+      }
+    });
   } else if(type==='iceShrapnel'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=8;
@@ -9768,6 +10754,14 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
     }
     shake(4);
+    scheduleBossAction(0.28, ()=>{
+      if(!game.boss) return;
+      const perp = ang0+Math.PI/2;
+      [perp, perp+Math.PI].forEach(a=>{
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(a)*250, vy:Math.sin(a)*250,
+          dmg:boss.dmg*0.32, radius:5, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
+      });
+    });
   } else if(type==='crystalBarrage'){
     const n=4;
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
@@ -9777,6 +10771,12 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.8, radius:15, owner:'enemy', color:boss.def.color, life:3.4, shape:'orb' });
     }
     spawnToast('Cristales pesados avanzan lentamente');
+    scheduleBossAction(0.55, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang1)*130, vy:Math.sin(ang1)*130,
+        dmg:boss.dmg*0.6, radius:14, owner:'enemy', color:boss.def.color, life:3, shape:'orb' });
+    });
   } else if(type==='polarWind'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=7;
@@ -9786,6 +10786,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.6, shape:'wisp', slow:{factor:0.7,dur:0.8} });
     }
     spawnToast('Un viento polar barre el área');
+    scheduleBossAction(0.5, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<5;i++){
+        const ang = ang1+(i-2)*0.5;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*195, vy:Math.sin(ang)*195,
+          dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:boss.def.color, life:2.2, shape:'wisp', slow:{factor:0.6,dur:0.6} });
+      }
+    });
   } else if(type==='snowSquall'){
     const n=10;
     for(let i=0;i<n;i++){
@@ -9794,7 +10803,20 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.35, radius:6, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
     }
     addParticles(boss.x,boss.y,boss.def.color,18,130,0.3);
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<6;i++){
+        const ang = Math.random()*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*175, vy:Math.sin(ang)*175,
+          dmg:boss.dmg*0.28, radius:5, owner:'enemy', color:boss.def.color, life:1.8, shape:'shard' });
+      }
+    });
   } else if(type==='glacialSpike'){
+    const decoys = [ [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:36, type:'ice', telegraph:0.6, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:46, type:'ice', telegraph:0.75, active:0.4, tick:0, dmg:boss.dmg*1.0 });
     spawnToast('Un pico de hielo emerge del suelo');
   } else if(type==='frostRing'){
@@ -9806,6 +10828,16 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:22, type:'ice', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
     }
     spawnToast('Un anillo de escarcha se cierra a tu alrededor');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        const hx = clamp(targetX+Math.cos(ang)*55, b.x+22,b.x+b.w-22);
+        const hy = clamp(targetY+Math.sin(ang)*55, b.y+22,b.y+b.h-22);
+        game.hazards.push({ x:hx, y:hy, r:20, type:'ice', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.4 });
+      }
+      spawnToast('El anillo se cierra más');
+    });
   } else if(type==='iceFissure'){
     const steps=7;
     for(let i=0;i<steps;i++){
@@ -9815,6 +10847,15 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'ice', telegraph:0.22+frac*0.85, active:0.4, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Una grieta helada avanza hacia vos');
+    scheduleBossAction(1.15, ()=>{
+      if(!game.boss) return;
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:targetX,y:targetY, vx:Math.cos(a2)*160, vy:Math.sin(a2)*160,
+          dmg:boss.dmg*0.28, radius:6, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
+      }
+    });
   } else if(type==='frozenTrail'){
     const steps=6;
     for(let i=0;i<steps;i++){
@@ -9824,6 +10865,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:26, type:'ice', telegraph:0.3+frac*1.0, active:0.7, tick:0, dmg:boss.dmg*0.35 });
     }
     spawnToast('Un sendero de hielo se extiende bajo tus pasos');
+    scheduleBossAction(1.4, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:targetX, y:targetY, r:40, type:'ice', telegraph:0.25, active:0.4, tick:0, dmg:boss.dmg*0.4 });
+      spawnToast('El sendero termina en un golpe helado');
+    });
   } else if(type==='hailfall'){
     const n=6;
     for(let i=0;i<n;i++){
@@ -9831,9 +10877,22 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:26, type:'ice', telegraph:0.5+Math.random()*1.0, active:0.5, tick:0, dmg:boss.dmg*0.34 });
     }
     spawnToast('Granizo cae por toda la arena');
+    scheduleBossAction(1.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:64, type:'ice', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último granizo enorme cae junto al jefe');
+    });
   } else if(type==='permafrost'){
     game.hazards.push({ x:targetX, y:targetY, r:30, type:'ice', telegraph:0.5, active:1.6, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:55 });
     spawnToast('El suelo se congela y se expande');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      const ang = Math.random()*Math.PI*2;
+      const hx = clamp(targetX+Math.cos(ang)*90, b.x+24,b.x+b.w-24);
+      const hy = clamp(targetY+Math.sin(ang)*90, b.y+24,b.y+b.h-24);
+      game.hazards.push({ x:hx, y:hy, r:22, type:'ice', telegraph:0.35, active:1.2, tick:0, dmg:boss.dmg*0.3, expanding:true, expandRate:44 });
+      spawnToast('Una segunda zona helada se expande cerca');
+    });
   } else if(type==='crystalRain'){
     const n=7;
     for(let i=0;i<n;i++){
@@ -9841,6 +10900,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'ice', telegraph:0.45+Math.random()*0.9, active:0.4, tick:0, dmg:boss.dmg*0.34 });
     }
     spawnToast('Cristales afilados caen del techo');
+    scheduleBossAction(1.4, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:60, type:'ice', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último cristal enorme cae');
+    });
   } else if(type==='blizzardGust'){
     const n=8;
     for(let i=0;i<n;i++){
@@ -9849,47 +10913,100 @@ function resolveBossAttack(type, tg){
         telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:60 });
     }
     spawnToast('Una ráfaga helada se expande hacia afuera');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*70, y:targetY+Math.sin(ang)*70, r:16, type:'ice',
+          telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.36, expanding:true, expandRate:-50 });
+      }
+      spawnToast('Una segunda ráfaga se cierra hacia adentro');
+    });
   } else if(type==='frostSlam'){
     const r=160;
-    if(dist(boss.x,boss.y,p.x,p.y)<r){ hitPlayer(boss.dmg*1.0); p.slowTimer=Math.max(p.slowTimer||0,1.6); p.slowFactor=0.6; }
-    addParticles(boss.x,boss.y,boss.def.color,26,230,0.45);
-    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
-    shake(7);
-    spawnToast('El suelo estalla en una onda helada');
+    addParticles(boss.x,boss.y,boss.def.color,10,80,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r){ hitPlayer(boss.dmg*1.0); p.slowTimer=Math.max(p.slowTimer||0,1.6); p.slowFactor=0.6; }
+      addParticles(boss.x,boss.y,boss.def.color,26,230,0.45);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
+      shake(7);
+      spawnToast('El suelo estalla en una onda helada');
+    });
   } else if(type==='frostWisp'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*110, vy:Math.sin(ang)*110,
       dmg:boss.dmg*0.65, radius:10, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'wisp' });
     spawnToast('Un espíritu helado te persigue');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*95, vy:Math.sin(ang2)*95,
+        dmg:boss.dmg*0.45, radius:9, owner:'enemy', color:boss.def.color, life:4, homing:true, shape:'wisp' });
+      spawnToast('Un segundo espíritu se une');
+    });
   } else if(type==='iceStalker'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*240, vy:Math.sin(ang)*240,
       dmg:boss.dmg*0.55, radius:9, owner:'enemy', color:boss.def.color, life:2.8, homing:true, shape:'orb' });
     spawnToast('Algo veloz te acecha entre el hielo');
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*260, vy:Math.sin(ang2)*260,
+        dmg:boss.dmg*0.42, radius:8, owner:'enemy', color:boss.def.color, life:2.4, homing:true, shape:'orb' });
+    });
   } else if(type==='frostbite'){
     p.witherTimer = Math.max(p.witherTimer||0, 4.5);
     addParticles(p.x,p.y,boss.def.color,14,100,0.3);
     spawnToast('El frío muerde: tu curación se reduce');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:54, type:'ice', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.32 });
+      spawnToast('El frío se asienta con fuerza');
+    });
   } else if(type==='brittleChill'){
     p.chillTimer = Math.max(p.chillTimer||0, 3.5);
     p.chillFactor = 1.5;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Un frío quebradizo entorpece tus golpes');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      p.chillTimer = Math.max(p.chillTimer||0, 2.0);
+      addParticles(p.x,p.y,boss.def.color,12,80,0.25);
+      spawnToast('El frío se hace más profundo');
+    });
   } else if(type==='glacialGrip'){
     p.slowTimer = Math.max(p.slowTimer||0, 2.6);
     p.slowFactor = 0.55;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('El hielo se aferra a tus piernas');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      p.slowTimer = Math.max(p.slowTimer||0, 1.3);
+      addParticles(p.x,p.y,boss.def.color,10,70,0.25);
+      spawnToast('El hielo se aprieta más');
+    });
   } else if(type==='glacialWard'){
     boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.07);
     addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
     spawnToast('Una armadura de hielo lo restaura');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const r=105;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.45);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      spawnToast('La armadura se rompe con fuerza');
+    });
   } else if(type==='thunderStrike'){
-    // almost no warning at all before a single heavy strike — pure reaction test
+    const decoys = [ [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:30, type:'storm', telegraph:0.28, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:34, type:'storm', telegraph:0.28, active:0.3, tick:0, dmg:boss.dmg*1.1 });
     spawnToast('Un rayo cae casi sin aviso');
   } else if(type==='stormVortex'){
-    // hazard points trace outward along a spiral instead of a static ring or scattered cluster
     const n=8;
     for(let i=0;i<n;i++){
       const ang = (i/n)*Math.PI*3;
@@ -9899,15 +11016,30 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:22, type:'storm', telegraph:0.35+i*0.08, active:0.4, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Un vórtice de rayos gira hacia afuera');
+    scheduleBossAction(0.35+8*0.08+0.25, ()=>{
+      if(!game.boss) return;
+      const ang=(8/8)*Math.PI*3, rad=20+8*16;
+      const ex = clamp(targetX+Math.cos(ang)*rad, b.x+24,b.x+b.w-24);
+      const ey = clamp(targetY+Math.sin(ang)*rad, b.y+24,b.y+b.h-24);
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:ex,y:ey, vx:Math.cos(a2)*170, vy:Math.sin(a2)*170,
+          dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
+      }
+    });
   } else if(type==='staticField'){
-    // slows your attack speed instead of your movement or damage — a debuff on your tempo
     p.chillTimer = Math.max(p.chillTimer||0, 3.5);
     p.chillFactor = 1.5;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('La estática entumece tus reflejos');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      p.chillTimer = Math.max(p.chillTimer||0, 2.0);
+      addParticles(p.x,p.y,boss.def.color,12,80,0.25);
+      spawnToast('La estática vuelve a descargarse');
+    });
   } else if(type==='skySiege'){
-    // many strikes with one shared telegraph, landing all at once — no staggering, so you must
-    // find the gap immediately rather than reacting to each one in turn
     const n=7;
     for(let i=0;i<n;i++){
       const hx = rand(b.x+30,b.x+b.w-30), hy = rand(b.y+30,b.y+b.h-30);
@@ -9915,12 +11047,22 @@ function resolveBossAttack(type, tg){
     }
     spawnToast('El cielo entero se abre de una sola vez');
     shake(4);
+    scheduleBossAction(1.4, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:70, type:'storm', telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último rayo cae junto al jefe');
+    });
   } else if(type==='boltRunner'){
-    // a single fast homing bolt — quicker and more aggressive than iceLance's slow chaser
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*260, vy:Math.sin(ang)*260,
       dmg:boss.dmg*0.6, radius:9, owner:'enemy', color:boss.def.color, life:2.6, homing:true, shape:'orb' });
     spawnToast('Un rayo veloz te persigue');
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*280, vy:Math.sin(ang2)*280,
+        dmg:boss.dmg*0.45, radius:8, owner:'enemy', color:boss.def.color, life:2.3, homing:true, shape:'orb' });
+    });
   } else if(type==='boltSpray'){
     const n=9;
     for(let i=0;i<n;i++){
@@ -9930,6 +11072,14 @@ function resolveBossAttack(type, tg){
     }
     shake(5);
     spawnToast('Rayos estallan en todas direcciones');
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*270, vy:Math.sin(ang)*270,
+          dmg:boss.dmg*0.36, radius:6, owner:'enemy', color:boss.def.color, life:1.9, shape:'shard' });
+      }
+    });
   } else if(type==='thunderClap'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=6;
@@ -9939,6 +11089,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
     }
     spawnToast('Un trueno restalla hacia vos');
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<n;i++){
+        const ang = ang1+(i-(n-1)/2)*0.22;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*300, vy:Math.sin(ang)*300,
+          dmg:boss.dmg*0.4, radius:6, owner:'enemy', color:boss.def.color, life:1.8, shape:'shard' });
+      }
+    });
   } else if(type==='chargedBurst'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=8;
@@ -9947,6 +11106,15 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*310, vy:Math.sin(ang)*310,
         dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
     }
+    scheduleBossAction(0.25, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<8;i++){
+        const ang = ang1+(i-3.5)*0.1;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*330, vy:Math.sin(ang)*330,
+          dmg:boss.dmg*0.32, radius:5, owner:'enemy', color:boss.def.color, life:1.4, shape:'shard' });
+      }
+    });
   } else if(type==='windSlash'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=5;
@@ -9956,6 +11124,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.4, shape:'wisp' });
     }
     spawnToast('El viento corta el aire a tu alrededor');
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<5;i++){
+        const ang = ang1+(i-2)*0.4;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*220, vy:Math.sin(ang)*220,
+          dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:boss.def.color, life:2.1, shape:'wisp' });
+      }
+    });
   } else if(type==='stormShards'){
     const n=10;
     for(let i=0;i<n;i++){
@@ -9964,6 +11141,14 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.35, radius:6, owner:'enemy', color:boss.def.color, life:1.8, shape:'shard' });
     }
     addParticles(boss.x,boss.y,boss.def.color,16,150,0.3);
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<6;i++){
+        const ang = Math.random()*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*250, vy:Math.sin(ang)*250,
+          dmg:boss.dmg*0.3, radius:5, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
+      }
+    });
   } else if(type==='arcVolley'){
     const n=4;
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
@@ -9973,7 +11158,18 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.7, radius:10, owner:'enemy', color:boss.def.color, life:1.8, shape:'orb' });
     }
     spawnToast('Un arco de energía se dispara con fuerza');
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang1)*330, vy:Math.sin(ang1)*330,
+        dmg:boss.dmg*0.55, radius:9, owner:'enemy', color:boss.def.color, life:1.6, shape:'orb' });
+    });
   } else if(type==='thunderPatch'){
+    const decoys = [ [rand(-90,90), rand(-90,90)], [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:34, type:'storm', telegraph:0.5, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:38, type:'storm', telegraph:0.5, active:0.35, tick:0, dmg:boss.dmg*1.0 });
     spawnToast('Un rayo se prepara para caer');
   } else if(type==='stormCell'){
@@ -9985,6 +11181,16 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:22, type:'storm', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
     }
     spawnToast('Una celda de tormenta se cierra alrededor tuyo');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        const hx = clamp(targetX+Math.cos(ang)*58, b.x+22,b.x+b.w-22);
+        const hy = clamp(targetY+Math.sin(ang)*58, b.y+22,b.y+b.h-22);
+        game.hazards.push({ x:hx, y:hy, r:20, type:'storm', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.4 });
+      }
+      spawnToast('La celda se cierra más');
+    });
   } else if(type==='lightningField'){
     const n=7;
     for(let i=0;i<n;i++){
@@ -9992,6 +11198,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:26, type:'storm', telegraph:0.5+Math.random()*0.9, active:0.4, tick:0, dmg:boss.dmg*0.34 });
     }
     spawnToast('Rayos caen al azar por toda la arena');
+    scheduleBossAction(1.5, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:64, type:'storm', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último rayo cae junto al jefe');
+    });
   } else if(type==='galeZone'){
     const n=8;
     for(let i=0;i<n;i++){
@@ -10000,6 +11211,15 @@ function resolveBossAttack(type, tg){
         telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:65 });
     }
     spawnToast('Un vendaval se expande desde el centro');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*72, y:targetY+Math.sin(ang)*72, r:16, type:'storm',
+          telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.36, expanding:true, expandRate:-52 });
+      }
+      spawnToast('Un segundo vendaval se cierra hacia adentro');
+    });
   } else if(type==='thunderColumn'){
     const steps=7;
     for(let i=0;i<steps;i++){
@@ -10009,6 +11229,15 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'storm', telegraph:0.22+frac*0.8, active:0.4, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Una columna de rayos avanza hacia vos');
+    scheduleBossAction(1.1, ()=>{
+      if(!game.boss) return;
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:targetX,y:targetY, vx:Math.cos(a2)*170, vy:Math.sin(a2)*170,
+          dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
+      }
+    });
   } else if(type==='stormPocket'){
     const n=4;
     for(let i=0;i<n;i++){
@@ -10016,6 +11245,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:55, type:'storm', telegraph:1.1, active:0.45, tick:0, dmg:boss.dmg*0.7 });
     }
     spawnToast('Bolsillos de tormenta se forman por la arena');
+    scheduleBossAction(1.5, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:65, type:'storm', telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último bolsillo estalla junto al jefe');
+    });
   } else if(type==='chainStrike'){
     const n=6;
     for(let i=0;i<n;i++){
@@ -10023,6 +11257,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:28, type:'storm', telegraph:0.3+i*0.15, active:0.35, tick:0, dmg:boss.dmg*0.42 });
     }
     spawnToast('Una cadena de rayos se enciende en secuencia');
+    scheduleBossAction(0.3+6*0.15+0.3, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:56, type:'storm', telegraph:0.25, active:0.35, tick:0, dmg:boss.dmg*0.45 });
+      spawnToast('La cadena termina junto al jefe');
+    });
   } else if(type==='squallLine'){
     const vertical = Math.random()<0.5;
     const n=9;
@@ -10033,45 +11272,95 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'storm', telegraph:0.5, active:0.4, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Una línea de tormenta cruza la arena');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      const hx2 = vertical ? clamp(targetX+70, b.x+24,b.x+b.w-24) : targetX;
+      const hy2 = vertical ? targetY : clamp(targetY+70, b.y+24,b.y+b.h-24);
+      for(let i=0;i<9;i++){
+        const frac=i/8;
+        const hx = vertical ? hx2 : (b.x+24+frac*(b.w-48));
+        const hy = vertical ? (b.y+24+frac*(b.h-48)) : hy2;
+        game.hazards.push({ x:hx, y:hy, r:20, type:'storm', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.3 });
+      }
+      spawnToast('Una segunda línea cruza cerca');
+    });
   } else if(type==='thunderSlam'){
     const r=165;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
-    addParticles(boss.x,boss.y,boss.def.color,28,250,0.45);
-    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
-    shake(8);
-    spawnToast('Truena con toda su fuerza contra el suelo');
+    addParticles(boss.x,boss.y,boss.def.color,10,80,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+      addParticles(boss.x,boss.y,boss.def.color,28,250,0.45);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
+      shake(8);
+      spawnToast('Truena con toda su fuerza contra el suelo');
+    });
   } else if(type==='stormChaser'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*250, vy:Math.sin(ang)*250,
       dmg:boss.dmg*0.55, radius:9, owner:'enemy', color:boss.def.color, life:2.6, homing:true, shape:'orb' });
     spawnToast('Un rayo veloz cambia de rumbo para alcanzarte');
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*270, vy:Math.sin(ang2)*270,
+        dmg:boss.dmg*0.4, radius:8, owner:'enemy', color:boss.def.color, life:2.3, homing:true, shape:'orb' });
+    });
   } else if(type==='thunderEye'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*115, vy:Math.sin(ang)*115,
       dmg:boss.dmg*0.68, radius:11, owner:'enemy', color:boss.def.color, life:4.4, homing:true, shape:'wisp' });
     spawnToast('Un ojo eléctrico te sigue de cerca');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*130, vy:Math.sin(ang2)*130,
+        dmg:boss.dmg*0.5, radius:10, owner:'enemy', color:boss.def.color, life:4, homing:true, shape:'wisp' });
+      spawnToast('Un segundo ojo se abre');
+    });
   } else if(type==='staticShock'){
     p.chillTimer = Math.max(p.chillTimer||0, 3.2);
     p.chillFactor = 1.55;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Una descarga estática entorpece tus reflejos');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:56, type:'storm', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('La descarga estalla');
+    });
   } else if(type==='galeForce'){
     p.slowTimer = Math.max(p.slowTimer||0, 2.8);
     p.slowFactor = 0.58;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Una ráfaga te empuja y frena tus pasos');
+    scheduleBossAction(0.85, ()=>{
+      if(!game.boss) return;
+      p.slowTimer = Math.max(p.slowTimer||0, 1.4);
+      addParticles(p.x,p.y,boss.def.color,10,70,0.25);
+      spawnToast('Una segunda ráfaga te golpea');
+    });
   } else if(type==='overcharge'){
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Una sobrecarga debilita tus golpes');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:55, type:'storm', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('La sobrecarga estalla');
+    });
   } else if(type==='stormShield'){
     boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.07);
     addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
     spawnToast('Un manto de tormenta lo restaura');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const r=105;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.45);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      spawnToast('El manto se descarga violentamente');
+    });
   } else if(type==='voidTendrils'){
-    // a six-armed burst radiating from where you stood, instead of magmaCross's four-armed
-    // pattern rooted on the boss itself
     const arms=6;
     for(let a=0;a<arms;a++){
       const ang=(a/arms)*Math.PI*2;
@@ -10082,8 +11371,17 @@ function resolveBossAttack(type, tg){
       }
     }
     spawnToast('Tentáculos de vacío brotan bajo tus pies');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      for(let a=0;a<arms;a++){
+        const ang=(a/arms)*Math.PI*2 + Math.PI/arms;
+        const hx = clamp(targetX+Math.cos(ang)*70, b.x+22,b.x+b.w-22);
+        const hy = clamp(targetY+Math.sin(ang)*70, b.y+22,b.y+b.h-22);
+        game.hazards.push({ x:hx, y:hy, r:20, type:'void', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.32 });
+      }
+      spawnToast('Más tentáculos brotan más lejos');
+    });
   } else if(type==='darkPulse'){
-    // few, large, slow orbs — a heavier, sparser burst than the fast dense sprays elsewhere
     const n=4;
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     for(let i=0;i<n;i++){
@@ -10092,27 +11390,45 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.75, radius:14, owner:'enemy', color:boss.def.color, life:3.2, shape:'wisp' });
     }
     spawnToast('Orbes de oscuridad avanzan lentos');
+    scheduleBossAction(0.5, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang1)*125, vy:Math.sin(ang1)*125,
+        dmg:boss.dmg*0.55, radius:13, owner:'enemy', color:boss.def.color, life:2.8, shape:'wisp' });
+    });
   } else if(type==='starlightDrain'){
-    // drains a piece of your max HP into the boss's own — a resource-drain debuff, not a hazard
-    // or a projectile
     const drain = p.maxHp*0.07;
     p.maxHp = Math.max(20, p.maxHp-drain);
     p.hp = Math.min(p.hp, p.maxHp);
     boss.hp = Math.min(boss.maxHp, boss.hp+drain*0.6);
     addParticles(p.x,p.y,boss.def.color,16,120,0.35);
     spawnToast('Algo drena tu propia esencia vital');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      const r=100;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.4);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+    });
   } else if(type==='umbraStep'){
-    // teleports to where you stood when the attack began — dodgeable by moving during the wind-up,
-    // instead of tracking your live position and guaranteeing a hit
     boss.x = clamp(targetX+rand(-40,40), b.x+boss.radius, b.x+b.w-boss.radius);
     boss.y = clamp(targetY+rand(-40,40), b.y+boss.radius, b.y+b.h-boss.radius);
     if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+20) hitPlayer(boss.dmg*0.85);
     addParticles(boss.x,boss.y,boss.def.color,18,150,0.3);
     spawnShockwave(boss.x,boss.y,boss.def.color,50,0.3);
     spawnToast('Aparece de golpe a tu lado');
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      spawnShockwave(boss.x,boss.y,boss.def.color,80,0.3);
+      if(dist(boss.x,boss.y,p.x,p.y) < boss.radius+p.radius+34) hitPlayer(boss.dmg*0.4);
+    });
   } else if(type==='collapsingStar'){
-    // one enormous single-point explosion centered on where you stood — the biggest single hit
-    // in the void zone's kit
+    const cracks=3;
+    for(let i=0;i<cracks;i++){
+      const ang = Math.random()*Math.PI*2, rad = rand(30,90);
+      const hx = clamp(targetX+Math.cos(ang)*rad, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*rad, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:16, type:'void', telegraph:0.6+Math.random()*0.3, active:0.001, tick:0, dmg:0 });
+    }
     game.hazards.push({ x:targetX, y:targetY, r:110, type:'void', telegraph:1.3, active:0.4, tick:0, dmg:boss.dmg*1.2 });
     spawnToast('Una estrella colapsa donde estabas parado');
   } else if(type==='shadowShards'){
@@ -10123,6 +11439,14 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.5, radius:8, owner:'enemy', color:boss.def.color, life:2.4, shape:'shard' });
     }
     addParticles(boss.x,boss.y,boss.def.color,16,150,0.35);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*185, vy:Math.sin(ang)*185,
+          dmg:boss.dmg*0.36, radius:7, owner:'enemy', color:boss.def.color, life:2.1, shape:'shard' });
+      }
+    });
   } else if(type==='voidBurst'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=6;
@@ -10132,6 +11456,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:2, shape:'shard' });
     }
     spawnToast('El vacío escupe esquirlas hacia vos');
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<n;i++){
+        const ang = ang1+(i-(n-1)/2)*0.24;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*280, vy:Math.sin(ang)*280,
+          dmg:boss.dmg*0.4, radius:6, owner:'enemy', color:boss.def.color, life:1.8, shape:'shard' });
+      }
+    });
   } else if(type==='darkVolley'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=8;
@@ -10140,6 +11473,15 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*290, vy:Math.sin(ang)*290,
         dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:boss.def.color, life:1.6, shape:'shard' });
     }
+    scheduleBossAction(0.25, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<8;i++){
+        const ang = ang1+(i-3.5)*0.1;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*310, vy:Math.sin(ang)*310,
+          dmg:boss.dmg*0.32, radius:5, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
+      }
+    });
   } else if(type==='eclipseSpray'){
     const n=10;
     for(let i=0;i<n;i++){
@@ -10148,6 +11490,14 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.36, radius:6, owner:'enemy', color:boss.def.color, life:2.2, shape:'wisp' });
     }
     spawnToast('Una sombra estalla en todas direcciones');
+    scheduleBossAction(0.45, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<6;i++){
+        const ang = Math.random()*Math.PI*2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*195, vy:Math.sin(ang)*195,
+          dmg:boss.dmg*0.3, radius:5, owner:'enemy', color:boss.def.color, life:2, shape:'wisp' });
+      }
+    });
   } else if(type==='starfallShards'){
     const n=4;
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
@@ -10157,6 +11507,12 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.78, radius:14, owner:'enemy', color:boss.def.color, life:3.4, shape:'orb' });
     }
     spawnToast('Fragmentos de estrella caen pesadamente');
+    scheduleBossAction(0.55, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang1)*135, vy:Math.sin(ang1)*135,
+        dmg:boss.dmg*0.58, radius:13, owner:'enemy', color:boss.def.color, life:3, shape:'orb' });
+    });
   } else if(type==='umbralArc'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=7;
@@ -10166,7 +11522,21 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.5, shape:'wisp' });
     }
     spawnToast('Un arco de sombra se extiende hacia vos');
+    scheduleBossAction(0.5, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<5;i++){
+        const ang = ang1+(i-2)*0.48;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*205, vy:Math.sin(ang)*205,
+          dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:boss.def.color, life:2.2, shape:'wisp' });
+      }
+    });
   } else if(type==='voidPool'){
+    const decoys = [ [rand(-90,90), rand(-90,90)], [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:40, type:'void', telegraph:0.8, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:48, type:'void', telegraph:0.8, active:0.4, tick:0, dmg:boss.dmg*1.0 });
     spawnToast('Un pozo de vacío se abre en el suelo');
   } else if(type==='shadowPatch'){
@@ -10178,6 +11548,16 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:22, type:'void', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
     }
     spawnToast('Sombras cierran un anillo a tu alrededor');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        const hx = clamp(targetX+Math.cos(ang)*55, b.x+22,b.x+b.w-22);
+        const hy = clamp(targetY+Math.sin(ang)*55, b.y+22,b.y+b.h-22);
+        game.hazards.push({ x:hx, y:hy, r:20, type:'void', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.4 });
+      }
+      spawnToast('Las sombras se cierran más');
+    });
   } else if(type==='darkRift'){
     const steps=7;
     for(let i=0;i<steps;i++){
@@ -10187,7 +11567,23 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'void', telegraph:0.22+frac*0.85, active:0.4, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Una fisura de vacío avanza hacia vos');
+    scheduleBossAction(1.15, ()=>{
+      if(!game.boss) return;
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:targetX,y:targetY, vx:Math.cos(a2)*165, vy:Math.sin(a2)*165,
+          dmg:boss.dmg*0.28, radius:6, owner:'enemy', color:boss.def.color, life:1.5, shape:'shard' });
+      }
+    });
   } else if(type==='eclipseZone'){
+    const cracks=3;
+    for(let i=0;i<cracks;i++){
+      const ang = Math.random()*Math.PI*2, rad = rand(30,80);
+      const hx = clamp(targetX+Math.cos(ang)*rad, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*rad, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:15, type:'void', telegraph:0.55+Math.random()*0.3, active:0.001, tick:0, dmg:0 });
+    }
     game.hazards.push({ x:targetX, y:targetY, r:100, type:'void', telegraph:1.25, active:0.5, tick:0, dmg:boss.dmg*1.05 });
     spawnToast('Una zona de eclipse se cierne sobre el lugar');
   } else if(type==='starfallField'){
@@ -10197,6 +11593,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:30, type:'void', telegraph:0.5+Math.random()*1.0, active:0.45, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Restos estelares caen al azar');
+    scheduleBossAction(1.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:66, type:'void', telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último resto enorme cae junto al jefe');
+    });
   } else if(type==='umbralCage'){
     const n=8;
     for(let i=0;i<n;i++){
@@ -10205,6 +11606,15 @@ function resolveBossAttack(type, tg){
         telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:60 });
     }
     spawnToast('Una jaula de sombras se expande a tu alrededor');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*68, y:targetY+Math.sin(ang)*68, r:16, type:'void',
+          telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.36, expanding:true, expandRate:-50 });
+      }
+      spawnToast('Una segunda jaula se cierra hacia adentro');
+    });
   } else if(type==='voidColumn'){
     const n=4;
     for(let i=0;i<n;i++){
@@ -10212,6 +11622,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:60, type:'void', telegraph:1.2, active:0.5, tick:0, dmg:boss.dmg*0.75 });
     }
     spawnToast('Columnas de vacío se abren por la arena');
+    scheduleBossAction(1.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:70, type:'void', telegraph:0.35, active:0.45, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Una última columna se abre junto al jefe');
+    });
   } else if(type==='nullGround'){
     const n=7;
     for(let i=0;i<n;i++){
@@ -10219,48 +11634,98 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'void', telegraph:0.5+Math.random()*0.9, active:0.4, tick:0, dmg:boss.dmg*0.32 });
     }
     spawnToast('El suelo se anula al azar por toda la sala');
+    scheduleBossAction(1.5, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:62, type:'void', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último anulamiento cae junto al jefe');
+    });
   } else if(type==='shadowSlam'){
     const r=170;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
-    addParticles(boss.x,boss.y,boss.def.color,28,260,0.5);
-    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.4);
-    shake(9);
-    spawnToast('Golpea el suelo con una onda de vacío');
+    addParticles(boss.x,boss.y,boss.def.color,10,80,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.1);
+      addParticles(boss.x,boss.y,boss.def.color,28,260,0.5);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.4);
+      shake(9);
+      spawnToast('Golpea el suelo con una onda de vacío');
+    });
   } else if(type==='voidWisp'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*100, vy:Math.sin(ang)*100,
       dmg:boss.dmg*0.68, radius:11, owner:'enemy', color:boss.def.color, life:4.6, homing:true, shape:'wisp' });
     spawnToast('Un espíritu de vacío te persigue');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*85, vy:Math.sin(ang2)*85,
+        dmg:boss.dmg*0.48, radius:10, owner:'enemy', color:boss.def.color, life:4.2, homing:true, shape:'wisp' });
+      spawnToast('Un segundo espíritu se une');
+    });
   } else if(type==='shadowStalker'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*245, vy:Math.sin(ang)*245,
       dmg:boss.dmg*0.56, radius:9, owner:'enemy', color:boss.def.color, life:2.7, homing:true, shape:'orb' });
     spawnToast('Una sombra veloz te acecha');
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*265, vy:Math.sin(ang2)*265,
+        dmg:boss.dmg*0.42, radius:8, owner:'enemy', color:boss.def.color, life:2.4, homing:true, shape:'orb' });
+    });
   } else if(type==='voidGrasp'){
     p.slowTimer = Math.max(p.slowTimer||0, 2.8);
     p.slowFactor = 0.55;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('El vacío se aferra a tus pasos');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      p.slowTimer = Math.max(p.slowTimer||0, 1.3);
+      addParticles(p.x,p.y,boss.def.color,10,70,0.25);
+      spawnToast('El vacío se aferra más fuerte');
+    });
   } else if(type==='starDrain'){
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Algo drena la fuerza de tus golpes');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:55, type:'void', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('El drenaje termina en un golpe');
+    });
   } else if(type==='nullTouch'){
     p.chillTimer = Math.max(p.chillTimer||0, 3.3);
     p.chillFactor = 1.5;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Un toque nulo entorpece tus reflejos');
+    scheduleBossAction(0.8, ()=>{
+      if(!game.boss) return;
+      p.chillTimer = Math.max(p.chillTimer||0, 2.0);
+      addParticles(p.x,p.y,boss.def.color,12,80,0.25);
+      spawnToast('El toque nulo vuelve a alcanzarte');
+    });
   } else if(type==='voidShroud'){
     boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.07);
     addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
     spawnToast('Un manto de vacío lo restaura');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const r=105;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.45);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      spawnToast('El manto se descarga con fuerza');
+    });
   } else if(type==='royalDecree'){
-    // silences your Q and E abilities for a few seconds — the only ability-lock debuff in the game
     p.qLockTimer = Math.max(p.qLockTimer||0, 2.5);
     p.eLockTimer = Math.max(p.eLockTimer||0, 2.5);
     addParticles(p.x,p.y,boss.def.color,18,120,0.35);
     spawnToast('Un decreto silencia tus habilidades');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:58, type:'spike', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('El decreto se hace cumplir por la fuerza');
+    });
   } else if(type==='throneSlam'){
     // a heavier double-ringed version of a self slam, with two shockwaves instead of one
     const r=180;
@@ -10283,18 +11748,31 @@ function resolveBossAttack(type, tg){
     shake(5);
     spawnToast('Anillos de fuego se expanden en cadena');
   } else if(type==='finalJudgment'){
-    // the dead center of the arena becomes the danger zone — the mirror opposite of
-    // abyssalCollapse, which makes the edges unsafe instead
+    const cracks=4;
+    for(let i=0;i<cracks;i++){
+      const ang = Math.random()*Math.PI*2, rad = rand(30,120);
+      const hx = clamp(b.x+b.w/2+Math.cos(ang)*rad, b.x+22,b.x+b.w-22);
+      const hy = clamp(b.y+b.h/2+Math.sin(ang)*rad, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:16, type:'void', telegraph:0.8+Math.random()*0.4, active:0.001, tick:0, dmg:0 });
+    }
     game.hazards.push({ x:b.x+b.w/2, y:b.y+b.h/2, r:170, type:'void', telegraph:1.4, active:0.5, tick:0, dmg:boss.dmg*1.1 });
     spawnToast('El centro de la sala se vuelve letal');
   } else if(type==='soulBarrage'){
-    // three homing projectiles fired at once in a fan, each chasing independently
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     [-0.4,0,0.4].forEach(off=>{
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang0+off)*130, vy:Math.sin(ang0+off)*130,
         dmg:boss.dmg*0.5, radius:9, owner:'enemy', color:boss.def.color, life:3.2, homing:true, shape:'wisp' });
     });
     spawnToast('Tres almas te persiguen desde ángulos distintos');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      [-0.6,0.6].forEach(off=>{
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang1+off)*115, vy:Math.sin(ang1+off)*115,
+          dmg:boss.dmg*0.4, radius:8, owner:'enemy', color:boss.def.color, life:2.8, homing:true, shape:'wisp' });
+      });
+      spawnToast('Dos almas más se suman a la persecución');
+    });
   } else if(type==='crownShards'){
     const n=9;
     for(let i=0;i<n;i++){
@@ -10304,6 +11782,14 @@ function resolveBossAttack(type, tg){
     }
     shake(5);
     spawnToast('Fragmentos de corona estallan en anillo');
+    scheduleBossAction(0.38, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*255, vy:Math.sin(ang)*255,
+          dmg:boss.dmg*0.38, radius:6, owner:'enemy', color:boss.def.color, life:2, shape:'ember' });
+      }
+    });
   } else if(type==='royalVolley'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=6;
@@ -10313,6 +11799,15 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.55, radius:7, owner:'enemy', color:boss.def.color, life:2, shape:'ember' });
     }
     spawnToast('Una descarga real se dispara hacia vos');
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<n;i++){
+        const ang = ang1+(i-(n-1)/2)*0.2;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*290, vy:Math.sin(ang)*290,
+          dmg:boss.dmg*0.42, radius:6, owner:'enemy', color:boss.def.color, life:1.8, shape:'ember' });
+      }
+    });
   } else if(type==='soulBurst'){
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
     const n=8;
@@ -10321,6 +11816,15 @@ function resolveBossAttack(type, tg){
       spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*300, vy:Math.sin(ang)*300,
         dmg:boss.dmg*0.4, radius:5, owner:'enemy', color:boss.def.color, life:1.6, shape:'wisp' });
     }
+    scheduleBossAction(0.25, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<8;i++){
+        const ang = ang1+(i-3.5)*0.12;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*320, vy:Math.sin(ang)*320,
+          dmg:boss.dmg*0.32, radius:5, owner:'enemy', color:boss.def.color, life:1.5, shape:'wisp' });
+      }
+    });
   } else if(type==='radiantBlast'){
     const n=10;
     for(let i=0;i<n;i++){
@@ -10329,6 +11833,14 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.4, shape:'ember' });
     }
     addParticles(boss.x,boss.y,boss.def.color,16,150,0.35);
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*225, vy:Math.sin(ang)*225,
+          dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:boss.def.color, life:2.1, shape:'ember' });
+      }
+    });
   } else if(type==='scepterShards'){
     const n=4;
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
@@ -10338,6 +11850,12 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.72, radius:10, owner:'enemy', color:boss.def.color, life:1.8, shape:'orb' });
     }
     spawnToast('El cetro dispara con fuerza real');
+    scheduleBossAction(0.4, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang1)*320, vy:Math.sin(ang1)*320,
+        dmg:boss.dmg*0.55, radius:9, owner:'enemy', color:boss.def.color, life:1.6, shape:'orb' });
+    });
   } else if(type==='dominionSpray'){
     const n=7;
     const ang0 = Math.atan2(p.y-boss.y, p.x-boss.x);
@@ -10347,10 +11865,31 @@ function resolveBossAttack(type, tg){
         dmg:boss.dmg*0.42, radius:7, owner:'enemy', color:boss.def.color, life:2.5, shape:'wisp' });
     }
     spawnToast('Su dominio se extiende hacia vos en abanico');
+    scheduleBossAction(0.5, ()=>{
+      if(!game.boss) return;
+      const ang1 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      for(let i=0;i<5;i++){
+        const ang = ang1+(i-2)*0.5;
+        spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*200, vy:Math.sin(ang)*200,
+          dmg:boss.dmg*0.32, radius:6, owner:'enemy', color:boss.def.color, life:2.2, shape:'wisp' });
+      }
+    });
   } else if(type==='thronePatch'){
+    const decoys = [ [rand(-90,90), rand(-90,90)], [rand(-90,90), rand(-90,90)] ];
+    decoys.forEach(([dx,dy])=>{
+      const hx = clamp(targetX+dx, b.x+22,b.x+b.w-22), hy = clamp(targetY+dy, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:36, type:'spike', telegraph:0.75, active:0.001, tick:0, dmg:0 });
+    });
     game.hazards.push({ x:targetX, y:targetY, r:44, type:'spike', telegraph:0.75, active:0.4, tick:0, dmg:boss.dmg*1.0 });
     spawnToast('El trono señala un punto de castigo');
   } else if(type==='judgmentZone'){
+    const cracks=3;
+    for(let i=0;i<cracks;i++){
+      const ang = Math.random()*Math.PI*2, rad = rand(30,80);
+      const hx = clamp(targetX+Math.cos(ang)*rad, b.x+22,b.x+b.w-22);
+      const hy = clamp(targetY+Math.sin(ang)*rad, b.y+22,b.y+b.h-22);
+      game.hazards.push({ x:hx, y:hy, r:15, type:'fire', telegraph:0.5+Math.random()*0.3, active:0.001, tick:0, dmg:0 });
+    }
     game.hazards.push({ x:targetX, y:targetY, r:100, type:'fire', telegraph:1.2, active:0.5, tick:0, dmg:boss.dmg*1.05 });
     spawnToast('Una zona de juicio se enciende bajo tus pies');
   } else if(type==='soulField'){
@@ -10362,6 +11901,16 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:22, type:'spike', telegraph:0.6, active:0.4, tick:0, dmg:boss.dmg*0.36 });
     }
     spawnToast('Almas errantes cierran un anillo a tu alrededor');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        const hx = clamp(targetX+Math.cos(ang)*56, b.x+22,b.x+b.w-22);
+        const hy = clamp(targetY+Math.sin(ang)*56, b.y+22,b.y+b.h-22);
+        game.hazards.push({ x:hx, y:hy, r:20, type:'spike', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.4 });
+      }
+      spawnToast('Más almas se suman al anillo');
+    });
   } else if(type==='dominionCircle'){
     const n=8;
     for(let i=0;i<n;i++){
@@ -10370,6 +11919,15 @@ function resolveBossAttack(type, tg){
         telegraph:0.4, active:0.5, tick:0, dmg:boss.dmg*0.4, expanding:true, expandRate:60 });
     }
     spawnToast('Un círculo de dominio se expande hacia afuera');
+    scheduleBossAction(0.65, ()=>{
+      if(!game.boss) return;
+      for(let i=0;i<n;i++){
+        const ang=(i/n)*Math.PI*2 + Math.PI/n;
+        game.hazards.push({ x:targetX+Math.cos(ang)*70, y:targetY+Math.sin(ang)*70, r:16, type:'fire',
+          telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.36, expanding:true, expandRate:-52 });
+      }
+      spawnToast('Un segundo círculo se cierra hacia adentro');
+    });
   } else if(type==='regalSpikes'){
     const steps=7;
     for(let i=0;i<steps;i++){
@@ -10379,6 +11937,15 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'spike', telegraph:0.22+frac*0.85, active:0.4, tick:0, dmg:boss.dmg*0.4 });
     }
     spawnToast('Picos reales emergen en fila hacia vos');
+    scheduleBossAction(1.15, ()=>{
+      if(!game.boss) return;
+      const m=6;
+      for(let k=0;k<m;k++){
+        const a2=(k/m)*Math.PI*2;
+        spawnProjectile({ x:targetX,y:targetY, vx:Math.cos(a2)*170, vy:Math.sin(a2)*170,
+          dmg:boss.dmg*0.3, radius:6, owner:'enemy', color:boss.def.color, life:1.5, shape:'ember' });
+      }
+    });
   } else if(type==='sovereignGround'){
     const n=6;
     for(let i=0;i<n;i++){
@@ -10386,6 +11953,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:28, type:'spike', telegraph:0.5+Math.random()*1.0, active:0.45, tick:0, dmg:boss.dmg*0.36 });
     }
     spawnToast('El suelo se alza al azar por orden del trono');
+    scheduleBossAction(1.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:66, type:'spike', telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.55 });
+      spawnToast('Un último pico enorme se alza junto al jefe');
+    });
   } else if(type==='crownfireField'){
     const n=4;
     for(let i=0;i<n;i++){
@@ -10393,6 +11965,11 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:56, type:'fire', telegraph:1.1, active:0.45, tick:0, dmg:boss.dmg*0.7 });
     }
     spawnToast('Fuego de corona se enciende por la arena');
+    scheduleBossAction(1.5, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:64, type:'fire', telegraph:0.3, active:0.4, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último fuego enorme se enciende junto al jefe');
+    });
   } else if(type==='royalGround'){
     const n=7;
     for(let i=0;i<n;i++){
@@ -10400,41 +11977,86 @@ function resolveBossAttack(type, tg){
       game.hazards.push({ x:hx, y:hy, r:24, type:'fire', telegraph:0.5+Math.random()*0.9, active:0.4, tick:0, dmg:boss.dmg*0.32 });
     }
     spawnToast('El suelo arde al azar por toda la sala');
+    scheduleBossAction(1.5, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:boss.x, y:boss.y, r:60, type:'fire', telegraph:0.3, active:0.35, tick:0, dmg:boss.dmg*0.5 });
+      spawnToast('Un último fuego arde junto al jefe');
+    });
   } else if(type==='royalSlam'){
     const r=165;
-    if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
-    addParticles(boss.x,boss.y,boss.def.color,28,250,0.45);
-    spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
-    shake(8);
-    spawnToast('Golpea el suelo con autoridad real');
+    addParticles(boss.x,boss.y,boss.def.color,10,80,0.3);
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*1.05);
+      addParticles(boss.x,boss.y,boss.def.color,28,250,0.45);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.35);
+      shake(8);
+      spawnToast('Golpea el suelo con autoridad real');
+    });
   } else if(type==='soulChaser'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*105, vy:Math.sin(ang)*105,
       dmg:boss.dmg*0.68, radius:11, owner:'enemy', color:boss.def.color, life:4.5, homing:true, shape:'wisp' });
     spawnToast('Un alma condenada te persigue');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*90, vy:Math.sin(ang2)*90,
+        dmg:boss.dmg*0.48, radius:10, owner:'enemy', color:boss.def.color, life:4, homing:true, shape:'wisp' });
+      spawnToast('Otra alma condenada se une');
+    });
   } else if(type==='wraithMark'){
     const ang = Math.atan2(p.y-boss.y, p.x-boss.x);
     spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang)*250, vy:Math.sin(ang)*250,
       dmg:boss.dmg*0.56, radius:9, owner:'enemy', color:boss.def.color, life:2.7, homing:true, shape:'orb' });
     spawnToast('Una marca espectral te sigue veloz');
+    scheduleBossAction(0.35, ()=>{
+      if(!game.boss) return;
+      const ang2 = Math.atan2(p.y-boss.y, p.x-boss.x);
+      spawnProjectile({ x:boss.x,y:boss.y, vx:Math.cos(ang2)*270, vy:Math.sin(ang2)*270,
+        dmg:boss.dmg*0.42, radius:8, owner:'enemy', color:boss.def.color, life:2.4, homing:true, shape:'orb' });
+    });
   } else if(type==='royalCurse'){
     p.weakenTimer = Math.max(p.weakenTimer||0, 4);
     p.weakenFactor = 0.75;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Una maldición real debilita tus golpes');
+    scheduleBossAction(0.6, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:56, type:'spike', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.35 });
+      spawnToast('La maldición se cierra sobre vos');
+    });
   } else if(type==='soulDrain'){
     p.witherTimer = Math.max(p.witherTimer||0, 4.5);
     addParticles(p.x,p.y,boss.def.color,14,100,0.3);
     spawnToast('Algo drena tu voluntad de sanar');
+    scheduleBossAction(0.7, ()=>{
+      if(!game.boss) return;
+      game.hazards.push({ x:p.x, y:p.y, r:52, type:'void', telegraph:0.3, active:0.3, tick:0, dmg:boss.dmg*0.3 });
+      spawnToast('El drenaje se completa');
+    });
   } else if(type==='crownBind'){
     p.slowTimer = Math.max(p.slowTimer||0, 2.8);
     p.slowFactor = 0.55;
     addParticles(p.x,p.y,boss.def.color,14,90,0.3);
     spawnToast('Cadenas doradas atan tus pasos');
+    scheduleBossAction(0.9, ()=>{
+      if(!game.boss) return;
+      p.slowTimer = Math.max(p.slowTimer||0, 1.4);
+      addParticles(p.x,p.y,boss.def.color,10,70,0.25);
+      spawnToast('Las cadenas se aprietan más');
+    });
   } else if(type==='royalAegis'){
     boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp*0.07);
     addParticles(boss.x,boss.y,boss.def.color,16,110,0.3);
     spawnToast('Una égida real lo restaura');
+    scheduleBossAction(0.75, ()=>{
+      if(!game.boss) return;
+      const r=105;
+      if(dist(boss.x,boss.y,p.x,p.y)<r) hitPlayer(boss.dmg*0.45);
+      spawnShockwave(boss.x,boss.y,boss.def.color,r,0.3);
+      spawnToast('La égida se descarga con fuerza real');
+    });
   } else if(type==='fireWave'){
     game.hazards.push({ x:boss.x, y:boss.y, r:24, type:'fire', telegraph:0, active:2.4, tick:0, dmg:boss.dmg*0.5, expanding:true, expandRate:145 });
     spawnToast('Una oleada de fuego se expande');
@@ -13648,7 +15270,11 @@ function updateHazards(dt){
       if(h.telegraph>0){
         h.telegraph-=dt;
       } else {
-        if(h.expanding) h.r += (h.expandRate||100)*dt;
+        // BUG (real): expanding hazards with a *negative* expandRate ("closing ring" moves) had
+        // no floor, so h.r eventually went to 0 and below. Every hazard is drawn with
+        // ctx.createRadialGradient(..., h.r) somewhere, and a negative radius there throws
+        // IndexSizeError and kills the whole render loop. Floor it well above 0.
+        if(h.expanding) h.r = Math.max(4, h.r + (h.expandRate||100)*dt);
         h.active-=dt; h.tick-=dt;
         const p=game.player;
         if(h.tick<=0 && p.invuln<=0 && dist(h.x,h.y,p.x,p.y)<h.r){
