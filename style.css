@@ -89,6 +89,36 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
   justify-content:flex-start;
   padding:36px 20px 50px;
 }
+/* ---------- co-op multiplayer panel (P2P via PeerJS) ---------- */
+.mp-panel{
+  margin-top:20px; max-width:640px; width:100%;
+  background:rgba(0,0,0,0.28); border:1px solid var(--line); border-radius:8px; padding:14px 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 26px -16px rgba(0,0,0,0.7);
+}
+.mp-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.mp-sep{ font-family:var(--font-mono); font-size:11px; color:var(--bone-dim); }
+.mp-input{
+  flex:1; min-width:140px; background:rgba(0,0,0,0.35); border:1px solid var(--line); border-radius:5px;
+  padding:9px 12px; color:var(--bone); font-family:var(--font-mono); font-size:12px;
+}
+.mp-input:focus{ outline:none; border-color:var(--shade-dim); }
+.mp-status{ margin-top:10px; font-family:var(--font-mono); font-size:11.5px; color:var(--gold); min-height:14px; }
+.mp-hero-picker{
+  margin-top:16px; max-width:640px; width:100%;
+  background:rgba(0,0,0,0.28); border:1px solid var(--line); border-radius:8px; padding:14px 18px;
+}
+.mp-hero-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); gap:8px; max-height:280px; overflow-y:auto; }
+.mp-hero-pick{
+  background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:5px; padding:10px 8px;
+  text-align:center; cursor:pointer; transition:border-color .15s, background .15s;
+  font-family:var(--font-mono); font-size:10.5px; color:var(--bone-dim);
+}
+.mp-hero-pick:hover{ border-color:var(--shade-dim); background:rgba(255,255,255,0.04); }
+.mp-hero-pick .ic{ font-size:22px; display:block; margin-bottom:4px; }
+.p2-wrap{ min-width:200px; }
+.p2-bar{ height:10px; }
+.p2-bar .bar-fill{ background:linear-gradient(90deg, #166534, #4ade80); }
+
 .menu-tabs{
   display:flex; gap:2px; margin-top:26px; flex-wrap:wrap; justify-content:center;
   background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:8px; padding:5px; max-width:900px;

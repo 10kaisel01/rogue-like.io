@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -18,6 +19,24 @@
     <div class="title-main">DESCENSO</div>
     <div class="subtitle">No hay fondo. Cada puerta guarda un altar, y cada altar despierta a algo
       que no debería despertar. Sobrevive tanto como puedas y desbloquea nuevos héroes por el camino.</div>
+
+    <!-- MULTIJUGADOR (P2P vía PeerJS) -->
+    <div class="mp-panel" id="mp-panel">
+      <div class="eyebrow" style="margin:0 0 10px;">Cooperativo (Beta) · P2P</div>
+      <div class="mp-row">
+        <button class="btn ghost" id="btn-mp-host">Crear Partida (Host)</button>
+        <span class="mp-sep">o</span>
+        <input type="text" id="mp-join-input" class="mp-input" placeholder="ID del host">
+        <button class="btn ghost" id="btn-mp-join">Unirse</button>
+      </div>
+      <div class="mp-status" id="mp-status"></div>
+    </div>
+
+    <!-- Selector de héroe para el Invitado — aparece tras conectar -->
+    <div class="mp-hero-picker hidden" id="mp-hero-picker">
+      <div class="eyebrow" style="margin:0 0 10px;">Elegí tu héroe (Jugador 2)</div>
+      <div class="mp-hero-grid" id="mp-hero-grid"></div>
+    </div>
 
     <div class="menu-tabs" id="menu-tabs">
       <button class="menu-tab active" data-tab="personajes">Personajes</button>
@@ -144,6 +163,10 @@
         <div class="gold-wrap">◆ <span id="gold-count">0</span></div>
         <div class="combo-wrap" id="combo-wrap" style="display:none;">🔥 Racha x<span id="combo-count">0</span></div>
         <div class="effects-panel" id="effects-panel"></div>
+      </div>
+      <div class="hp-wrap p2-wrap hidden" id="p2-wrap">
+        <div class="hero-tag"><b id="hud-p2-name">Jugador 2</b></div>
+        <div class="bar-shell p2-bar"><div class="bar-fill" id="p2-hp-fill" style="width:100%"></div><div class="bar-label" id="p2-hp-label">—/—</div></div>
       </div>
       <div class="stage-tag">
         <div class="level-tag">Nv. <b id="hud-char-level">1</b></div>

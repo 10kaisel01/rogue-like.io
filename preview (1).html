@@ -98,6 +98,36 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
   justify-content:flex-start;
   padding:36px 20px 50px;
 }
+/* ---------- co-op multiplayer panel (P2P via PeerJS) ---------- */
+.mp-panel{
+  margin-top:20px; max-width:640px; width:100%;
+  background:rgba(0,0,0,0.28); border:1px solid var(--line); border-radius:8px; padding:14px 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 26px -16px rgba(0,0,0,0.7);
+}
+.mp-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.mp-sep{ font-family:var(--font-mono); font-size:11px; color:var(--bone-dim); }
+.mp-input{
+  flex:1; min-width:140px; background:rgba(0,0,0,0.35); border:1px solid var(--line); border-radius:5px;
+  padding:9px 12px; color:var(--bone); font-family:var(--font-mono); font-size:12px;
+}
+.mp-input:focus{ outline:none; border-color:var(--shade-dim); }
+.mp-status{ margin-top:10px; font-family:var(--font-mono); font-size:11.5px; color:var(--gold); min-height:14px; }
+.mp-hero-picker{
+  margin-top:16px; max-width:640px; width:100%;
+  background:rgba(0,0,0,0.28); border:1px solid var(--line); border-radius:8px; padding:14px 18px;
+}
+.mp-hero-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); gap:8px; max-height:280px; overflow-y:auto; }
+.mp-hero-pick{
+  background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:5px; padding:10px 8px;
+  text-align:center; cursor:pointer; transition:border-color .15s, background .15s;
+  font-family:var(--font-mono); font-size:10.5px; color:var(--bone-dim);
+}
+.mp-hero-pick:hover{ border-color:var(--shade-dim); background:rgba(255,255,255,0.04); }
+.mp-hero-pick .ic{ font-size:22px; display:block; margin-bottom:4px; }
+.p2-wrap{ min-width:200px; }
+.p2-bar{ height:10px; }
+.p2-bar .bar-fill{ background:linear-gradient(90deg, #166534, #4ade80); }
+
 .menu-tabs{
   display:flex; gap:2px; margin-top:26px; flex-wrap:wrap; justify-content:center;
   background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:8px; padding:5px; max-width:900px;
@@ -501,6 +531,7 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
 .merchant-buy{ padding:8px 16px; font-size:12px; flex-shrink:0; }
 
 </style>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -512,6 +543,24 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
     <div class="title-main">DESCENSO</div>
     <div class="subtitle">No hay fondo. Cada puerta guarda un altar, y cada altar despierta a algo
       que no debería despertar. Sobrevive tanto como puedas y desbloquea nuevos héroes por el camino.</div>
+
+    <!-- MULTIJUGADOR (P2P vía PeerJS) -->
+    <div class="mp-panel" id="mp-panel">
+      <div class="eyebrow" style="margin:0 0 10px;">Cooperativo (Beta) · P2P</div>
+      <div class="mp-row">
+        <button class="btn ghost" id="btn-mp-host">Crear Partida (Host)</button>
+        <span class="mp-sep">o</span>
+        <input type="text" id="mp-join-input" class="mp-input" placeholder="ID del host">
+        <button class="btn ghost" id="btn-mp-join">Unirse</button>
+      </div>
+      <div class="mp-status" id="mp-status"></div>
+    </div>
+
+    <!-- Selector de héroe para el Invitado — aparece tras conectar -->
+    <div class="mp-hero-picker hidden" id="mp-hero-picker">
+      <div class="eyebrow" style="margin:0 0 10px;">Elegí tu héroe (Jugador 2)</div>
+      <div class="mp-hero-grid" id="mp-hero-grid"></div>
+    </div>
 
     <div class="menu-tabs" id="menu-tabs">
       <button class="menu-tab active" data-tab="personajes">Personajes</button>
@@ -638,6 +687,10 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
         <div class="gold-wrap">◆ <span id="gold-count">0</span></div>
         <div class="combo-wrap" id="combo-wrap" style="display:none;">🔥 Racha x<span id="combo-count">0</span></div>
         <div class="effects-panel" id="effects-panel"></div>
+      </div>
+      <div class="hp-wrap p2-wrap hidden" id="p2-wrap">
+        <div class="hero-tag"><b id="hud-p2-name">Jugador 2</b></div>
+        <div class="bar-shell p2-bar"><div class="bar-fill" id="p2-hp-fill" style="width:100%"></div><div class="bar-label" id="p2-hp-label">—/—</div></div>
       </div>
       <div class="stage-tag">
         <div class="level-tag">Nv. <b id="hud-char-level">1</b></div>
@@ -2816,6 +2869,16 @@ function updateKeyEdges(){
 let game = null; // active run state
 let devMode = false; // secret dev/test mode: infinite HP + one-shot damage (toggled by typing "diosmodo")
 let selectedHero = null;
+
+/* ============================================================
+   MULTIJUGADOR (P2P vía PeerJS) — sincronización de posición
+   ============================================================ */
+let peer = null;       // instancia PeerJS local
+let conn = null;       // DataConnection activa con el otro jugador
+let esHost = false;    // true si esta pestaña creó la partida
+let mpSendTimer = null; // handle del setInterval que envía nuestra posición
+const jugador2 = { x:0, y:0, active:false }; // posición del otro jugador, recibida por la red
+
 const PACTS = [
   { id:'hardMode', name:'Pacto del Enjambre', desc:'+30% vida/daño de enemigos, pero +15% de oro', icon:'⚔' },
   { id:'noHeal', name:'Pacto de Sangre Seca', desc:'Sin regeneración pasiva ni robo de vida, pero +20% daño', icon:'☠' },
@@ -3312,6 +3375,294 @@ document.querySelectorAll('.menu-tab').forEach(btn=>{
     document.querySelectorAll('.menu-tab-panel').forEach(panel=>{
       panel.classList.toggle('hidden', panel.dataset.tab!==tab);
     });
+  });
+});
+
+/* ============================================================
+   MULTIJUGADOR (P2P vía PeerJS) — Host-autoritativo
+   ============================================================
+   El Host corre TODA la simulación (su propio game.player Y game.player2, enemigos, jefe,
+   hazards — ver updatePlayerEntity/pickAiTarget/hitPlayer más arriba). El Invitado no simula
+   nada localmente: manda su input (WASD, ángulo del mouse, teclas de habilidad) y recibe un
+   snapshot liviano del mundo del Host para dibujarlo con renderGuestView(), una vista más simple
+   que la del Host (círculos con color y barra de vida) para no depender de los cientos de campos
+   que las funciones de dibujo completas (drawEnemy/drawBoss/etc) esperan tener siempre. */
+
+let guestSnapshot = null;   // último paquete de mundo recibido del Host (Invitado)
+let guestLoopId = null;     // requestAnimationFrame handle del loop del Invitado
+let guestPendingActions = { qPressed:false, ePressed:false, rPressed:false, shiftPressed:false,
+  potion1:false, potion2:false, potion3:false, potion4:false, spacePressed:false };
+
+// El Invitado acumula "se apretó esta tecla" directo del evento keydown (no de keyPressed(), que
+// depende de updateKeyEdges() corriendo cada frame en el loop normal — el Invitado no corre ese
+// loop). Así ningún tap de Q/E/R se pierde entre un envío de red y el siguiente.
+window.addEventListener('keydown', (e)=>{
+  if(esHost || !conn || !conn.open) return;
+  if(e.code==='KeyQ') guestPendingActions.qPressed = true;
+  else if(e.code==='KeyE') guestPendingActions.ePressed = true;
+  else if(e.code==='KeyR') guestPendingActions.rPressed = true;
+  else if(e.code==='ShiftLeft'||e.code==='ShiftRight') guestPendingActions.shiftPressed = true;
+  else if(e.code==='Digit1') guestPendingActions.potion1 = true;
+  else if(e.code==='Digit2') guestPendingActions.potion2 = true;
+  else if(e.code==='Digit3') guestPendingActions.potion3 = true;
+  else if(e.code==='Digit4') guestPendingActions.potion4 = true;
+  else if(e.code==='Space') guestPendingActions.spacePressed = true;
+});
+
+function buildGuestHeroPicker(){
+  const grid = $('mp-hero-grid');
+  grid.innerHTML = Object.values(HEROES).map(h=>`
+    <div class="mp-hero-pick" data-hero="${h.id}">
+      <span class="ic">${h.icon}</span>${h.name}
+    </div>
+  `).join('');
+  grid.querySelectorAll('.mp-hero-pick').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const heroId = el.dataset.hero;
+      conn.send({ t:'selectHero', heroId });
+      $('mp-hero-picker').classList.add('hidden');
+      $('mp-status').textContent = 'Personaje elegido — esperando al Host...';
+      startGuestLoop();
+    });
+  });
+}
+
+// Serializa solo lo necesario para que el Invitado pueda dibujar la escena — no el objeto
+// completo (que tiene decenas de campos de animación/estado interno por enemigo/jefe).
+function buildHostSnapshot(){
+  if(!game) return null;
+  return {
+    t:'snapshot',
+    phase: game.phase,
+    stageName: game.currentStage ? game.currentStage.name : '',
+    player1: { x:game.player.x, y:game.player.y, hp:game.player.hp, maxHp:game.player.maxHp },
+    player2: game.player2 ? { x:game.player2.x, y:game.player2.y, hp:game.player2.hp, maxHp:game.player2.maxHp, downed: !!game.player2.downed } : null,
+    enemies: game.enemies.map(en=>({ x:en.x, y:en.y, hp:en.hp, maxHp:en.maxHp, radius:en.radius||18, color: en.def ? en.def.color : '#c0392b' })),
+    boss: game.boss ? {
+      x:game.boss.x, y:game.boss.y, hp:game.boss.hp, maxHp:game.boss.maxHp, radius:game.boss.radius||48,
+      name: game.boss.def ? game.boss.def.name : 'Jefe', color: game.boss.def ? game.boss.def.color : '#7a2b96',
+      telegraph: game.boss.telegraph ? { tx:game.boss.telegraph.tx, ty:game.boss.telegraph.ty } : null
+    } : null,
+    // topes para no mandar paquetes gigantes en pisos con muchos hazards/proyectiles a la vez
+    hazards: game.hazards.slice(0,40).map(h=>({ x:h.x, y:h.y, r:h.r, telegraph:h.telegraph>0,
+      color: h.type==='fire'?'#ff6a3d':h.type==='ice'?'#6a8dff':h.type==='poison'?'#8bff6b':h.type==='storm'?'#ffcb47':h.type==='void'?'#7a2b96':'#e8434f' })),
+    projectiles: game.projectiles.slice(0,60).map(pr=>({ x:pr.x, y:pr.y, radius:pr.radius||6, color:pr.color||'#fff' }))
+  };
+}
+
+function sendGuestInput(){
+  if(esHost || !conn || !conn.open) return;
+  const camTarget = guestSnapshot ? (guestSnapshot.player2 || guestSnapshot.player1) : null;
+  let angle = 0;
+  if(camTarget){
+    const worldMouseX = camTarget.x + (mouse.x - canvas.width/2);
+    const worldMouseY = camTarget.y + (mouse.y - canvas.height/2);
+    angle = Math.atan2(worldMouseY-camTarget.y, worldMouseX-camTarget.x);
+  }
+  conn.send({
+    t:'input',
+    keys: { KeyW:!!keys['KeyW'], KeyA:!!keys['KeyA'], KeyS:!!keys['KeyS'], KeyD:!!keys['KeyD'] },
+    angle, mouseDown: !!mouse.down,
+    ...guestPendingActions
+  });
+  guestPendingActions = { qPressed:false, ePressed:false, rPressed:false, shiftPressed:false,
+    potion1:false, potion2:false, potion3:false, potion4:false, spacePressed:false };
+}
+
+function drawSimplePlayerDot(pl, color, label){
+  ctx.save();
+  ctx.translate(pl.x,pl.y);
+  ctx.globalAlpha = pl.downed ? 0.4 : 1;
+  ctx.shadowColor=color; ctx.shadowBlur=14;
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#0a0710'; ctx.font='700 10px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(label,0,4);
+  if(pl.maxHp>0){
+    const w=40;
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(-w/2,-34,w,5);
+    ctx.fillStyle=color; ctx.fillRect(-w/2,-34,w*clamp(pl.hp/pl.maxHp,0,1),5);
+  }
+  ctx.restore();
+}
+
+// Vista simplificada del Invitado — círculos con color y barra de vida en vez de reusar
+// drawEnemy/drawBoss (que asumen decenas de campos que un snapshot liviano no manda).
+function renderGuestView(){
+  ctx.fillStyle = '#0a0710';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  const snap = guestSnapshot;
+  if(!snap){
+    ctx.fillStyle = '#a89a8c'; ctx.font='16px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('Esperando datos del Host...', canvas.width/2, canvas.height/2);
+    return;
+  }
+  const camTarget = snap.player2 || snap.player1;
+  const camX = (camTarget ? camTarget.x : 0) - canvas.width/2;
+  const camY = (camTarget ? camTarget.y : 0) - canvas.height/2;
+  ctx.save();
+  ctx.translate(-camX, -camY);
+
+  (snap.hazards||[]).forEach(h=>{
+    ctx.globalAlpha = h.telegraph ? 0.25 : 0.5;
+    ctx.fillStyle = h.color;
+    ctx.beginPath(); ctx.arc(h.x,h.y,h.r,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha=1;
+
+  (snap.enemies||[]).forEach(en=>{
+    ctx.fillStyle = en.color;
+    ctx.beginPath(); ctx.arc(en.x,en.y,en.radius,0,Math.PI*2); ctx.fill();
+    if(en.maxHp>0){
+      const w=32;
+      ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(en.x-w/2,en.y-en.radius-10,w,4);
+      ctx.fillStyle='#e8434f'; ctx.fillRect(en.x-w/2,en.y-en.radius-10,w*clamp(en.hp/en.maxHp,0,1),4);
+    }
+  });
+
+  if(snap.boss){
+    const bo = snap.boss;
+    ctx.fillStyle = bo.color;
+    ctx.beginPath(); ctx.arc(bo.x,bo.y,bo.radius,0,Math.PI*2); ctx.fill();
+    const w=90;
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(bo.x-w/2,bo.y-bo.radius-18,w,8);
+    ctx.fillStyle='#e8434f'; ctx.fillRect(bo.x-w/2,bo.y-bo.radius-18,w*clamp(bo.hp/bo.maxHp,0,1),8);
+    ctx.fillStyle='#ece2cf'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(bo.name, bo.x, bo.y-bo.radius-24);
+    if(bo.telegraph){
+      ctx.globalAlpha=0.35; ctx.fillStyle='#ffcb47';
+      ctx.beginPath(); ctx.arc(bo.telegraph.tx,bo.telegraph.ty,40,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+
+  (snap.projectiles||[]).forEach(pr=>{
+    ctx.fillStyle = pr.color;
+    ctx.beginPath(); ctx.arc(pr.x,pr.y,pr.radius,0,Math.PI*2); ctx.fill();
+  });
+
+  if(snap.player1) drawSimplePlayerDot(snap.player1, '#6a8dff', 'J1');
+  if(snap.player2) drawSimplePlayerDot(snap.player2, '#4ade80', 'J2');
+  ctx.restore();
+
+  if(snap.player2){
+    ctx.fillStyle='#ece2cf'; ctx.font='14px sans-serif'; ctx.textAlign='left';
+    ctx.fillText(`Vida: ${Math.ceil(snap.player2.hp)}/${Math.ceil(snap.player2.maxHp)}`, 16, 26);
+  }
+  if(snap.stageName){
+    ctx.fillStyle='#a89a8c'; ctx.font='12px sans-serif'; ctx.textAlign='right';
+    ctx.fillText(snap.stageName, canvas.width-16, 26);
+  }
+}
+
+function startGuestLoop(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  $('hud').classList.add('hidden'); // el HUD completo del Host no aplica acá — usamos el texto simple de renderGuestView
+  if(guestLoopId) cancelAnimationFrame(guestLoopId);
+  function loopGuest(){
+    renderGuestView();
+    guestLoopId = requestAnimationFrame(loopGuest);
+  }
+  guestLoopId = requestAnimationFrame(loopGuest);
+}
+
+// Sincronización de datos: arma el listener de recepción y el setInterval de envío (50ms) —
+// para el Host eso manda un snapshot del mundo; para el Invitado, su input.
+function setupConexionP2P(){
+  if(!conn) return;
+  conn.on('open', ()=>{
+    jugador2.active = true;
+    spawnToast('¡Conectado!');
+    if(esHost){
+      $('mp-status').textContent = 'Jugador 2 conectado — esperando que elija personaje';
+    } else {
+      $('mp-status').textContent = 'Conectado al Host';
+      $('mp-hero-picker').classList.remove('hidden');
+      buildGuestHeroPicker();
+    }
+    if(mpSendTimer) clearInterval(mpSendTimer);
+    mpSendTimer = setInterval(()=>{
+      if(!conn || !conn.open) return;
+      if(esHost){
+        const snap = buildHostSnapshot();
+        if(snap) conn.send(snap);
+      } else {
+        sendGuestInput();
+      }
+    }, 50);
+  });
+  conn.on('data', (data)=>{
+    if(!data || !data.t) return;
+    if(data.t==='snapshot'){
+      guestSnapshot = data;
+    } else if(data.t==='selectHero'){
+      if(esHost && game){
+        const heroDef = HEROES[data.heroId];
+        if(heroDef){
+          game.player2 = freshPlayerStats(heroDef);
+          game.player2.x = game.player.x + 50;
+          game.player2.y = game.player.y;
+          game.player2.active = true;
+          game.player2.networkInput = idleInput();
+          spawnToast(`Jugador 2 entra a la partida como ${heroDef.name}`);
+        }
+      }
+    } else if(data.t==='input'){
+      if(esHost && game && game.player2){
+        game.player2.networkInput = data;
+      }
+    }
+  });
+  conn.on('close', ()=>{
+    jugador2.active = false;
+    if(game && game.player2) game.player2.active = false;
+    if(mpSendTimer){ clearInterval(mpSendTimer); mpSendTimer = null; }
+    if(guestLoopId){ cancelAnimationFrame(guestLoopId); guestLoopId = null; }
+    $('mp-status').textContent = 'Jugador 2 se desconectó';
+    spawnToast('Jugador 2 se desconectó');
+  });
+  conn.on('error', (err)=>{
+    console.error('Error de conexión P2P:', err);
+    $('mp-status').textContent = 'Error de conexión';
+  });
+}
+
+// Host: crea un Peer, muestra el ID generado y espera a que alguien se conecte
+$('btn-mp-host').addEventListener('click', ()=>{
+  esHost = true;
+  $('mp-status').textContent = 'Generando ID...';
+  peer = new Peer();
+  peer.on('open', (id)=>{
+    $('mp-status').textContent = 'Tu ID (compartíselo a tu compañero): ' + id;
+  });
+  peer.on('connection', (c)=>{
+    conn = c;
+    setupConexionP2P();
+  });
+  peer.on('error', (err)=>{
+    console.error('Error de PeerJS (host):', err);
+    $('mp-status').textContent = 'Error al crear la partida';
+  });
+});
+
+// Invitado: crea su propio Peer y se conecta al ID ingresado en el input
+$('btn-mp-join').addEventListener('click', ()=>{
+  const idDestino = $('mp-join-input').value.trim();
+  if(!idDestino){
+    $('mp-status').textContent = 'Ingresá el ID del host primero';
+    return;
+  }
+  esHost = false;
+  $('mp-status').textContent = 'Conectando...';
+  peer = new Peer();
+  peer.on('open', ()=>{
+    conn = peer.connect(idDestino);
+    setupConexionP2P();
+  });
+  peer.on('error', (err)=>{
+    console.error('Error de PeerJS (invitado):', err);
+    $('mp-status').textContent = 'Error al conectar';
   });
 });
 
@@ -4259,8 +4610,6 @@ function addComboPop(x,y,combo){
    ============================================================ */
 function update(dt){
   game.time+=dt;
-  const b = arenaBounds();
-  const p = game.player;
 
   // --- boss ritual countdown (3..2..1) before the boss actually appears ---
   if(game.phase==='bossIntro'){
@@ -4284,187 +4633,11 @@ function update(dt){
     }
   }
 
-  // --- player timers ---
-  p.atkTimer = Math.max(0,p.atkTimer-dt);
-  p.qTimer = Math.max(0,p.qTimer-dt);
-  p.eTimer = Math.max(0,p.eTimer-dt);
-  // Paso de Sombra: catch the exact frame invulnerability (i-frames) ends to grant a brief burst
-  const _wasInvuln = p.invuln>0;
-  p.invuln = Math.max(0,p.invuln-dt);
-  if(_wasInvuln && p.invuln<=0 && p.relics.effect_shadowStep){
-    p.speedBurstTimer = 1.0;
+  // --- jugador(es): timers, movimiento, ataque, habilidades — ver updatePlayerEntity más abajo ---
+  updatePlayerEntity(game.player, localInput(), dt);
+  if(esHost && game.player2 && game.player2.active && game.player2.hp>0){
+    updatePlayerEntity(game.player2, game.player2.networkInput || idleInput(), dt);
   }
-  p.speedBurstTimer = Math.max(0,(p.speedBurstTimer||0)-dt);
-  p.lifestealBurstTimer = Math.max(0,(p.lifestealBurstTimer||0)-dt);
-  p.effects.warcry = Math.max(0,p.effects.warcry-dt);
-  p.effects.shadow = Math.max(0,p.effects.shadow-dt);
-  p.effects.wall = Math.max(0,p.effects.wall-dt);
-  p.effects.mirrorShield = Math.max(0,p.effects.mirrorShield-dt);
-  p.effects.mantoLuz = Math.max(0,(p.effects.mantoLuz||0)-dt);
-  p.potionEffects.def = Math.max(0,p.potionEffects.def-dt);
-  p.potionEffects.dmg = Math.max(0,p.potionEffects.dmg-dt);
-  p.potionEffects.spd = Math.max(0,p.potionEffects.spd-dt);
-  p.witherTimer = Math.max(0,p.witherTimer-dt);
-  p.slowTimer = Math.max(0,(p.slowTimer||0)-dt);
-  p.invertTimer = Math.max(0,(p.invertTimer||0)-dt);
-  p.chillTimer = Math.max(0,(p.chillTimer||0)-dt);
-  p.weakenTimer = Math.max(0,(p.weakenTimer||0)-dt);
-  p.qLockTimer = Math.max(0,(p.qLockTimer||0)-dt);
-  p.eLockTimer = Math.max(0,(p.eLockTimer||0)-dt);
-  p.iceSlideTimer = Math.max(0,(p.iceSlideTimer||0)-dt);
-  p.parryWindow = Math.max(0,(p.parryWindow||0)-dt); // Dorian: parry-stance window, see doAbilityQ/hitPlayer
-  p.chainWindow = Math.max(0,(p.chainWindow||0)-dt); // Seren: dash-chain window
-  if(p.chainWindow<=0) p.chainCount = 0;
-  // Rowan: mount duration + periodic trample tick while mounted
-  if(p.mountTimer>0){
-    p.mountTimer -= dt;
-    p.mountTrampleTick = (p.mountTrampleTick||0) - dt;
-    if(p.mountTrampleTick<=0){
-      p.mountTrampleTick = 0.25;
-      const b = arenaBounds();
-      game.enemies.forEach(t=>{
-        if(dist(p.x,p.y,t.x,t.y)<p.radius+t.radius+6){
-          dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.6), 'q');
-          const ang = Math.atan2(t.y-p.y,t.x-p.x);
-          t.x = clamp(t.x+Math.cos(ang)*40, b.x+t.radius, b.x+b.w-t.radius);
-          t.y = clamp(t.y+Math.sin(ang)*40, b.y+t.radius, b.y+b.h-t.radius);
-        }
-      });
-    }
-    if(p.mountTimer<=0){ p.speedMult /= 1.6; p.mountTimer = 0; }
-  }
-  // Tempus: sample position/hp history for Rebobinado (E)
-  p.rewindSampleTimer = (p.rewindSampleTimer||0) - dt;
-  if(p.rewindSampleTimer<=0){
-    p.rewindSampleTimer = 0.1;
-    p.rewindHistory = p.rewindHistory || [];
-    p.rewindHistory.push({x:p.x, y:p.y, hp:p.hp, t:performance.now()});
-    if(p.rewindHistory.length>40) p.rewindHistory.shift();
-  }
-  // Anselm: petrified duration — E's shatter damage scales with how long you held the form
-  if(p.stoneTimer>0){
-    p.stoneTimer -= dt;
-    p.stoneElapsed = (p.stoneElapsed||0) + dt;
-  }
-  if(!(game.boss && game.boss.blizzardActive)) p.freezeMeter = Math.max(0,(p.freezeMeter||0)-dt*60); // melts fast once the blizzard itself ends
-  if(p.frozenTimer>0){
-    // Cero Absoluto: locked in ice, taking steady damage until it breaks (mashing WASD speeds
-    // this up — see the keydown handler) — always ticks down, even if the blizzard itself ends
-    const before = p.frozenTimer;
-    p.frozenTimer = Math.max(0, p.frozenTimer-dt);
-    p.frozenBurnTick = (p.frozenBurnTick||0) - dt;
-    if(p.frozenBurnTick<=0){ p.frozenBurnTick = 0.5; hitPlayer(4); }
-  }
-  if(p.combo>0){ p.comboTimer -= dt; if(p.comboTimer<=0) p.combo=0; }
-  if(p.effects.shadow<=0) p.effects.shadowCrit=false;
-  if(!game.pacts.noHeal && p.regen>0 && p.hp<p.maxHp) p.hp = Math.min(p.maxHp, p.hp + p.regen*(p.witherTimer>0?0.5:1)*dt);
-  p.timeSinceHit += dt;
-  if(!game.pacts.noHeal && p.timeSinceHit>=5 && p.hp<p.maxHp) p.hp = Math.min(p.maxHp, p.hp + (p.witherTimer>0?0.5:1)*dt);
-  Object.keys(p.ultCooldowns).forEach(id=>{ p.ultCooldowns[id] = Math.max(0, p.ultCooldowns[id]-dt); });
-  Object.keys(p.shiftCooldowns).forEach(id=>{ p.shiftCooldowns[id] = Math.max(0, p.shiftCooldowns[id]-dt); });
-
-  // --- Giro Salvaje channel tick (Grum/berserker's Q) ---
-  if(p.spinTimer>0){
-    p.spinTimer = Math.max(0, p.spinTimer-dt);
-    p.spinTick = (p.spinTick||0)-dt;
-    if(p.spinTick<=0){
-      p.spinTick = 0.3; // 10 ticks over the 3s channel
-      const hpFrac = clamp(p.hp/p.maxHp,0,1);
-      const mult = 1.2 + (1-hpFrac)*1.3; // up to +130% more damage the lower your own HP is
-      [...game.enemies, ...bossTargets()].forEach(t=>{
-        if(dist(p.x,p.y,t.x,t.y) < 115) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult*0.4), 'q');
-      });
-      addParticles(p.x,p.y,'#ff3d3d',12,170,0.28);
-      spawnShockwave(p.x,p.y,'#ff3d3d',115,0.25);
-      shake(2.5);
-    }
-  }
-
-  // --- movement ---
-  let mx=0,my=0;
-  if(keys['KeyW']) my-=1;
-  if(keys['KeyS']) my+=1;
-  if(keys['KeyA']) mx-=1;
-  if(keys['KeyD']) mx+=1;
-  let mlen = Math.hypot(mx,my);
-  if(mlen>0){ mx/=mlen; my/=mlen; }
-  const speed = Math.min(MAX_PLAYER_SPEED, (p.def.speed*p.speedMult+p.speedFlat)*(p.effects.shadow>0?1.15:1)*((p.effects.mantoLuz||0)>0?1.40:1)*(p.potionEffects.spd>0?1.30:1)*(p.slowTimer>0?p.slowFactor:1)*((p.speedBurstTimer||0)>0?1.2:1)*(p.corruptionCurse?0.72:1));
-  if(p.invertTimer>0){ mx=-mx; my=-my; } // mirrorGaze: your own reflection turns your movement against you
-  if(p.frozenTimer>0){
-    // Cero Absoluto: locked in a block of ice — no movement input gets through until it breaks
-    mx=0; my=0;
-  }
-  if(p.spinTimer>0){
-    // Giro Salvaje: rooted in place for the whole 3s channel, spinning where you stand
-    mx=0; my=0;
-  }
-  if(p.stoneTimer>0){
-    // Anselm (Peregrino de Piedra): rooted while petrified — see hitPlayer for the reflect-on-hit
-    mx=0; my=0;
-  }
-  if(p.iceSlideTimer>0){
-    // Pista de Escarcha Glacial: momentum instead of direct control — you can't stop or turn on
-    // a dime, your velocity only gradually catches up to where you're pointing
-    const accel = 3.0;
-    const targetVX = mx*speed, targetVY = my*speed;
-    p.slideVX = (p.slideVX||0) + (targetVX-(p.slideVX||0))*clamp(accel*dt,0,1);
-    p.slideVY = (p.slideVY||0) + (targetVY-(p.slideVY||0))*clamp(accel*dt,0,1);
-    p.x += p.slideVX*dt;
-    p.y += p.slideVY*dt;
-  } else {
-    p.slideVX = 0; p.slideVY = 0;
-    p.x += mx*speed*dt;
-    p.y += my*speed*dt;
-  }
-  p.x = clamp(p.x, b.x+p.radius, b.x+b.w-p.radius);
-  p.y = clamp(p.y, b.y+p.radius, b.y+b.h-p.radius);
-
-  // facing toward mouse (convert screen-space mouse to world-space using camera offset)
-  const worldMouseX = mouse.x + game.camera.x;
-  const worldMouseY = mouse.y + game.camera.y;
-  const dx = worldMouseX-p.x, dy = worldMouseY-p.y;
-  const flen = Math.hypot(dx,dy)||1;
-  p.facingX = dx/flen; p.facingY = dy/flen;
-  p.facing = Math.atan2(dy,dx);
-
-  // --- basic attack ---
-  if(mouse.down && p.atkTimer<=0){
-    doBasicAttack();
-    p.atkTimer = Math.max(MIN_ATK_CD, currentAtk(p).cd * effectiveCdMult(p) * (p.chillTimer>0 ? p.chillFactor : 1));
-    // Runa de Repetición: a chance the attack you just landed doesn't cost you the cooldown at all
-    if(p.relics.effect_repeatRune && Math.random()<0.10){ p.atkTimer = 0; }
-  }
-
-  // --- abilities ---
-  if(keyPressed('KeyQ') && p.qTimer<=0 && !(p.qLockTimer>0)){
-    doAbilityQ();
-    // Onda de Impacto: every Q also releases a small area burst centered on the player
-    if(p.relics.effect_impactWave){
-      [...game.enemies, ...bossTargets()].forEach(t=>{
-        if(dist(p.x,p.y,t.x,t.y) < 130) dealDamageToTarget(t, computeDamage(9), 'q');
-      });
-      addParticles(p.x,p.y,'#ff6a3d',14,160,0.3);
-    }
-  }
-  if(keyPressed('KeyE') && p.eTimer<=0 && !(p.eLockTimer>0)){
-    doAbilityE();
-    // Estela de Fuego: every E also sears nearby enemies with a burst of fire
-    if(p.relics.effect_fireEmbers){
-      [...game.enemies, ...bossTargets()].forEach(t=>{
-        if(dist(p.x,p.y,t.x,t.y) < 120) dealDamageToTarget(t, computeDamage(7), 'e');
-      });
-      addParticles(p.x,p.y,'#ff8a3d',12,150,0.3);
-    }
-  }
-  if(keyPressed('KeyR')) doUltimate();
-  if(keyPressed('ShiftLeft') || keyPressed('ShiftRight')) doShiftAbility();
-  if(keyPressed('Digit1')) usePotion('hp');
-  if(keyPressed('Digit2')) usePotion('def');
-  if(keyPressed('Digit3')) usePotion('dmg');
-  if(keyPressed('Digit4')) usePotion('spd');
-
-  // --- interact ---
-  if(keyPressed('Space')) doInteract();
 
   // --- enemies ---
   updateEnemies(dt);
@@ -4507,8 +4680,205 @@ function update(dt){
 
   // hud
   syncHud();
+}
 
-  // death check
+// updatePlayerEntity: todo lo que antes vivía inline en update(dt) para "el jugador" — timers,
+// movimiento, facing, ataque básico, Q/E/R, pociones, interactuar, chequeo de muerte — ahora
+// recibe `p` y `input` explícitos en vez de leer game.player/keys/mouse directo. update(dt) la
+// llama para Jugador 1 con localInput() (comportamiento IDÉNTICO a antes) y, si el Host tiene un
+// Jugador 2 conectado, la llama de nuevo con game.player2 y el input recibido por red.
+function updatePlayerEntity(p, input, dt){
+  const b = arenaBounds();
+
+  // --- player timers ---
+  p.atkTimer = Math.max(0,p.atkTimer-dt);
+  p.qTimer = Math.max(0,p.qTimer-dt);
+  p.eTimer = Math.max(0,p.eTimer-dt);
+  // Paso de Sombra: catch the exact frame invulnerability (i-frames) ends to grant a brief burst
+  const _wasInvuln = p.invuln>0;
+  p.invuln = Math.max(0,p.invuln-dt);
+  if(_wasInvuln && p.invuln<=0 && p.relics.effect_shadowStep){
+    p.speedBurstTimer = 1.0;
+  }
+  p.speedBurstTimer = Math.max(0,(p.speedBurstTimer||0)-dt);
+  p.lifestealBurstTimer = Math.max(0,(p.lifestealBurstTimer||0)-dt);
+  p.effects.warcry = Math.max(0,p.effects.warcry-dt);
+  p.effects.shadow = Math.max(0,p.effects.shadow-dt);
+  p.effects.wall = Math.max(0,p.effects.wall-dt);
+  p.effects.mirrorShield = Math.max(0,p.effects.mirrorShield-dt);
+  p.effects.mantoLuz = Math.max(0,(p.effects.mantoLuz||0)-dt);
+  p.potionEffects.def = Math.max(0,p.potionEffects.def-dt);
+  p.potionEffects.dmg = Math.max(0,p.potionEffects.dmg-dt);
+  p.potionEffects.spd = Math.max(0,p.potionEffects.spd-dt);
+  p.witherTimer = Math.max(0,p.witherTimer-dt);
+  p.slowTimer = Math.max(0,(p.slowTimer||0)-dt);
+  p.invertTimer = Math.max(0,(p.invertTimer||0)-dt);
+  p.chillTimer = Math.max(0,(p.chillTimer||0)-dt);
+  p.weakenTimer = Math.max(0,(p.weakenTimer||0)-dt);
+  p.qLockTimer = Math.max(0,(p.qLockTimer||0)-dt);
+  p.eLockTimer = Math.max(0,(p.eLockTimer||0)-dt);
+  p.iceSlideTimer = Math.max(0,(p.iceSlideTimer||0)-dt);
+  p.parryWindow = Math.max(0,(p.parryWindow||0)-dt); // Dorian: parry-stance window, see doAbilityQ/hitPlayer
+  p.chainWindow = Math.max(0,(p.chainWindow||0)-dt); // Seren: dash-chain window
+  if(p.chainWindow<=0) p.chainCount = 0;
+  // Rowan: mount duration + periodic trample tick while mounted
+  if(p.mountTimer>0){
+    p.mountTimer -= dt;
+    p.mountTrampleTick = (p.mountTrampleTick||0) - dt;
+    if(p.mountTrampleTick<=0){
+      p.mountTrampleTick = 0.25;
+      game.currentActor = p;
+      game.enemies.forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y)<p.radius+t.radius+6){
+          dealDamageToTarget(t, computeDamage(p.def.atk.dmg*0.6), 'q');
+          const ang = Math.atan2(t.y-p.y,t.x-p.x);
+          t.x = clamp(t.x+Math.cos(ang)*40, b.x+t.radius, b.x+b.w-t.radius);
+          t.y = clamp(t.y+Math.sin(ang)*40, b.y+t.radius, b.y+b.h-t.radius);
+        }
+      });
+    }
+    if(p.mountTimer<=0){ p.speedMult /= 1.6; p.mountTimer = 0; }
+  }
+  // Tempus: sample position/hp history for Rebobinado (E)
+  p.rewindSampleTimer = (p.rewindSampleTimer||0) - dt;
+  if(p.rewindSampleTimer<=0){
+    p.rewindSampleTimer = 0.1;
+    p.rewindHistory = p.rewindHistory || [];
+    p.rewindHistory.push({x:p.x, y:p.y, hp:p.hp, t:performance.now()});
+    if(p.rewindHistory.length>40) p.rewindHistory.shift();
+  }
+  // Anselm: petrified duration — E's shatter damage scales with how long you held the form
+  if(p.stoneTimer>0){
+    p.stoneTimer -= dt;
+    p.stoneElapsed = (p.stoneElapsed||0) + dt;
+  }
+  if(!(game.boss && game.boss.blizzardActive)) p.freezeMeter = Math.max(0,(p.freezeMeter||0)-dt*60); // melts fast once the blizzard itself ends
+  if(p.frozenTimer>0){
+    // Cero Absoluto: locked in ice, taking steady damage until it breaks (mashing WASD speeds
+    // this up — see the keydown handler) — always ticks down, even if the blizzard itself ends
+    const before = p.frozenTimer;
+    p.frozenTimer = Math.max(0, p.frozenTimer-dt);
+    p.frozenBurnTick = (p.frozenBurnTick||0) - dt;
+    if(p.frozenBurnTick<=0){ p.frozenBurnTick = 0.5; hitPlayer(4, p); }
+  }
+  if(p.combo>0){ p.comboTimer -= dt; if(p.comboTimer<=0) p.combo=0; }
+  if(p.effects.shadow<=0) p.effects.shadowCrit=false;
+  if(!game.pacts.noHeal && p.regen>0 && p.hp<p.maxHp) p.hp = Math.min(p.maxHp, p.hp + p.regen*(p.witherTimer>0?0.5:1)*dt);
+  p.timeSinceHit += dt;
+  if(!game.pacts.noHeal && p.timeSinceHit>=5 && p.hp<p.maxHp) p.hp = Math.min(p.maxHp, p.hp + (p.witherTimer>0?0.5:1)*dt);
+  Object.keys(p.ultCooldowns).forEach(id=>{ p.ultCooldowns[id] = Math.max(0, p.ultCooldowns[id]-dt); });
+  Object.keys(p.shiftCooldowns).forEach(id=>{ p.shiftCooldowns[id] = Math.max(0, p.shiftCooldowns[id]-dt); });
+
+  // --- Giro Salvaje channel tick (Grum/berserker's Q) ---
+  if(p.spinTimer>0){
+    p.spinTimer = Math.max(0, p.spinTimer-dt);
+    p.spinTick = (p.spinTick||0)-dt;
+    if(p.spinTick<=0){
+      p.spinTick = 0.3; // 10 ticks over the 3s channel
+      const hpFrac = clamp(p.hp/p.maxHp,0,1);
+      const mult = 1.2 + (1-hpFrac)*1.3; // up to +130% more damage the lower your own HP is
+      game.currentActor = p;
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y) < 115) dealDamageToTarget(t, computeDamage(p.def.atk.dmg*mult*0.4), 'q');
+      });
+      addParticles(p.x,p.y,'#ff3d3d',12,170,0.28);
+      spawnShockwave(p.x,p.y,'#ff3d3d',115,0.25);
+      shake(2.5);
+    }
+  }
+
+  // --- movement ---
+  let mx=0,my=0;
+  if(input.keys['KeyW']) my-=1;
+  if(input.keys['KeyS']) my+=1;
+  if(input.keys['KeyA']) mx-=1;
+  if(input.keys['KeyD']) mx+=1;
+  let mlen = Math.hypot(mx,my);
+  if(mlen>0){ mx/=mlen; my/=mlen; }
+  const speed = Math.min(MAX_PLAYER_SPEED, (p.def.speed*p.speedMult+p.speedFlat)*(p.effects.shadow>0?1.15:1)*((p.effects.mantoLuz||0)>0?1.40:1)*(p.potionEffects.spd>0?1.30:1)*(p.slowTimer>0?p.slowFactor:1)*((p.speedBurstTimer||0)>0?1.2:1)*(p.corruptionCurse?0.72:1));
+  if(p.invertTimer>0){ mx=-mx; my=-my; } // mirrorGaze: your own reflection turns your movement against you
+  if(p.frozenTimer>0){
+    // Cero Absoluto: locked in a block of ice — no movement input gets through until it breaks
+    mx=0; my=0;
+  }
+  if(p.spinTimer>0){
+    // Giro Salvaje: rooted in place for the whole 3s channel, spinning where you stand
+    mx=0; my=0;
+  }
+  if(p.stoneTimer>0){
+    // Anselm (Peregrino de Piedra): rooted while petrified — see hitPlayer for the reflect-on-hit
+    mx=0; my=0;
+  }
+  if(p.iceSlideTimer>0){
+    // Pista de Escarcha Glacial: momentum instead of direct control — you can't stop or turn on
+    // a dime, your velocity only gradually catches up to where you're pointing
+    const accel = 3.0;
+    const targetVX = mx*speed, targetVY = my*speed;
+    p.slideVX = (p.slideVX||0) + (targetVX-(p.slideVX||0))*clamp(accel*dt,0,1);
+    p.slideVY = (p.slideVY||0) + (targetVY-(p.slideVY||0))*clamp(accel*dt,0,1);
+    p.x += p.slideVX*dt;
+    p.y += p.slideVY*dt;
+  } else {
+    p.slideVX = 0; p.slideVY = 0;
+    p.x += mx*speed*dt;
+    p.y += my*speed*dt;
+  }
+  p.x = clamp(p.x, b.x+p.radius, b.x+b.w-p.radius);
+  p.y = clamp(p.y, b.y+p.radius, b.y+b.h-p.radius);
+
+  // facing: input.angle ya viene calculado (jugador en red) o lo calculamos desde el mouse local
+  let dx, dy;
+  if(input.angle!==undefined){
+    dx = Math.cos(input.angle); dy = Math.sin(input.angle);
+  } else {
+    dx = input.mouseWorldX-p.x; dy = input.mouseWorldY-p.y;
+  }
+  const flen = Math.hypot(dx,dy)||1;
+  p.facingX = dx/flen; p.facingY = dy/flen;
+  p.facing = Math.atan2(dy,dx);
+
+  // --- basic attack ---
+  if(input.mouseDown && p.atkTimer<=0){
+    doBasicAttack(p);
+    p.atkTimer = Math.max(MIN_ATK_CD, currentAtk(p).cd * effectiveCdMult(p) * (p.chillTimer>0 ? p.chillFactor : 1));
+    // Runa de Repetición: a chance the attack you just landed doesn't cost you the cooldown at all
+    if(p.relics.effect_repeatRune && Math.random()<0.10){ p.atkTimer = 0; }
+  }
+
+  // --- abilities ---
+  if(input.qPressed && p.qTimer<=0 && !(p.qLockTimer>0)){
+    doAbilityQ(p);
+    // Onda de Impacto: every Q also releases a small area burst centered on the player
+    if(p.relics.effect_impactWave){
+      game.currentActor = p;
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y) < 130) dealDamageToTarget(t, computeDamage(9), 'q');
+      });
+      addParticles(p.x,p.y,'#ff6a3d',14,160,0.3);
+    }
+  }
+  if(input.ePressed && p.eTimer<=0 && !(p.eLockTimer>0)){
+    doAbilityE(p);
+    // Estela de Fuego: every E also sears nearby enemies with a burst of fire
+    if(p.relics.effect_fireEmbers){
+      game.currentActor = p;
+      [...game.enemies, ...bossTargets()].forEach(t=>{
+        if(dist(p.x,p.y,t.x,t.y) < 120) dealDamageToTarget(t, computeDamage(7), 'e');
+      });
+      addParticles(p.x,p.y,'#ff8a3d',12,150,0.3);
+    }
+  }
+  if(input.rPressed) doUltimate(p);
+  if(input.shiftPressed) doShiftAbility(p);
+  if(input.potion1) usePotion('hp', p);
+  if(input.potion2) usePotion('def', p);
+  if(input.potion3) usePotion('dmg', p);
+  if(input.potion4) usePotion('spd', p);
+
+  // --- interact ---
+  if(input.spacePressed) doInteract(p);
+
+  // --- death check ---
   if(p.hp<=0){
     if(p.relics.relic_phoenix && !p.phoenixUsed){
       p.phoenixUsed = true;
@@ -4524,10 +4894,37 @@ function update(dt){
       spawnToast('🌅 La Pluma de Alba te trae de vuelta, débil pero viva');
       addParticles(p.x,p.y,'#ffd97a',30,210,0.55);
       shake(10);
+    } else if(p===game.player){
+      onPlayerDeath(); // Jugador 2 caído: se maneja aparte (ver checkPlayer2Down), no termina la run
     } else {
-      onPlayerDeath();
+      p.downed = true;
     }
   }
+}
+
+// Input local del Jugador 1 — reconstruye exactamente el mismo input que update(dt) ya leía
+// directo de los globales, así su comportamiento no cambia en absoluto.
+function localInput(){
+  return {
+    keys: keys,
+    mouseWorldX: mouse.x + game.camera.x,
+    mouseWorldY: mouse.y + game.camera.y,
+    mouseDown: mouse.down,
+    qPressed: keyPressed('KeyQ'),
+    ePressed: keyPressed('KeyE'),
+    rPressed: keyPressed('KeyR'),
+    shiftPressed: keyPressed('ShiftLeft') || keyPressed('ShiftRight'),
+    potion1: keyPressed('Digit1'),
+    potion2: keyPressed('Digit2'),
+    potion3: keyPressed('Digit3'),
+    potion4: keyPressed('Digit4'),
+    spacePressed: keyPressed('Space')
+  };
+}
+// Input "vacío" para Jugador 2 antes de que llegue el primer paquete de red — no se mueve ni ataca
+function idleInput(){
+  return { keys:{}, angle:0, mouseDown:false, qPressed:false, ePressed:false, rPressed:false,
+    shiftPressed:false, potion1:false, potion2:false, potion3:false, potion4:false, spacePressed:false };
 }
 
 function currentAtk(p){
@@ -4535,8 +4932,8 @@ function currentAtk(p){
   return p.def.atk;
 }
 
-function doBasicAttack(){
-  const p = game.player;
+function doBasicAttack(p = game.player){
+  game.currentActor = p;
   // Reliquia del Eco: every 10th basic attack you throw out refunds Q's cooldown entirely
   if(p.relics.effect_echoRelic){
     p._echoRelicCount = (p._echoRelicCount||0)+1;
@@ -4584,7 +4981,10 @@ function updateCamera(){
 function comboFactor(p){ return 1 + Math.min(p.combo,50)*(p.relics.effect_comboPact?0.008:0.004); }
 
 function computeDamage(base){
-  const p = game.player;
+  // game.currentActor: seteado por doBasicAttack/doAbilityQ/doAbilityE/etc al arrancar, así el
+  // daño saliente se calcula con las stats de QUIEN está atacando (jugador 1 o 2), sin tener que
+  // tocar los 90+ sitios que ya llaman a computeDamage(base) internamente.
+  const p = game.currentActor || game.player;
   if(devMode) return { value: 999999, crit:true, superCrit:false }; // dev mode: one-shots everything
   let dmg = base*p.dmgMult*comboFactor(p);
   if(p.weakenTimer>0) dmg *= p.weakenFactor;
@@ -4916,8 +5316,8 @@ function spawnBossDrops(boss){
 }
 
 /* ---------- abilities ---------- */
-function doAbilityQ(){
-  const p = game.player;
+function doAbilityQ(p = game.player){
+  game.currentActor = p;
   const id = p.def.id;
   p.qTimer = Math.max(MIN_ABILITY_CD, p.def.q.cd*effectiveCdMult(p));
   if(id==='guerrero'){
@@ -5301,8 +5701,8 @@ function doAbilityQ(){
   triggerComboEffect('q');
 }
 
-function doAbilityE(){
-  const p = game.player;
+function doAbilityE(p = game.player){
+  game.currentActor = p;
   const id = p.def.id;
   p.eTimer = Math.max(MIN_ABILITY_CD, p.def.e.cd*effectiveCdMult(p));
   if(id==='guerrero'){
@@ -5782,8 +6182,8 @@ function doAbilityE(){
   triggerComboEffect('e');
 }
 
-function doUltimate(){
-  const p = game.player;
+function doUltimate(p = game.player){
+  game.currentActor = p;
   const id = p.activeUltimate;
   if(!id) return;
   const cd = p.ultCooldowns[id]||0;
@@ -5797,8 +6197,8 @@ function doUltimate(){
   // few seconds of invulnerability the instant you commit to using it
   if(p.relics.effect_allSeeingEye){ p.invuln = Math.max(p.invuln, 3); }
 }
-function doShiftAbility(){
-  const p = game.player;
+function doShiftAbility(p = game.player){
+  game.currentActor = p;
   const id = p.activeShiftAbility;
   if(!id) return;
   const cd = p.shiftCooldowns[id]||0;
@@ -5808,8 +6208,8 @@ function doShiftAbility(){
   p.shiftCooldowns[ability.id] = ability.cd; // Shift abilities aren't floored by MIN_ULT_CD — they're meant to be more frequent utility, not a second R
 }
 
-function doInteract(){
-  const p = game.player;
+function doInteract(p = game.player){
+  game.currentActor = p;
   // chests
   if(game.phase==='shopping'){
     game.chests.forEach(c=>{
@@ -6149,9 +6549,28 @@ function drawPet(pet){
 }
 
 
+/* ============================================================
+   MULTIJUGADOR: targeting centralizado
+   ============================================================
+   Toda la IA de enemigos/jefes ya usaba una variable local `p` (const p = game.player) para
+   apuntar y golpear. En vez de tocar cada uno de los cientos de sitios que leen p.x/p.y o llaman
+   a hitPlayer(dmg), centralizamos la DECISIÓN de a quién apuntar acá: pickAiTarget() elige el
+   jugador más cercano (o el único vivo si el otro cayó), y game.currentAiTarget guarda esa
+   elección para que hitPlayer(dmg) sin argumento explícito golpee exactamente a quien la IA
+   decidió apuntar. Esto hace que las 266+ habilidades de jefe y toda la IA de enemigos existente
+   funcionen para 2 jugadores sin reescribir cada una. */
+function pickAiTarget(x, y){
+  const p1 = game.player;
+  const p2 = (game.player2 && game.player2.active && game.player2.hp>0) ? game.player2 : null;
+  if(!p2) return p1;
+  if(p1.hp<=0) return p2;
+  return dist(x,y,p1.x,p1.y) <= dist(x,y,p2.x,p2.y) ? p1 : p2;
+}
+
 function updateEnemies(dt){
-  const p = game.player;
   game.enemies.forEach(en=>{
+    // cada enemigo elige su propio objetivo (el jugador más cercano a ÉL, no un único target global)
+    const p = pickAiTarget(en.x, en.y);
     en.hitFlash = Math.max(0,en.hitFlash-dt);
     en.atkTimer = Math.max(0,en.atkTimer-dt);
     if(en.stunTimer>0){ en.stunTimer -= dt; return; }
@@ -6215,7 +6634,7 @@ function updateEnemies(dt){
         en.y += en.chargeDirY*def.chargeSpeed*dt;
         if(en.atkTimer<=0 && d<en.radius+p.radius+6){
           en.atkTimer = 0.5;
-          hitPlayer(en.dmg);
+          hitPlayer(en.dmg, p);
           applyContactSlowIfEquipped(en);
           addParticles(p.x,p.y,'#e8434f',8,140,0.3);
         }
@@ -6234,7 +6653,7 @@ function updateEnemies(dt){
           en.x += Math.cos(ang)*spd*dt; en.y += Math.sin(ang)*spd*dt;
         } else if(en.atkTimer<=0){
           en.atkTimer = def.atkCd;
-          hitPlayer(en.dmg*0.6);
+          hitPlayer(en.dmg*0.6, p);
           applyContactSlowIfEquipped(en);
           addParticles(p.x,p.y,'#e8434f',6,120,0.25);
         }
@@ -6254,7 +6673,7 @@ function updateEnemies(dt){
         en.y += Math.sin(ang)*spd*dt;
       } else if(en.atkTimer<=0){
         en.atkTimer = def.atkCd;
-        hitPlayer(en.dmg);
+        hitPlayer(en.dmg, p);
         applyContactSlowIfEquipped(en);
         addParticles(p.x,p.y,'#e8434f',8,140,0.3);
       }
@@ -6366,8 +6785,12 @@ function applyParryReward(p){
   p.shield = Math.max(p.shield, 30);
 }
 
-function hitPlayer(dmg){
-  const p = game.player;
+function hitPlayer(dmg, target){
+  // target opcional: si no se pasa explícito, usamos el objetivo que la IA ya resolvió esta
+  // llamada (game.currentAiTarget, seteado por updateBoss/resolveBossAttack/pickBossAttack) y
+  // si tampoco existe, caemos al jugador local — así ningún llamado viejo de hitPlayer(dmg) se
+  // rompe, todos siguen golpeando a game.player exactamente como antes.
+  const p = target || game.currentAiTarget || game.player;
   if(devMode) return; // dev mode: infinite HP, take no damage at all
   if(p.invuln>0) return;
   if(game && game.phase==='boss') game.stats.bossTookDamage = true;
@@ -6486,8 +6909,9 @@ function updateScheduledBossActions(dt){
 }
 
 function updateBoss(dt){
-  const p = game.player;
   const boss = game.boss;
+  const p = pickAiTarget(boss.x, boss.y);
+  game.currentAiTarget = p; // usado como default por hitPlayer(dmg) sin target explícito
   const b = arenaBounds();
   boss.hitFlash = Math.max(0,boss.hitFlash-dt);
   boss.shieldTimer = Math.max(0,(boss.shieldTimer||0)-dt);
@@ -7984,8 +8408,9 @@ function pickBossAttack(boss){
   }
   if(type==='summon') boss.lastSummonAttack = boss.attackCount;
   if(HEAL_ATTACK_TYPES.has(type)) boss.lastHealAttack = boss.attackCount;
-  const p = game.player;
-  boss.telegraph = { type, t: 0.55, dur: 0.55, tx:p.x, ty:p.y };
+  const p = pickAiTarget(boss.x, boss.y);
+  game.currentAiTarget = p;
+  boss.telegraph = { type, t: 0.55, dur: 0.55, tx:p.x, ty:p.y, target:p };
   if(type==='blinkStrike'){
     const ang = Math.random()*Math.PI*2;
     const bnds = arenaBounds();
@@ -8330,7 +8755,6 @@ function startBossDash(mover, ang, dashDist, opts){
 function updateBossDashes(dt){
   const boss = game.boss;
   if(!boss || !boss.dashes || !boss.dashes.length) return;
-  const p = game.player;
   const b = arenaBounds();
   const done = [];
   boss.dashes.forEach(d=>{
@@ -8342,9 +8766,10 @@ function updateBossDashes(dt){
       const targetStep = Math.min(d.steps, Math.floor(prog*d.steps+1e-6)+1);
       while(d.stepsFired < targetStep){ d.onStep(d.stepsFired, d.mover); d.stepsFired++; }
     }
+    const p = pickAiTarget(d.mover.x, d.mover.y);
     if(!d.hit && dist(d.mover.x,d.mover.y,p.x,p.y) < d.radius+p.radius+d.hitPad){
       d.hit = true;
-      hitPlayer(d.dmg);
+      hitPlayer(d.dmg, p);
     }
     if(prog>=1){ if(d.onComplete) d.onComplete(d.mover); done.push(d); }
   });
@@ -8352,7 +8777,8 @@ function updateBossDashes(dt){
 }
 
 function resolveBossAttack(type, tg){
-  const p = game.player;
+  const p = (tg && tg.target) || pickAiTarget(game.boss.x, game.boss.y);
+  game.currentAiTarget = p;
   const boss = game.boss;
   const b = arenaBounds();
   const targetX = tg ? tg.tx : p.x;
@@ -15899,9 +16325,11 @@ function spawnProjectile(pr){
 }
 function updateProjectiles(dt){
   const b = arenaBounds();
-  const p = game.player;
   for(let i=game.projectiles.length-1;i>=0;i--){
     const pr = game.projectiles[i];
+    // proyectiles enemigos apuntan/chocan contra el jugador más cercano a ELLOS; los del jugador
+    // ya apuntan a enemigos más abajo y no usan esta p, así que dejamos game.player como base seguro.
+    const p = pr.owner==='enemy' ? pickAiTarget(pr.x, pr.y) : game.player;
     if(pr.homing){
       const targAng = Math.atan2(p.y-pr.y, p.x-pr.x);
       const curAng = Math.atan2(pr.vy, pr.vx);
@@ -15987,7 +16415,7 @@ function updateHazards(dt){
         // IndexSizeError and kills the whole render loop. Floor it well above 0.
         if(h.expanding) h.r = Math.max(4, h.r + (h.expandRate||100)*dt);
         h.active-=dt; h.tick-=dt;
-        const p=game.player;
+        const p=pickAiTarget(h.x, h.y);
         if(h.tick<=0 && p.invuln<=0 && dist(h.x,h.y,p.x,p.y)<h.r){
           h.tick = h.type==='poison' ? 0.6 : 0.45;
           // Paso Fantasma: the first time you touch each hazard type on a given floor, it's free
@@ -15997,7 +16425,7 @@ function updateHazards(dt){
             addParticles(p.x,p.y,'#ffffff',12,140,0.3);
             spawnToast('Paso Fantasma te dejó atravesar el peligro sin daño');
           } else {
-            hitPlayer(h.dmg);
+            hitPlayer(h.dmg, p);
             if(h.slow){ p.slowTimer = Math.max(p.slowTimer, h.slow.dur); p.slowFactor = h.slow.factor; }
           }
         }
@@ -16008,9 +16436,9 @@ function updateHazards(dt){
     h.timer-=dt; h.tick-=dt;
     if(h.tick<=0 && h.dot){
       h.tick=0.5;
-      const p=game.player;
+      const p=pickAiTarget(h.x, h.y);
       if(p.invuln<=0){
-        hitPlayer(2); // was a direct `p.hp -= 2` that bypassed devMode's damage immunity entirely
+        hitPlayer(2, p); // was a direct `p.hp -= 2` that bypassed devMode's damage immunity entirely
         addDamageText(p.x,p.y-30,2,'#8bff6b',false);
       }
     }
@@ -16113,8 +16541,8 @@ function drawUtilityChest(uc){
   ctx.restore();
 }
 
-function usePotion(id){
-  const p = game.player;
+function usePotion(id, p = game.player){
+  game.currentActor = p;
   if(!p.potions[id] || p.potions[id]<=0) return;
   p.potions[id]--;
   const def = POTIONS.find(x=>x.id===id);
@@ -16326,6 +16754,16 @@ function syncEffectsPanel(p){
 function syncHud(){
   const p = game.player;
   if(devMode) syncDevAttackPanel();
+  // Jugador 2 (multijugador) — barra chica aparte, solo visible si hay alguien conectado
+  const p2wrap = $('p2-wrap');
+  if(game.player2 && game.player2.active){
+    p2wrap.classList.remove('hidden');
+    $('p2-hp-fill').style.width = clamp(game.player2.hp/game.player2.maxHp*100,0,100)+'%';
+    $('p2-hp-label').textContent = `${Math.max(0,Math.round(game.player2.hp))}/${Math.round(game.player2.maxHp)}`;
+    $('hud-p2-name').textContent = (game.player2.def ? game.player2.def.name : 'Jugador 2') + (game.player2.downed ? ' (caído)' : '');
+  } else {
+    p2wrap.classList.add('hidden');
+  }
   $('hp-fill').style.width = clamp(p.hp/p.maxHp*100,0,100)+'%';
   $('hp-label').textContent = `${Math.max(0,Math.round(p.hp))}/${Math.round(p.maxHp)}` + (p.shield>0?`  ⛨${Math.round(p.shield)}`:'');
   $('gold-count').textContent = game.gold;
@@ -16436,6 +16874,8 @@ function render(){
   game.projectiles.forEach(pr=>drawProjectile(pr));
   // player
   drawPlayer(game.player);
+  // jugador2 (multijugador cooperativo P2P) — se dibuja si está activo
+  drawPlayer2();
   // particles
   game.particles.forEach(pt=>drawParticle(pt));
 
@@ -19437,6 +19877,43 @@ function drawProjEmber(pr){
   if(Math.random()<0.5){
     game.particles.push({ x:pr.x, y:pr.y, vx:rand(-14,14), vy:-30-Math.random()*20, life:0.3, maxLife:0.3,
       color:'#ffcb47', r:1.6, type:'circle' });
+  }
+  ctx.restore();
+}
+
+// jugador2: dibujo simple y distinto al del jugador local (círculo verde con brillo),
+// ya que solo tenemos su x/y por red — no todo su estado de héroe/animación
+function drawPlayer2(){
+  const p2 = game.player2;
+  if(!p2 || !p2.active) return;
+  ctx.save();
+  ctx.translate(p2.x, p2.y);
+  ctx.save();
+  ctx.globalAlpha = p2.downed ? 0.15 : 0.3;
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(0, 16, 16, 6, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.globalAlpha = p2.downed ? 0.4 : 1;
+  ctx.shadowColor = '#4ade80';
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = '#4ade80';
+  ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#166534';
+  ctx.lineWidth = 2.6;
+  ctx.stroke();
+  ctx.fillStyle = '#0a1f0f';
+  ctx.beginPath(); ctx.arc(0,-5, 7, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#bff7d0';
+  ctx.font = '700 10px sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText(p2.downed ? 'J2 caído' : (p2.def ? p2.def.name : 'J2'), 0, 40);
+  // barra de vida propia — game.player2 tiene stats reales, no solo x/y
+  if(p2.maxHp>0){
+    const w=44;
+    ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(-w/2,-36,w,5);
+    ctx.fillStyle='#4ade80'; ctx.fillRect(-w/2,-36,w*clamp(p2.hp/p2.maxHp,0,1),5);
   }
   ctx.restore();
 }
