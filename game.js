@@ -2691,7 +2691,7 @@ function buildHostSnapshot(){
     t:'snapshot',
     phase: game.phase,
     stageName: game.currentStage ? game.currentStage.name : '',
-    player1: { x:game.player.x, y:game.player.y, hp:game.player.hp, maxHp:game.player.maxHp },
+    player1: { x:game.player.x, y:game.player.y, hp:game.player.hp, maxHp:game.player.maxHp, downed: !!game.player.downed },
     player2: game.player2 ? { x:game.player2.x, y:game.player2.y, hp:game.player2.hp, maxHp:game.player2.maxHp, downed: !!game.player2.downed } : null,
     enemies: game.enemies.map(en=>({ x:en.x, y:en.y, hp:en.hp, maxHp:en.maxHp, radius:en.radius||18, color: en.def ? en.def.color : '#c0392b' })),
     boss: game.boss ? {
@@ -3990,6 +3990,9 @@ function update(dt){
 // llama para Jugador 1 con localInput() (comportamiento IDÉNTICO a antes) y, si el Host tiene un
 // Jugador 2 conectado, la llama de nuevo con game.player2 y el input recibido por red.
 function updatePlayerEntity(p, input, dt){
+  // BUG (real): un jugador "caído" (downed, HP<=0 pero no game-over) podía seguir moviéndose y
+  // atacando con normalidad — nada lo frenaba. Un caído queda congelado hasta que lo revivan.
+  if(p.downed) return;
   const b = arenaBounds();
 
   // --- player timers ---
@@ -4196,10 +4199,16 @@ function updatePlayerEntity(p, input, dt){
       spawnToast('🌅 La Pluma de Alba te trae de vuelta, débil pero viva');
       addParticles(p.x,p.y,'#ffd97a',30,210,0.55);
       shake(10);
-    } else if(p===game.player){
-      onPlayerDeath(); // Jugador 2 caído: se maneja aparte (ver checkPlayer2Down), no termina la run
     } else {
-      p.downed = true;
+      // ¿queda algún compañero en pie que todavía pueda revivirte? Si no, ahí sí termina la run
+      // (esto también cubre el caso de un solo jugador, donde game.player2 nunca existió).
+      const partner = (p===game.player) ? game.player2 : game.player;
+      const partnerCanRevive = partner && partner.active && !partner.downed && partner.hp>0;
+      if(p===game.player && !partnerCanRevive){
+        onPlayerDeath(); // sin compañero vivo que te reviva, la run termina como siempre
+      } else {
+        p.downed = true;
+      }
     }
   }
 }
@@ -19211,41 +19220,31 @@ function drawProjEmber(pr){
 function drawPlayer2(){
   const p2 = game.player2;
   if(!p2 || !p2.active) return;
+  // BUG (real): esto dibujaba un círculo plano en vez del sprite real del héroe — pero el Host
+  // tiene el objeto COMPLETO de Jugador 2 corriendo local (no solo x/y por red), así que podemos
+  // reusar exactamente el mismo dibujo que ya usa Jugador 1.
+  drawPlayer(p2);
+  // anillo verde + nombre para distinguirlo a simple vista, sobre todo si eligió el mismo héroe
   ctx.save();
   ctx.translate(p2.x, p2.y);
-  ctx.save();
-  ctx.globalAlpha = p2.downed ? 0.15 : 0.3;
-  ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.ellipse(0, 16, 16, 6, 0, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
-  ctx.globalAlpha = p2.downed ? 0.4 : 1;
-  ctx.shadowColor = '#4ade80';
-  ctx.shadowBlur = 16;
+  ctx.globalAlpha = p2.downed ? 0.35 : 0.9;
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0,0,p2.radius+6,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha = 1;
   ctx.fillStyle = '#4ade80';
-  ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = '#166534';
-  ctx.lineWidth = 2.6;
-  ctx.stroke();
-  ctx.fillStyle = '#0a1f0f';
-  ctx.beginPath(); ctx.arc(0,-5, 7, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle='#bff7d0';
   ctx.font = '700 10px sans-serif';
   ctx.textAlign='center';
-  ctx.fillText(p2.downed ? 'J2 caído' : (p2.def ? p2.def.name : 'J2'), 0, 40);
-  // barra de vida propia — game.player2 tiene stats reales, no solo x/y
-  if(p2.maxHp>0){
-    const w=44;
-    ctx.globalAlpha=1;
-    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(-w/2,-36,w,5);
-    ctx.fillStyle='#4ade80'; ctx.fillRect(-w/2,-36,w*clamp(p2.hp/p2.maxHp,0,1),5);
-  }
+  const label = (p2.def ? p2.def.name : 'Jugador 2') + (p2.downed ? ' (caído)' : '');
+  ctx.fillText(label, 0, -p2.radius-14);
   ctx.restore();
 }
 
 function drawPlayer(p){
   ctx.save();
   ctx.translate(p.x,p.y);
+  // caído (multijugador) — atenuado, igual que jugador2 ya lo tenía, hasta que lo revivan
+  if(p.downed){ ctx.globalAlpha = 0.35; }
   if(p.invuln>0 && Math.floor(performance.now()/60)%2===0){ ctx.globalAlpha=0.4; }
   if(p.effects.shadow>0){ ctx.globalAlpha=0.5; }
   // withering curse: a sickly pulsing aura with wisps drifting off, so the debuff actually reads on-screen
