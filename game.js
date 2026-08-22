@@ -56,6 +56,9 @@ const COMBO_EFFECTS = {
       target.bleedTimer = 3;
       target.bleedTick = Math.min(target.bleedTick||0, 0.5);
       target.bleedDmgBase = p.def.atk.dmg*0.25;
+      target.bleedCaster = p; // BUG (real, multijugador): sin esto, el tick de sangrado usaba
+      // game.currentActor tal cual estuviera al momento del tick (lo último que haya actuado),
+      // no quien realmente aplicó el sangrado — podía atribuirle crítico/daño del otro jugador.
     } },
   maga: { threshold:15, trigger:'e',
     desc:'Racha x15: Parpadeo genera una onda de daño al aterrizar',
@@ -130,7 +133,7 @@ const COMBO_EFFECTS = {
     desc:'Racha x10: Frasco Corrosivo también infecta con Plaga',
     apply:(p)=>{
       game.enemies.forEach(t=>{
-        if(dist(p.x,p.y,t.x,t.y)<120){ t.plagueTimer=Math.max(t.plagueTimer||0,3); t.plagueTick=0; t.plagueDmgBase=p.def.atk.dmg*0.3; }
+        if(dist(p.x,p.y,t.x,t.y)<120){ t.plagueTimer=Math.max(t.plagueTimer||0,3); t.plagueTick=0; t.plagueDmgBase=p.def.atk.dmg*0.3; t.plagueCaster=p; }
       });
     } },
   druida: { threshold:12, trigger:'melee',
@@ -235,8 +238,7 @@ const COMBO_EFFECTS = {
     desc:'Racha x10: Romper Forma te deja un escudo residual',
     apply:(p)=>{ p.shield = Math.max(p.shield, 30); } },
 };
-function triggerComboEffect(trigger, target){
-  const p = game.player;
+function triggerComboEffect(trigger, target, p = game.player){
   const cfg = COMBO_EFFECTS[p.def.id];
   if(!cfg || cfg.trigger!==trigger) return;
   if(p.combo < cfg.threshold) return;
@@ -700,6 +702,8 @@ function saveRun(){
       itemIds: p.items.map(it=>it.id),
       relics:{...p.relics}, families:{...p.families}, synergiesUnlocked:{...p.synergiesUnlocked},
       phoenixUsed:p.phoenixUsed, stance:p.stance,
+      potions:{...p.potions}, // BUG (real): faltaba guardar esto — al continuar una run guardada
+      // las pociones siempre volvían a 0, aunque tuvieras varias juntadas antes de guardar.
     },
     savedAt: Date.now(),
   };
@@ -736,6 +740,10 @@ function continueSavedRun(){
   hideScreen('screen-menu');
   showScreen('screen-stage');
   setStageIntro(game.stageIndex);
+  if(pendingGuestHeroId){
+    spawnPlayer2(pendingGuestHeroId);
+    pendingGuestHeroId = null;
+  }
 }
 function refreshContinueButton(){
   const btn = $('btn-continue-run');
@@ -2119,6 +2127,10 @@ let peer = null;       // instancia PeerJS local
 let conn = null;       // DataConnection activa con el otro jugador
 let esHost = false;    // true si esta pestaña creó la partida
 let mpSendTimer = null; // handle del setInterval que envía nuestra posición
+let pendingGuestHeroId = null; // BUG (real): si el Invitado elegía personaje antes de que el
+  // Host apretara "Descender" (game todavía no existía), el mensaje se descartaba en silencio y
+  // game.player2 nunca se creaba — el Invitado veía la pantalla vacía. Ahora se guarda acá y se
+  // aplica en cuanto el Host arranca su run (ver btn-start).
 const jugador2 = { x:0, y:0, active:false }; // posición del otro jugador, recibida por la red
 
 const PACTS = [
@@ -2813,6 +2825,18 @@ function startGuestLoop(){
 
 // Sincronización de datos: arma el listener de recepción y el setInterval de envío (50ms) —
 // para el Host eso manda un snapshot del mundo; para el Invitado, su input.
+function spawnPlayer2(heroId){
+  const heroDef = HEROES[heroId];
+  if(!heroDef || !game) return false;
+  game.player2 = freshPlayerStats(heroDef);
+  game.player2.x = game.player.x + 50;
+  game.player2.y = game.player.y;
+  game.player2.active = true;
+  game.player2.networkInput = idleInput();
+  spawnToast(`Jugador 2 entra a la partida como ${heroDef.name}`);
+  return true;
+}
+
 function setupConexionP2P(){
   if(!conn) return;
   conn.on('open', ()=>{
@@ -2841,15 +2865,13 @@ function setupConexionP2P(){
     if(data.t==='snapshot'){
       guestSnapshot = data;
     } else if(data.t==='selectHero'){
-      if(esHost && game){
-        const heroDef = HEROES[data.heroId];
-        if(heroDef){
-          game.player2 = freshPlayerStats(heroDef);
-          game.player2.x = game.player.x + 50;
-          game.player2.y = game.player.y;
-          game.player2.active = true;
-          game.player2.networkInput = idleInput();
-          spawnToast(`Jugador 2 entra a la partida como ${heroDef.name}`);
+      if(esHost){
+        if(game){
+          spawnPlayer2(data.heroId);
+        } else {
+          // el Host todavía está en el menú (no apretó "Descender") — se aplica en btn-start
+          pendingGuestHeroId = data.heroId;
+          $('mp-status').textContent = 'Jugador 2 eligió personaje — esperando a que arranques la partida';
         }
       }
     } else if(data.t==='input'){
@@ -2935,6 +2957,11 @@ $('btn-start').addEventListener('click', ()=>{
   hideScreen('screen-menu');
   showScreen('screen-stage');
   setStageIntro(0);
+  // si el Invitado ya había elegido personaje mientras estábamos en el menú, lo sumamos ahora
+  if(pendingGuestHeroId){
+    spawnPlayer2(pendingGuestHeroId);
+    pendingGuestHeroId = null;
+  }
 });
 
 $('btn-enter-stage').addEventListener('click', ()=>{
@@ -3057,6 +3084,17 @@ function startStage(i){
   game.player.hp = game.player.maxHp; // full heal on every floor transition, including floor 1
   game.player._reactiveShieldUsedThisFloor = false;
   game.player._ghostStepUsed = {};
+  // BUG (real, multijugador): esto reposicionaba y curaba solo a game.player en cada piso nuevo —
+  // game.player2 se quedaba parado en la posición vieja (potencialmente fuera de la arena nueva)
+  // y sin el curado de piso.
+  if(game.player2){
+    game.player2.x = b.x + b.w/2 + 50;
+    game.player2.y = b.y + b.h/2;
+    game.player2.hp = game.player2.maxHp;
+    game.player2.downed = false;
+    game.player2._reactiveShieldUsedThisFloor = false;
+    game.player2._ghostStepUsed = {};
+  }
   game.enemies=[]; game.projectiles=[]; game.hazards=[]; game.goldOrbs=[]; game.chests=[]; game.swings=[]; game.shockwaves=[]; game.afterimages=[]; game.mines=[]; game.pullLines=[];
   game.altar=null; game.boss=null; game.bossCountdown=null; game.portal=null; game.pet=null; game.pack=[]; game.gravityWell=null; game.slowZone=null; game.pendingBursts=[]; game.vortex=null; game.sacrificeAltar=null; game.corruptionAltar=null; game.relicPickups=[]; game.utilityChests=[]; game.merchant=null;
   game.phase='combat';
@@ -4216,7 +4254,7 @@ function doBasicAttack(p = game.player){
         if(diff>Math.PI) diff=Math.PI*2-diff;
         if(diff <= (atk.arc*Math.PI/180)){
           dealDamageToTarget(t, computeDamage(atk.dmg), 'melee');
-          triggerComboEffect('melee', t);
+          triggerComboEffect('melee', t, p);
           hitAny=true;
         }
       }
@@ -4370,6 +4408,10 @@ function finishAbyssEnrage(boss, success){
 }
 
 function dealDamageToTarget(t, dmgObj, source){
+  // BUG (real, multijugador): toda esta función asumía que quien pegó siempre era game.player —
+  // relics on-hit (Marca de Caza, Sello del Vacío, etc.), robo de vida y combo se aplicaban SIEMPRE
+  // al Jugador 1 sin importar quién realmente conectó el golpe. Resolvemos el atacante una sola vez acá.
+  const attacker = game.currentActor || game.player;
   if(t===game.boss && t.invulnerable){
     // El Señor del Abismo is untouchable while channeling its supernova — only breaking the
     // cooling cores matters until that ends
@@ -4390,7 +4432,7 @@ function dealDamageToTarget(t, dmgObj, source){
   }
   if(val<=0) return;
   // Marca de Caza: the first hit landed on any given target hits noticeably harder
-  if(game.player.relics.effect_huntersMark && !t.huntersMarkUsed){
+  if(attacker.relics.effect_huntersMark && !t.huntersMarkUsed){
     t.huntersMarkUsed = true;
     val *= 1.3;
   }
@@ -4398,11 +4440,11 @@ function dealDamageToTarget(t, dmgObj, source){
   // Sello del Vacío / Núcleo Gélido: a chance to stun or slow whatever you just hit — kept off
   // the boss itself (same guard as Filo Ejecutor) so it can't trivialize a guardian fight
   const canAfflict = t!==game.boss && !(game.boss && game.boss.twin===t);
-  if(canAfflict && game.player.relics.effect_voidSeal && Math.random()<0.20){
+  if(canAfflict && attacker.relics.effect_voidSeal && Math.random()<0.20){
     t.stunTimer = Math.max(t.stunTimer||0, 0.6);
     addParticles(t.x,t.y,'#a070c0',8,120,0.25);
   }
-  if(canAfflict && game.player.relics.effect_frostCore && Math.random()<0.15){
+  if(canAfflict && attacker.relics.effect_frostCore && Math.random()<0.15){
     t.slowTimer = Math.max(t.slowTimer||0, 1.4);
     addParticles(t.x,t.y,'#8ec9ff',8,120,0.25);
   }
@@ -4413,7 +4455,7 @@ function dealDamageToTarget(t, dmgObj, source){
   }
   // Filo Ejecutor: a critical hit finishes off anything already below 12% HP outright — kept off
   // the boss and its twin so it can't trivialize a guardian fight, only trash enemies
-  if(dmgObj.crit && game.player.relics.effect_execute && t!==game.boss && !(game.boss && game.boss.twin===t) && t.maxHp && t.hp>0 && t.hp/t.maxHp<0.12){
+  if(dmgObj.crit && attacker.relics.effect_execute && t!==game.boss && !(game.boss && game.boss.twin===t) && t.maxHp && t.hp>0 && t.hp/t.maxHp<0.12){
     t.hp = 0;
     addParticles(t.x,t.y,'#ff3d3d',10,160,0.3);
   }
@@ -4421,16 +4463,16 @@ function dealDamageToTarget(t, dmgObj, source){
   addParticles(t.x, t.y, dmgObj.superCrit?'#ff4dd8':(dmgObj.crit?'#ffcb47':'#ffffff'), dmgObj.superCrit?14:(dmgObj.crit?9:4), dmgObj.superCrit?210:(dmgObj.crit?170:100), dmgObj.superCrit?0.34:(dmgObj.crit?0.28:0.18));
   if(dmgObj.superCrit) shake(3);
   // Núcleo Inestable: critical hits have a chance to detonate on top of their normal damage
-  if(dmgObj.crit && game.player.relics.effect_unstableCore && Math.random()<0.15){
+  if(dmgObj.crit && attacker.relics.effect_unstableCore && Math.random()<0.15){
     explodeAt(t.x,t.y,95,computeDamage(12));
   }
-  if(!game.pacts.noHeal && game.player.lifesteal>0){ game.player.hp = Math.min(game.player.maxHp, game.player.hp + val*Math.min((game.player.lifestealBurstTimer>0?0.20:0.10),game.player.lifesteal)*(game.player.witherTimer>0?0.5:1)); }
+  if(!game.pacts.noHeal && attacker.lifesteal>0){ attacker.hp = Math.min(attacker.maxHp, attacker.hp + val*Math.min((attacker.lifestealBurstTimer>0?0.20:0.10),attacker.lifesteal)*(attacker.witherTimer>0?0.5:1)); }
   if(source!=='chain'){
-    game.player.combo++;
-    game.player.comboTimer = 4 + (game.player.relics.effect_persistenceSeal ? 0.3 : 0);
-    addComboPop(t.x, t.y-t.radius-24, game.player.combo);
+    attacker.combo++;
+    attacker.comboTimer = 4 + (attacker.relics.effect_persistenceSeal ? 0.3 : 0);
+    addComboPop(t.x, t.y-t.radius-24, attacker.combo);
   }
-  if(source!=='chain' && game.player.relics.relic_storm && Math.random()<0.15){
+  if(source!=='chain' && attacker.relics.relic_storm && Math.random()<0.15){
     const others = [...game.enemies, ...bossTargets()].filter(o=>o!==t && dist(o.x,o.y,t.x,t.y)<150);
     if(others.length){
       const target2 = others[Math.floor(Math.random()*others.length)];
@@ -4878,6 +4920,7 @@ function doAbilityQ(p = game.player){
         nearest.plagueTimer = Math.max(nearest.plagueTimer||0, 5);
         nearest.plagueTick = 0;
         nearest.plagueDmgBase = p.def.atk.dmg*0.5;
+        nearest.plagueCaster = p;
         addParticles(nearest.x,nearest.y,'#7ad14a',12,140,0.3);
       } else {
         dealDamageToTarget(nearest, computeDamage(p.def.atk.dmg*1.6), 'q');
@@ -4962,7 +5005,7 @@ function doAbilityQ(p = game.player){
     addParticles(p.x,p.y,'#9c9c9c',14,140,0.25);
   }
   addParticles(p.x,p.y,'#fff',6,90,0.2);
-  triggerComboEffect('q');
+  triggerComboEffect('q', undefined, p);
 }
 
 function doAbilityE(p = game.player){
@@ -5304,6 +5347,7 @@ function doAbilityE(p = game.player){
         t.plagueTimer = Math.max(t.plagueTimer||0, 4);
         t.plagueTick = 0;
         t.plagueDmgBase = p.def.atk.dmg*0.45;
+        t.plagueCaster = p;
         dealt += p.def.atk.dmg*0.3; // credited toward the self-heal now, even though it actually lands over time
       }
     });
@@ -5443,7 +5487,7 @@ function doAbilityE(p = game.player){
     p.stoneTimer = 0; p.stoneElapsed = 0;
     shake(4+Math.round(Math.min(heldTime,4)));
   }
-  triggerComboEffect('e');
+  triggerComboEffect('e', undefined, p);
 }
 
 function doUltimate(p = game.player){
@@ -5474,6 +5518,20 @@ function doShiftAbility(p = game.player){
 
 function doInteract(p = game.player){
   game.currentActor = p;
+  // Revivir a un compañero caído — funciona en cualquier fase (no solo en la tienda), porque es
+  // durante el combate/pelea de jefe cuando alguien se cae. Por ahora solo Jugador 2 puede quedar
+  // "caído" (si el Host/Jugador 1 llega a 0 HP la run termina, como siempre); reanima con 35% HP.
+  const partner = (p===game.player) ? game.player2 : game.player;
+  if(partner && partner.downed && dist(p.x,p.y,partner.x,partner.y) < 70){
+    partner.downed = false;
+    partner.hp = partner.maxHp*0.35;
+    partner.invuln = 1.5;
+    const name = partner===game.player2 ? (partner.def ? partner.def.name : 'Jugador 2') : 'Jugador 1';
+    spawnToast(`💚 ${name} fue revivido`);
+    addParticles(partner.x,partner.y,'#4ade80',30,220,0.5);
+    shake(4);
+    return; // no seguir revisando cofres/altares en el mismo tap
+  }
   // chests
   if(game.phase==='shopping'){
     game.chests.forEach(c=>{
@@ -5846,6 +5904,7 @@ function updateEnemies(dt){
       en.plagueTimer -= dt; en.plagueTick = (en.plagueTick||0) - dt;
       if(en.plagueTick<=0){
         en.plagueTick = 0.5;
+        game.currentActor = en.plagueCaster || game.player; // ver bleedCaster/plagueCaster arriba
         dealDamageToTarget(en, computeDamage(en.plagueDmgBase||3), 'plague');
         addParticles(en.x,en.y,'#7ad14a',4,80,0.15);
         if(en.plagueTimer>0.6){
@@ -5854,6 +5913,7 @@ function updateEnemies(dt){
             spreadTarget.plagueTimer = en.plagueTimer*0.6;
             spreadTarget.plagueTick = 0;
             spreadTarget.plagueDmgBase = en.plagueDmgBase;
+            spreadTarget.plagueCaster = en.plagueCaster; // el contagio sigue perteneciendo a quien lo lanzó originalmente
           }
         }
       }
@@ -5864,6 +5924,7 @@ function updateEnemies(dt){
       en.bleedTimer -= dt; en.bleedTick = (en.bleedTick||0) - dt;
       if(en.bleedTick<=0){
         en.bleedTick = 0.5;
+        game.currentActor = en.bleedCaster || game.player;
         dealDamageToTarget(en, computeDamage(en.bleedDmgBase||3), 'bleed');
         addParticles(en.x,en.y,'#c9384a',4,90,0.15);
       }
