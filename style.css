@@ -102,6 +102,8 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
   padding:9px 12px; color:var(--bone); font-family:var(--font-mono); font-size:12px;
 }
 .mp-input:focus{ outline:none; border-color:var(--shade-dim); }
+#mp-id-output{ user-select:all; -webkit-user-select:all; color:var(--gold); font-weight:700; cursor:text; }
+.mp-id-row{ margin-top:10px; }
 .mp-status{ margin-top:10px; font-family:var(--font-mono); font-size:11.5px; color:var(--gold); min-height:14px; }
 .mp-hero-picker{
   margin-top:16px; max-width:640px; width:100%;

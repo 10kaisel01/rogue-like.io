@@ -111,6 +111,8 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
   padding:9px 12px; color:var(--bone); font-family:var(--font-mono); font-size:12px;
 }
 .mp-input:focus{ outline:none; border-color:var(--shade-dim); }
+#mp-id-output{ user-select:all; -webkit-user-select:all; color:var(--gold); font-weight:700; cursor:text; }
+.mp-id-row{ margin-top:10px; }
 .mp-status{ margin-top:10px; font-family:var(--font-mono); font-size:11.5px; color:var(--gold); min-height:14px; }
 .mp-hero-picker{
   margin-top:16px; max-width:640px; width:100%;
@@ -554,6 +556,10 @@ canvas{position:absolute; top:0; left:0; display:block; background:var(--void);}
         <button class="btn ghost" id="btn-mp-join">Unirse</button>
       </div>
       <div class="mp-status" id="mp-status"></div>
+      <div class="mp-row mp-id-row hidden" id="mp-id-row">
+        <input type="text" id="mp-id-output" class="mp-input" readonly>
+        <button class="btn ghost" id="btn-mp-copy-id">Copiar ID</button>
+      </div>
     </div>
 
     <!-- Selector de héroe para el Invitado — aparece tras conectar -->
@@ -2713,6 +2719,12 @@ const keys = {};
 const mouse = { x:0, y:0, down:false };
 let devKeyBuffer = '';
 window.addEventListener('keydown', e=>{
+  // BUG (real): este listener global capturaba Digit1-4/WASD/Espacio/R para el juego SIN
+  // fijarse si el foco estaba en un <input> — por eso no se podía escribir el ID del host (lleno
+  // de números) en el campo de "Unirse". Si hay un input/textarea enfocado, dejamos que el
+  // navegador maneje la tecla normal y no tocamos nada del juego.
+  const tag = document.activeElement && document.activeElement.tagName;
+  if(tag==='INPUT' || tag==='TEXTAREA') return;
   keys[e.code]=true;
   if(e.code==='Escape'){ if(merchantOpen) closeMerchant(); else togglePause(); }
   if(e.code==='Tab' && !merchantOpen){ e.preventDefault(); toggleInventory(); }
@@ -3398,6 +3410,8 @@ let guestPendingActions = { qPressed:false, ePressed:false, rPressed:false, shif
 // loop). Así ningún tap de Q/E/R se pierde entre un envío de red y el siguiente.
 window.addEventListener('keydown', (e)=>{
   if(esHost || !conn || !conn.open) return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if(tag==='INPUT' || tag==='TEXTAREA') return;
   if(e.code==='KeyQ') guestPendingActions.qPressed = true;
   else if(e.code==='KeyE') guestPendingActions.ePressed = true;
   else if(e.code==='KeyR') guestPendingActions.rPressed = true;
@@ -3634,7 +3648,9 @@ $('btn-mp-host').addEventListener('click', ()=>{
   $('mp-status').textContent = 'Generando ID...';
   peer = new Peer();
   peer.on('open', (id)=>{
-    $('mp-status').textContent = 'Tu ID (compartíselo a tu compañero): ' + id;
+    $('mp-status').textContent = 'Compartíselo a tu compañero:';
+    $('mp-id-row').classList.remove('hidden');
+    $('mp-id-output').value = id;
   });
   peer.on('connection', (c)=>{
     conn = c;
@@ -3644,6 +3660,24 @@ $('btn-mp-host').addEventListener('click', ()=>{
     console.error('Error de PeerJS (host):', err);
     $('mp-status').textContent = 'Error al crear la partida';
   });
+});
+
+// Copiar ID: user-select:all en el input ya lo hace seleccionable con un click, pero un botón de
+// copiado directo evita depender de que el navegador copie bien con Ctrl+C en todos los casos
+$('btn-mp-copy-id').addEventListener('click', async ()=>{
+  const val = $('mp-id-output').value;
+  if(!val) return;
+  try{
+    await navigator.clipboard.writeText(val);
+    $('btn-mp-copy-id').textContent = '¡Copiado!';
+  } catch(err){
+    // fallback para navegadores/contextos sin permiso de portapapeles: seleccionar el texto
+    // para que Ctrl+C funcione manualmente
+    $('mp-id-output').select();
+    $('mp-id-output').setSelectionRange(0, val.length);
+    $('btn-mp-copy-id').textContent = 'Seleccionado — Ctrl+C';
+  }
+  setTimeout(()=>{ $('btn-mp-copy-id').textContent = 'Copiar ID'; }, 1800);
 });
 
 // Invitado: crea su propio Peer y se conecta al ID ingresado en el input
